@@ -20,6 +20,7 @@ import { ASSURANCE_LEVELS } from '../lib/scoring';
 import { coverageBreakdown, completenessStatement } from '../lib/coverage';
 import { dashboardView } from '../lib/derive';
 import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL } from '../data/controls';
+import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
 import { EXCLUSIONS, SECTOR_BASELINE } from '../data/exclusions';
 
 const fmt1 = (n: number) => n.toFixed(1);
@@ -248,6 +249,13 @@ export default function Dashboard() {
               </li>
             ))}
           </ul>
+          {uploaded && (
+            <p className="mt-2 border-t border-slate-100 pt-2 text-[11px] text-slate-500">
+              Oldest evidence: <span className="tnum font-semibold">{EVIDENCE_FRESHNESS.oldestDays} days</span>{' '}
+              (<Link to={`/control/${EVIDENCE_FRESHNESS.oldestControl}`} className="text-accent hover:underline">{EVIDENCE_FRESHNESS.oldestControl}</Link>) ·{' '}
+              {EVIDENCE_FRESHNESS.approachingStaleness} controls approaching staleness · assessed {ASSESSMENT_DATE}
+            </p>
+          )}
         </Card>
 
         <Card title="Assurance level" subtitle="How the evidence was established">
