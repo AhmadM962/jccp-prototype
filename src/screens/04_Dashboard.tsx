@@ -11,7 +11,7 @@ import {
   YAxis,
   LabelList,
 } from 'recharts';
-import { AlertTriangle, Info, ArrowUpRight, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Info, ArrowUpRight, ShieldAlert, TrendingUp } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
 import ScoreInterval from '../components/ScoreInterval';
 import { useAssessment } from '../store/useAssessment';
@@ -24,12 +24,100 @@ import { EXCLUSIONS, SECTOR_BASELINE } from '../data/exclusions';
 
 const fmt1 = (n: number) => n.toFixed(1);
 
+const TOP_RISKS = [
+  { id: 'JNCSF-307', label: 'Vulnerability scanning not established', why: '22 servers overdue for patches · exposes T1190', to: '/control/JNCSF-307' },
+  { id: 'JNCSF-102', label: 'Least privilege not enforced', why: '43 privileged accounts without MFA · exposes T1078', to: '/control/JNCSF-102' },
+  { id: 'JNCSF-30', label: 'Audit records incomplete', why: '3 of 9 audit subcategories off · reduces detection', to: '/control/JNCSF-30' },
+];
+
+function ExecutiveDashboard() {
+  const uploaded = useAssessment((s) => s.evidenceUploaded);
+  const overrides = useAssessment((s) => s.overriddenControls);
+  const view = dashboardView(uploaded, overrides);
+  const eff = view.effective;
+  const cs = completenessStatement(uploaded);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+        <Card title="Compliance interval" subtitle="Executive summary — the band, not a number">
+          <div className="py-3">
+            <ScoreInterval
+              lower={eff.lowerPct}
+              upper={eff.upperPct}
+              coveragePct={eff.coveragePct}
+              widthPts={eff.widthPts}
+              animateFrom={uploaded ? { lower: TOTALS.before.interval[0], upper: TOTALS.before.interval[1] } : undefined}
+              subline={`Assurance ${uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented'}. ${cs.unevidenced} controls still unevidenced.`}
+            />
+          </div>
+        </Card>
+        <Card title="Trend" subtitle="last four collection cycles">
+          <div className="flex items-end gap-3">
+            {[
+              { q: 'Q4-25', lo: 41, hi: 92 },
+              { q: 'Q1-26', lo: 46, hi: 90 },
+              { q: 'Q2-26', lo: 50.0, hi: 87.1 },
+              { q: uploaded ? 'now' : 'Q3-26', lo: uploaded ? eff.lowerPct : 50, hi: uploaded ? eff.upperPct : 87.1 },
+            ].map((p) => (
+              <div key={p.q} className="flex flex-1 flex-col items-center gap-1">
+                <div className="relative h-24 w-3 rounded bg-slate-100">
+                  <div className="absolute w-full rounded bg-accent/40" style={{ bottom: `${p.lo}%`, height: `${p.hi - p.lo}%` }} />
+                </div>
+                <span className="text-[10px] text-slate-400">{p.q}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-emerald-700">
+            <TrendingUp size={12} /> band narrowing as coverage improves
+          </p>
+        </Card>
+      </div>
+
+      <Card title="Top 3 risks" subtitle="what to escalate">
+        <ol className="space-y-2">
+          {TOP_RISKS.map((r, i) => (
+            <li key={r.id}>
+              <Link to={r.to} className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 hover:border-accent">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-700">{i + 1}</span>
+                <span>
+                  <span className="text-sm font-semibold text-slate-800">{r.label}</span>
+                  <span className="block text-[12px] text-slate-500">{r.why}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </Card>
+
+      <div className="rounded-xl border-2 border-slate-300 bg-white p-5">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+          <Info size={14} /> Completeness statement
+        </div>
+        <p className="text-sm leading-relaxed text-slate-700">
+          This assessment covers <strong className="tnum">{cs.covered} of {cs.applicable}</strong> applicable
+          controls. <strong className="tnum">{cs.unevidenced}</strong> are unevidenced. Compliance is reported
+          as an interval because a point estimate would conceal what was not established.
+        </p>
+      </div>
+
+      <p className="text-[11px] text-slate-400">
+        Executive view — evidence excerpts, personal data and per-control detail are not shown. Switch role
+        (top right) for the full assessment.
+      </p>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const uploaded = useAssessment((s) => s.evidenceUploaded);
   const overrides = useAssessment((s) => s.overriddenControls);
   const profile = useAssessment((s) => s.profile);
   const challenge = useAssessment((s) => s.profileChallenge);
+  const role = useAssessment((s) => s.role);
+
+  if (role === 'executive') return <ExecutiveDashboard />;
 
   const t = uploaded ? TOTALS.after : TOTALS.before;
   const cov = coverageBreakdown(uploaded);
@@ -37,7 +125,7 @@ export default function Dashboard() {
   const view = dashboardView(uploaded, overrides);
   const eff = view.effective;
 
-  const cloudContradiction = uploaded && !profile.usesCloud;
+  const cloudContradiction = uploaded && profile.usesCloud === 'no';
 
   const donut = [
     { name: 'Artifact-evidenced', value: cov.evidenced, fill: '#059669' },

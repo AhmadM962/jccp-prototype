@@ -1,11 +1,13 @@
 import { NavLink } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
-import { NAV } from './nav';
+import { navForRole } from './nav';
 import PhaseStepper from './PhaseStepper';
-import { useAssessment } from '../../store/useAssessment';
+import { useAssessment, ROLE_LABEL } from '../../store/useAssessment';
 
 export default function Sidebar() {
   const uploaded = useAssessment((s) => s.evidenceUploaded);
+  const role = useAssessment((s) => s.role);
+  const NAV = navForRole(role);
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col bg-ink-900 text-slate-300">
@@ -17,6 +19,10 @@ export default function Sidebar() {
           <div className="text-sm font-bold tracking-tight text-white">JCCP</div>
           <div className="text-[10px] text-slate-400">Jordan Cyber Compliance</div>
         </div>
+      </div>
+
+      <div className="mx-3 mb-1 rounded-md bg-ink-800 px-2.5 py-1.5 text-[10px] text-slate-400">
+        {ROLE_LABEL[role]} view
       </div>
 
       <nav className="flex-1 space-y-0.5 px-3 py-2">

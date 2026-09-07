@@ -11,11 +11,14 @@ import {
   UploadCloud,
   ArrowRight,
   ShieldQuestion,
+  Link2,
+  Upload,
 } from 'lucide-react';
 import { Card, Button, Pill } from '../components/ui';
 import { useAssessment } from '../store/useAssessment';
 import { interviews, type InterviewRole } from '../data/interviews';
-import { bundleStages, moduleLedger, BUNDLE_MANIFEST, type ModuleStatus } from '../data/scenario';
+import { bundleStages, moduleLedger, BUNDLE_MANIFEST, requestPlan, type ModuleStatus } from '../data/scenario';
+import { reviewQueue, CONFLICT_FLAG, scopedLinkFor, type ScopedLink } from '../data/collaboration';
 
 /* ─── Tab A: Interviews ─────────────────────────────────────────────────────── */
 
@@ -160,10 +163,15 @@ function BundlePanel() {
   const navigate = useNavigate();
   const uploadEvidence = useAssessment((s) => s.uploadEvidence);
   const uploaded = useAssessment((s) => s.evidenceUploaded);
+  const uploadedSlots = useAssessment((s) => s.uploadedSlots);
+  const uploadSlot = useAssessment((s) => s.uploadSlot);
+  const uploadSlotsBulk = useAssessment((s) => s.uploadSlotsBulk);
   const [stage, setStage] = useState(-1); // -1 idle, 0..n running, n done
   const [done, setDone] = useState(uploaded);
+  const [lastFeedback, setLastFeedback] = useState<string | null>(null);
 
   const run = () => {
+    uploadSlotsBulk(requestPlan.filter((r) => r.method === 'automated').map((r) => r.artifact));
     setStage(0);
   };
 
@@ -178,21 +186,56 @@ function BundlePanel() {
     return () => clearTimeout(t);
   }, [stage, uploadEvidence]);
 
+  const slots = requestPlan;
+  const filled = slots.filter((s) => uploadedSlots[s.artifact]).length;
+  const controlsEvidenced = slots.filter((s) => uploadedSlots[s.artifact]).reduce((a, s) => a + s.controlsUnlocked, 0);
+  // demo coverage estimate: baseline 62.9% + provided share of the collectable gap
+  const covEstimate = Math.min(94, 62.9 + (controlsEvidenced / 340) * 100 * 0.85).toFixed(1);
+
   return (
     <div className="space-y-5">
-      <Card>
-        <div className="flex flex-col items-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
-          <UploadCloud size={32} className="text-slate-400" />
-          <p className="mt-3 text-sm font-semibold text-slate-700">Collector evidence bundle</p>
-          <p className="mt-1 max-w-md text-xs text-slate-500">
-            A signed archive produced on-premise by the JCCP collector. The drop zone is simulated for this
-            demo — no real file is parsed.
-          </p>
-          <div className="mt-4">
-            <Button onClick={run} disabled={stage >= 0 && !done}>
-              {done ? 'Bundle processed' : 'Simulate collector bundle upload'}
-            </Button>
-          </div>
+      <Card
+        title="Evidence intake"
+        subtitle={`${filled} of ${slots.length} artifact slots filled · ${controlsEvidenced} controls evidenced · est. coverage ${covEstimate}%`}
+        right={
+          <Button onClick={run} disabled={stage >= 0 && !done}>
+            <UploadCloud size={13} /> {done ? 'Bundle processed' : 'Simulate collector bundle upload (fills 14)'}
+          </Button>
+        }
+      >
+        {lastFeedback && (
+          <div className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">{lastFeedback}</div>
+        )}
+        <div className="grid gap-2 sm:grid-cols-2">
+          {slots.map((s) => {
+            const up = uploadedSlots[s.artifact];
+            return (
+              <div key={s.artifact} className={`rounded-lg border px-3 py-2.5 ${up ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-medium text-slate-800">{s.artifact}</div>
+                    <div className="text-[11px] text-slate-400">{s.source} · unlocks {s.controlsUnlocked} · {s.formatHint}</div>
+                  </div>
+                  {up ? (
+                    <Pill tone="green"><Check size={10} /> accepted</Pill>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        uploadSlot(s.artifact);
+                        setLastFeedback(`${s.artifact} accepted — ${s.controlsUnlocked} controls now evidenced.`);
+                      }}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                      <Upload size={10} /> Upload
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+          Other evidence — drop anything not listed above. Simulated; no file is parsed.
         </div>
       </Card>
 
@@ -350,31 +393,118 @@ export default function Intake() {
             <InterviewPanel role={role} onComplete={() => completeInterview(role.id)} />
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-3">
-            {interviews.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => setActiveRole(r.id)}
-                className="rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-accent hover:shadow"
-              >
-                <div className="text-sm font-bold text-slate-900">{r.title}</div>
-                <div className="mt-0.5 text-xs text-slate-500">{r.persona}</div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400">{r.turns.length} turns · {r.claims.length} claims</span>
-                  {done.includes(r.id) ? (
-                    <Pill tone="green">
-                      <Check size={11} /> done
-                    </Pill>
-                  ) : (
-                    <Pill tone="slate">not started</Pill>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
+          <InterviewList onOpen={setActiveRole} done={done} />
         ))}
 
       {tab === 'bundle' && <BundlePanel />}
+    </div>
+  );
+}
+
+/* ─── Interview list + scoped links + review queue (2.2) ────────────────────── */
+
+const SCOPE_LABEL: Record<string, string> = {
+  operator: 'Infrastructure / Operator questions only',
+  exec: 'Executive / Compliance questions only',
+  defender: 'Defender / SOC questions only',
+};
+
+function InterviewList({ onOpen, done }: { onOpen: (id: string) => void; done: string[] }) {
+  const [links, setLinks] = useState<Record<string, ScopedLink>>({});
+  const [sent, setSent] = useState<string[]>([]);
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {interviews.map((r) => {
+          const link = links[r.id];
+          return (
+            <div key={r.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <button onClick={() => onOpen(r.id)} className="text-left">
+                <div className="text-sm font-bold text-slate-900 hover:text-accent">{r.title}</div>
+                <div className="mt-0.5 text-xs text-slate-500">{r.persona}</div>
+              </button>
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">{r.turns.length} turns · {r.claims.length} claims</span>
+                {done.includes(r.id) ? (
+                  <Pill tone="green"><Check size={11} /> done</Pill>
+                ) : (
+                  <Pill tone="slate">not started</Pill>
+                )}
+              </div>
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                {link ? (
+                  <div className="text-[11px]">
+                    <code className="block truncate rounded bg-slate-100 px-2 py-1 font-mono text-slate-600">
+                      https://jccp.ministry.local/respond/{link.token}
+                    </code>
+                    <div className="mt-1 text-slate-500">
+                      expires in {link.expiresInDays} days · {link.scopeLabel}
+                    </div>
+                    <div className="mt-1 flex gap-2">
+                      <button onClick={() => navigator.clipboard?.writeText(`https://jccp.ministry.local/respond/${link.token}`)} className="font-semibold text-accent hover:underline">Copy</button>
+                      <button
+                        onClick={() => setSent((s) => (s.includes(r.id) ? s : [...s, r.id]))}
+                        className="font-semibold text-accent hover:underline"
+                      >
+                        {sent.includes(r.id) ? 'Sent ✓' : 'Mark as sent'}
+                      </button>
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-400">Internal network only — this link does not traverse the internet</div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setLinks((l) => ({ ...l, [r.id]: scopedLinkFor(r.id, SCOPE_LABEL[r.id]) }))}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-accent hover:underline"
+                  >
+                    <Link2 size={11} /> Generate scoped link
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <Card title="Review queue" subtitle="who is answering what, and where it stands">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400">
+                <th className="py-2 pr-4">Role</th>
+                <th className="py-2 pr-4">Assignee</th>
+                <th className="py-2 pr-4">Status</th>
+                <th className="py-2 pr-4">Submitted</th>
+                <th className="py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reviewQueue.map((row) => (
+                <tr key={row.roleId} className="border-b border-slate-100">
+                  <td className="py-2.5 pr-4 text-slate-700">{row.roleTitle}</td>
+                  <td className="py-2.5 pr-4 text-slate-600">{row.assignee}</td>
+                  <td className="py-2.5 pr-4">
+                    <Pill tone={row.status === 'accepted' ? 'green' : row.status === 'under review' ? 'amber' : row.status === 'submitted' ? 'blue' : 'slate'}>
+                      {row.status}
+                    </Pill>
+                  </td>
+                  <td className="py-2.5 pr-4 tnum text-slate-500">{row.submittedAt ?? '—'}</td>
+                  <td className="py-2.5 text-[12px] text-accent">
+                    <button className="hover:underline">Review</button> · <button className="hover:underline">Reopen</button> · <button className="hover:underline">Nudge</button>
+                  </td>
+                </tr>
+              ))}
+              <tr className="bg-amber-50">
+                <td colSpan={5} className="py-2.5 px-1 text-[12px] text-amber-800">
+                  <AlertTriangle size={12} className="mr-1 inline" />
+                  <strong>Conflict:</strong> {CONFLICT_FLAG.summary} — operator wins on configuration per trust
+                  ordering. <button className="font-semibold underline">Review</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }
