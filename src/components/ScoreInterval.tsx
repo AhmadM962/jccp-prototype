@@ -11,6 +11,10 @@ interface Props {
   variant?: 'hero' | 'row';
   caption?: string;
   subline?: string;
+  /** if given, the band animates from this position on mount (used for the reload-reveal) */
+  animateFrom?: { lower: number; upper: number };
+  /** optional ghost band showing an alternative outcome (e.g. worst-case projection) */
+  ghost?: { lower: number; upper: number; label?: string };
 }
 
 const fmt = (n: number) => n.toFixed(1);
@@ -23,12 +27,19 @@ export default function ScoreInterval({
   variant = 'hero',
   caption = 'Compliance interval',
   subline,
+  animateFrom,
+  ghost,
 }: Props) {
   const width = widthPts ?? upper - lower;
   const hero = variant === 'hero';
+  const bandInitial = animateFrom
+    ? { left: `${animateFrom.lower}%`, width: `${Math.max(animateFrom.upper - animateFrom.lower, 0.5)}%` }
+    : false;
+  const markInitial = (v: 'lower' | 'upper') =>
+    animateFrom ? { left: `${animateFrom[v]}%` } : false;
 
   return (
-    <div className={hero ? 'w-full' : 'w-full'}>
+    <div className="w-full">
       {hero && (
         <div className="mb-3 flex items-baseline justify-center gap-3">
           <span className="tnum text-3xl font-bold text-slate-900">{fmt(lower)}%</span>
@@ -38,27 +49,33 @@ export default function ScoreInterval({
       )}
 
       <div className={`relative w-full ${hero ? 'h-9' : 'h-5'} rounded-md bg-slate-100 ring-1 ring-inset ring-slate-200`}>
-        {/* gridlines at 25/50/75 */}
         {[25, 50, 75].map((g) => (
           <div key={g} className="absolute top-0 bottom-0 w-px bg-slate-200" style={{ left: `${g}%` }} />
         ))}
-        {/* the shaded interval band */}
+
+        {ghost && (
+          <div
+            className="absolute top-0 bottom-0 rounded-md border border-dashed border-slate-400/70"
+            style={{ left: `${ghost.lower}%`, width: `${Math.max(ghost.upper - ghost.lower, 0.5)}%` }}
+            title={ghost.label}
+          />
+        )}
+
         <motion.div
           className="absolute top-0 bottom-0 rounded-md bg-accent/25 ring-1 ring-inset ring-accent/50"
-          initial={false}
+          initial={bandInitial}
           animate={{ left: `${lower}%`, width: `${Math.max(upper - lower, 0.5)}%` }}
           transition={{ type: 'spring', stiffness: 90, damping: 18 }}
         />
-        {/* lower + upper edge markers */}
         <motion.div
           className="absolute top-[-4px] bottom-[-4px] w-0.5 bg-accent"
-          initial={false}
+          initial={markInitial('lower')}
           animate={{ left: `${lower}%` }}
           transition={{ type: 'spring', stiffness: 90, damping: 18 }}
         />
         <motion.div
           className="absolute top-[-4px] bottom-[-4px] w-0.5 bg-accent"
-          initial={false}
+          initial={markInitial('upper')}
           animate={{ left: `${upper}%` }}
           transition={{ type: 'spring', stiffness: 90, damping: 18 }}
         />

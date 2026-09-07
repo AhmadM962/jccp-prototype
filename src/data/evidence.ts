@@ -109,6 +109,18 @@ export const evidenceByControl: Record<string, EvidenceItem[]> = {
       raw: 'Hosts reporting: 388 of 400\nRealTimeProtectionEnabled=true : 331\nAntivirusSignatureAge <= 2 days : 344\nManaged AV absent (contractor image): 44\n\nCoverage ~80%. Named exception: contractor-managed workstations.',
     },
   ],
+  'JNCSF-459': [
+    {
+      id: 'ev-459-1',
+      type: 'artifact',
+      locator: 'raw/lms-completion-2026Q2.csv — aggregate',
+      sha256: H('4d10…ab77'),
+      source: 'LMS — completion report',
+      timestamp: '2026-06-16T14:02:00+03:00',
+      module: 'manual-upload',
+      raw: 'Reporting period: 2026-Q2\nActive staff in scope: 620\nCompleted mandatory awareness module: 484 (78.1%)\nOverdue > 30 days: 92\nNever started: 44\n\nNOTE: export is from Q2. A current export is required — this evidence is 84 days old\nagainst a 365-day freshness window but the training cycle itself is quarterly.',
+    },
+  ],
   'JNCSF-7': [
     {
       id: 'ev-7-1',
@@ -124,3 +136,23 @@ export const evidenceByControl: Record<string, EvidenceItem[]> = {
 };
 
 export const evidenceFor = (id: string): EvidenceItem[] => evidenceByControl[id] ?? [];
+
+// The assessment "as of" date. Evidence age is measured against this.
+export const ASSESSMENT_DATE = '2026-09-08';
+
+export function ageDays(isoTimestamp: string, asOf = ASSESSMENT_DATE): number {
+  const a = new Date(isoTimestamp).getTime();
+  const b = new Date(asOf).getTime();
+  return Math.max(0, Math.round((b - a) / 86_400_000));
+}
+
+// Freshness roll-up for the dashboard. Seeded evidence is sparse, so the estate-wide
+// figures are a fixture; the per-control age on the detail page is computed from the
+// record timestamp.
+export const EVIDENCE_FRESHNESS = {
+  oldestDays: 84,
+  oldestControl: 'JNCSF-459',
+  oldestControlLabel: 'Security awareness training',
+  approachingStaleness: 6,
+  stale: 0,
+};

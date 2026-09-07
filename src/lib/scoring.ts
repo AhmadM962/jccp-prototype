@@ -43,6 +43,76 @@ export function boundedScore(
 export const pct = (x: number, digits = 1) => `${(x * 100).toFixed(digits)}%`;
 export const pts = (x: number, digits = 1) => `${(x * 100).toFixed(digits)} points`;
 
+/**
+ * Project what happens when an artifact that unlocks `controlsUnlocked` currently-unknown
+ * controls is provided. The unlocked controls become *known* — but "known" can mean pass
+ * or fail, so the honest projection is an outcome range, not a single narrower band.
+ *
+ * `n` = how many Unknowns actually get resolved (capped at the Unknown pool).
+ * The band narrows by exactly `n / applicable` — that reduction is certain regardless of
+ * how the resolved controls land. The *position* of the band is bracketed by best case
+ * (all resolved controls pass) and worst case (all fail).
+ */
+export function projectProvision(
+  applicable: number,
+  green: number,
+  yellow: number,
+  unknown: number,
+  controlsUnlocked: number,
+  yellowWeight = 0.5,
+) {
+  const n = Math.min(controlsUnlocked, unknown);
+  const num = green * WEIGHTS.green + yellow * yellowWeight;
+  const remainingUnknown = unknown - n;
+  return {
+    resolved: n,
+    widthReductionPts: (n / applicable) * 100,
+    resultingWidthPts: (remainingUnknown / applicable) * 100,
+    bestCase: {
+      lower: (num + n) / applicable,
+      upper: (num + n + remainingUnknown) / applicable,
+    },
+    worstCase: {
+      lower: num / applicable,
+      upper: (num + remainingUnknown) / applicable,
+    },
+  };
+}
+
+/**
+ * Apply a set of analyst overrides to a bucket of aggregate counts and return the
+ * adjusted buckets. `engineStateOf` maps an overridden control id to the state the engine
+ * assigned it (so we know which bucket to move it out of). Controls whose override equals
+ * the engine verdict are a no-op.
+ */
+export interface Buckets {
+  applicable: number;
+  green: number;
+  yellow: number;
+  red: number;
+  unknown: number;
+}
+
+export function applyOverrides(
+  base: Buckets,
+  overrides: Record<string, string>,
+  engineStateOf: (id: string) => 'green' | 'yellow' | 'red' | 'grey' | 'unknown' | undefined,
+): { buckets: Buckets; activeCount: number } {
+  const b: Buckets = { ...base };
+  let activeCount = 0;
+  const key = (s: string) => (s === 'grey' ? undefined : (s as keyof Buckets));
+  for (const [id, next] of Object.entries(overrides)) {
+    const prev = engineStateOf(id);
+    if (!prev || prev === next) continue;
+    const from = key(prev);
+    const to = key(next);
+    if (from && from in b) (b[from] as number) -= 1;
+    if (to && to in b) (b[to] as number) += 1;
+    activeCount += 1;
+  }
+  return { buckets: b, activeCount };
+}
+
 // Assurance ladder (brief §7.5).
 export const ASSURANCE_LEVELS = [
   { id: 'L0', name: 'Declared', definition: 'Profile declared; no evidence of any kind supplied.' },

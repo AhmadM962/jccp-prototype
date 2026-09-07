@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ChevronDown, Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Card, Pill } from '../components/ui';
@@ -16,43 +17,58 @@ import {
   type GapReason,
 } from '../data/controls';
 
-const SEVERITY: Record<ControlState, number> = { red: 4, unknown: 3, yellow: 2, green: 1, grey: 0 };
+// Worst *established* state for a capability — from the fixture aggregate, never from
+// visible rows. "Established" excludes Unknown: we do not know it's broken, so it does
+// not count as the worst finding. Unknown is reported separately as "unestablished".
+function worstEstablished(stat: { green: number; yellow: number; red: number }): ControlState | null {
+  if (stat.red > 0) return 'red';
+  if (stat.yellow > 0) return 'yellow';
+  if (stat.green > 0) return 'green';
+  return null;
+}
 
 export default function GapMatrix() {
+  const [params, setParams] = useSearchParams();
   const uploaded = useAssessment((s) => s.evidenceUploaded);
   const overrides = useAssessment((s) => s.overriddenControls);
 
-  const [open, setOpen] = useState<Record<string, boolean>>({ ops: true });
-  const [stateF, setStateF] = useState<ControlState | 'all'>('all');
-  const [evF, setEvF] = useState<EvidenceClass | 'all'>('all');
-  const [gapF, setGapF] = useState<GapReason | 'all'>('all');
+  const [open, setOpen] = useState<Record<string, boolean>>(() => {
+    const cap = params.get('cap');
+    return cap ? { [cap]: true } : { ops: true };
+  });
+  const [stateF, setStateF] = useState<ControlState | 'all'>((params.get('state') as ControlState) ?? 'all');
+  const [evF, setEvF] = useState<EvidenceClass | 'all'>((params.get('ev') as EvidenceClass) ?? 'all');
+  const [gapF, setGapF] = useState<GapReason | 'all'>((params.get('gap') as GapReason) ?? 'all');
   const [q, setQ] = useState('');
-  const [onlyChanged, setOnlyChanged] = useState(false);
+  const [onlyChanged, setOnlyChanged] = useState(params.get('changed') === '1');
+  const [onlyOverrides, setOnlyOverrides] = useState(params.get('overrides') === '1');
+
+  // consume the params once, then clear them so filter state is the source of truth
+  useEffect(() => {
+    if ([...params.keys()].length) setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const rows = useMemo(() => {
     return controls
       .map((c) => {
         const base = snapshotFor(c, uploaded);
-        const state = overrides[c.id] ?? base.state;
-        return { c, snap: { ...base, state } };
+        const ov = overrides[c.id];
+        const state = ov?.state ?? base.state;
+        return { c, snap: { ...base, state }, overridden: Boolean(ov) };
       })
-      .filter(({ c, snap }) => {
+      .filter(({ c, snap, overridden }) => {
         if (stateF !== 'all' && snap.state !== stateF) return false;
         if (evF !== 'all' && snap.evidenceClass !== evF) return false;
         if (gapF !== 'all' && snap.gapReason !== gapF) return false;
         if (onlyChanged && !(uploaded && c.changed)) return false;
-        if (q && !(`${c.id} ${c.description}`.toLowerCase().includes(q.toLowerCase()))) return false;
+        if (onlyOverrides && !overridden) return false;
+        if (q && !`${c.id} ${c.description}`.toLowerCase().includes(q.toLowerCase())) return false;
         return true;
       });
-  }, [uploaded, overrides, stateF, evF, gapF, q, onlyChanged]);
+  }, [uploaded, overrides, stateF, evF, gapF, q, onlyChanged, onlyOverrides]);
 
   const byCap = (capId: string) => rows.filter((r) => r.c.capability === capId);
-
-  const weakest = (capId: string): ControlState | null => {
-    const rs = byCap(capId);
-    if (rs.length === 0) return null;
-    return rs.reduce<ControlState>((worst, r) => (SEVERITY[r.snap.state] > SEVERITY[worst] ? r.snap.state : worst), 'grey');
-  };
 
   return (
     <div className="space-y-5">
@@ -86,15 +102,15 @@ export default function GapMatrix() {
             ))}
           </select>
           <label className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${uploaded ? 'cursor-pointer border-slate-300' : 'cursor-not-allowed border-slate-200 opacity-50'}`}>
-            <input
-              type="checkbox"
-              disabled={!uploaded}
-              checked={onlyChanged}
-              onChange={(e) => setOnlyChanged(e.target.checked)}
-              className="h-4 w-4"
-            />
+            <input type="checkbox" disabled={!uploaded} checked={onlyChanged} onChange={(e) => setOnlyChanged(e.target.checked)} className="h-4 w-4" />
             Show only what changed after evidence upload
           </label>
+          {Object.keys(overrides).length > 0 && (
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              <input type="checkbox" checked={onlyOverrides} onChange={(e) => setOnlyOverrides(e.target.checked)} className="h-4 w-4" />
+              Overridden only ({Object.keys(overrides).length})
+            </label>
+          )}
         </div>
       </Card>
 
@@ -107,25 +123,39 @@ export default function GapMatrix() {
             </div>
           );
         }
-        const w = weakest(cap.id);
+        const stat = uploaded ? cap.after! : cap.before!;
+        const worst = worstEstablished(stat);
         const capRows = byCap(cap.id);
         const isOpen = open[cap.id] ?? false;
         return (
           <div key={cap.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <button
               onClick={() => setOpen((o) => ({ ...o, [cap.id]: !isOpen }))}
-              className="flex w-full items-center justify-between px-5 py-3.5 hover:bg-slate-50"
+              className="flex w-full flex-wrap items-center justify-between gap-3 px-5 py-3.5 hover:bg-slate-50"
             >
               <div className="flex items-center gap-3">
                 <ChevronDown size={16} className={`text-slate-400 transition ${isOpen ? '' : '-rotate-90'}`} />
                 <span className="text-sm font-semibold text-slate-800">{cap.name}</span>
-                <span className="text-[11px] text-slate-400">
-                  {capRows.length} shown of {cap.totalControls}
+                <span className="tnum text-[11px] text-slate-400">
+                  {stat.applicable} applicable · {capRows.length} of {controls.filter((c) => c.capability === cap.id).length} seeded shown
                 </span>
               </div>
-              <div className="flex items-center gap-2" title="Parent shows the state of its weakest child, never an average">
-                <span className="text-[11px] text-slate-400">weakest child</span>
-                {w ? <StateBadge state={w} size="sm" /> : <Pill tone="slate">—</Pill>}
+              <div
+                className="flex items-center gap-4 text-[11px]"
+                title="Two independent figures from the capability fixture — never an average, and unaffected by filters"
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="text-slate-400">worst established</span>
+                  {worst ? <StateBadge state={worst} size="sm" /> : <Pill tone="slate">—</Pill>}
+                  <span className="tnum font-semibold text-slate-700">
+                    {worst === 'red' ? stat.red : worst === 'yellow' ? stat.yellow : worst === 'green' ? stat.green : 0}
+                  </span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="text-slate-400">unestablished</span>
+                  <StateBadge state="unknown" size="sm" showLabel={false} />
+                  <span className="tnum font-semibold text-violet-700">{stat.unknown}</span>
+                </span>
               </div>
             </button>
             <AnimatePresence initial={false}>
@@ -138,12 +168,7 @@ export default function GapMatrix() {
                   ) : (
                     <div className="border-t border-slate-100">
                       {capRows.map(({ c, snap }) => (
-                        <ControlRow
-                          key={c.id}
-                          control={c}
-                          snap={snap}
-                          highlight={onlyChanged || (uploaded && c.changed)}
-                        />
+                        <ControlRow key={c.id} control={c} snap={snap} highlight={onlyChanged || (uploaded && c.changed)} />
                       ))}
                     </div>
                   )}

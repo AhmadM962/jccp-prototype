@@ -73,16 +73,18 @@ export interface EvidenceRequest {
   artifact: string;
   source: string;
   controlsUnlocked: number;
-  narrowingPts: number;
   command: string;
 }
 
+// `controlsUnlocked` = how many currently-Unknown controls this artifact would make
+// *known* (pass or fail). The band narrowing is derived from this via projectProvision,
+// never stored — see lib/scoring.ts.
 export const evidenceRequests: EvidenceRequest[] = [
-  { id: 'req-siem', artifact: 'SIEM log source inventory + retention', source: 'SIEM', controlsUnlocked: 8, narrowingPts: 8.2, command: 'Export source list + retention settings from the SIEM admin console' },
-  { id: 'req-linux', artifact: 'Linux hardening baseline (CIS)', source: 'Linux servers', controlsUnlocked: 18, narrowingPts: 6.1, command: 'oscap xccdf eval --profile cis --results cis-results.xml ssg-rhel8-ds.xml' },
-  { id: 'req-priv', artifact: 'Re-run identity module with endpoint read permission', source: 'Active Directory', controlsUnlocked: 14, narrowingPts: 5.7, command: 'Grant the collector service account "Read" on the endpoint OU, then re-run collector --module endpoint' },
-  { id: 'req-backup', artifact: 'Backup job report + restore test log', source: 'Backup system', controlsUnlocked: 5, narrowingPts: 2.4, command: 'Export last 30 days job status from the backup console' },
-  { id: 'req-lms', artifact: 'Security awareness completion export', source: 'LMS', controlsUnlocked: 4, narrowingPts: 1.6, command: 'Export completion CSV from the LMS reporting module' },
+  { id: 'req-siem', artifact: 'SIEM log source inventory + retention', source: 'SIEM', controlsUnlocked: 8, command: 'Export source list + retention settings from the SIEM admin console' },
+  { id: 'req-linux', artifact: 'Linux hardening baseline (CIS)', source: 'Linux servers', controlsUnlocked: 18, command: 'oscap xccdf eval --profile cis --results cis-results.xml ssg-rhel8-ds.xml' },
+  { id: 'req-priv', artifact: 'Re-run identity module with endpoint read permission', source: 'Active Directory', controlsUnlocked: 14, command: 'Grant the collector service account "Read" on the endpoint OU, then re-run collector --module endpoint' },
+  { id: 'req-backup', artifact: 'Backup job report + restore test log', source: 'Backup system', controlsUnlocked: 5, command: 'Export last 30 days job status from the backup console' },
+  { id: 'req-lms', artifact: 'Security awareness completion export', source: 'LMS', controlsUnlocked: 4, command: 'Export completion CSV from the LMS reporting module' },
 ];
 
 // National rollup preview (brief §7.9) — anonymised sector view.

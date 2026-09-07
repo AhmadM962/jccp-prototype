@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Play,
@@ -300,10 +300,25 @@ export default function Intake() {
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const completeInterview = useAssessment((s) => s.completeInterview);
   const done = useAssessment((s) => s.interviewsCompleted);
+  const uploaded = useAssessment((s) => s.evidenceUploaded);
+  const profile = useAssessment((s) => s.profile);
   const role = interviews.find((r) => r.id === activeRole);
+  const contradiction = uploaded && profile.usesCloud === 'no';
 
   return (
     <div className="space-y-5">
+      {contradiction && (
+        <div className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div className="flex items-center gap-2 font-bold">
+            <AlertTriangle size={16} /> Scoping contradiction — blocked pending review
+          </div>
+          <p className="mt-1">
+            The collected bundle contains cloud agent entries, but the profile declares no cloud services.
+            The scoping decision is blocked pending review on the{' '}
+            <RouterLink to="/profile" className="font-semibold underline">Profile</RouterLink> screen.
+          </p>
+        </div>
+      )}
       <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
         {(
           [

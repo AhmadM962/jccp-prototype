@@ -104,8 +104,8 @@ export function Kbd({ children }: { children: ReactNode }) {
 export function CodeBlock({ code }: { code: string }) {
   const copy = () => navigator.clipboard?.writeText(code);
   return (
-    <div className="group relative overflow-x-auto rounded-lg border border-slate-800 bg-slate-900">
-      <pre className="scroll-slim overflow-x-auto p-3 text-[12px] leading-relaxed text-slate-100">
+    <div className="group relative rounded-lg border border-slate-800 bg-slate-900">
+      <pre className="scroll-slim max-h-40 overflow-auto whitespace-pre-wrap break-words p-3 pr-14 text-[12px] leading-relaxed text-slate-100">
         <code className="font-mono">{code}</code>
       </pre>
       <button

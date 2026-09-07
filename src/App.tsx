@@ -10,6 +10,7 @@ import ControlDetail from './screens/06_ControlDetail';
 import Remediation from './screens/07_Remediation';
 import ExportScreen from './screens/08_Export';
 import Chat from './screens/09_Chat';
+import Exclusions from './screens/10_Exclusions';
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
               <Route path="/remediation" element={<Remediation />} />
               <Route path="/export" element={<ExportScreen />} />
               <Route path="/chat" element={<Chat />} />
+              <Route path="/exclusions" element={<Exclusions />} />
               <Route path="*" element={<Navigate to="/profile" replace />} />
             </Routes>
           </div>

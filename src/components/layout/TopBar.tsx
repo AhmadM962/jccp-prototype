@@ -1,24 +1,65 @@
 import { useLocation } from 'react-router-dom';
-import { RotateCcw, Lock } from 'lucide-react';
+import { RotateCcw, Lock, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 import { NAV } from './nav';
-import { useAssessment } from '../../store/useAssessment';
-import { defaultProfile } from '../../data/scenario';
+import { useAssessment, ROLE_LABEL, type Role } from '../../store/useAssessment';
+
+const ROLE_NOTE: Record<Role, string> = {
+  owner: 'full access + collection progress',
+  analyst: 'full access + review queue; can override',
+  executive: 'interval, coverage, assurance only — no evidence or personal data',
+  contributor: 'own task list and submission status only',
+  regulator: 'submitted packages and the national rollup only',
+};
 
 export default function TopBar() {
   const { pathname } = useLocation();
   const item = NAV.find((n) => pathname.startsWith(n.to));
   const title = pathname.startsWith('/control/') ? 'Control Detail / Evidence Inspector' : item?.label ?? 'JCCP';
   const resetDemo = useAssessment((s) => s.resetDemo);
+  const profile = useAssessment((s) => s.profile);
+  const role = useAssessment((s) => s.role);
+  const setRole = useAssessment((s) => s.setRole);
+  const [open, setOpen] = useState(false);
 
   return (
     <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
       <div>
         <h1 className="text-base font-semibold text-slate-900">{title}</h1>
         <p className="text-xs text-slate-500">
-          {defaultProfile.orgName} · {defaultProfile.sector} · Regulator: NCSC
+          {profile.orgName} · {profile.sector} · Regulator: {profile.regulators.join(', ') || 'NCSC'}
         </p>
       </div>
       <div className="flex items-center gap-3">
+        <div className="relative">
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Viewing as: {ROLE_LABEL[role]} <ChevronDown size={12} />
+          </button>
+          {open && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+              <div className="absolute right-0 z-20 mt-1 w-72 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      setRole(r);
+                      setOpen(false);
+                    }}
+                    className={`block w-full rounded-md px-2.5 py-1.5 text-left text-xs ${r === role ? 'bg-accent/10 font-semibold text-accent' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    {ROLE_LABEL[r]}
+                    <span className="block text-[10px] font-normal text-slate-400">{ROLE_NOTE[r]}</span>
+                  </button>
+                ))}
+                <div className="border-t border-slate-100 px-2.5 py-1 text-[10px] text-slate-400">Demo switcher — no authentication</div>
+              </div>
+            </>
+          )}
+        </div>
         <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
           <Lock size={12} /> On-premise · read-only
         </span>

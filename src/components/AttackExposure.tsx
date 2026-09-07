@@ -1,5 +1,7 @@
-import { ArrowRight, Shield, Crosshair } from 'lucide-react';
-import type { AttackEntry } from '../data/attack';
+import { ArrowRight, Shield, Crosshair, MinusCircle } from 'lucide-react';
+import { attackBridge, type AttackEntry } from '../data/attack';
+
+const MAPPED_COUNT = Object.keys(attackBridge).length;
 
 // Control → Mitigation → Techniques, rendered as connected cards (brief §7.7 §5).
 export default function AttackExposure({
@@ -8,9 +10,21 @@ export default function AttackExposure({
   enforced,
 }: {
   controlId: string;
-  entry: AttackEntry;
+  entry?: AttackEntry;
   enforced: boolean;
 }) {
+  if (!entry) {
+    return (
+      <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+        <MinusCircle size={15} className="mt-0.5 shrink-0 text-slate-400" />
+        <span>
+          <span className="font-semibold text-slate-800">No ATT&amp;CK mapping.</span> This is a governance
+          control with no direct adversary-technique correspondence. {MAPPED_COUNT} of the 48 seeded controls
+          carry mappings — the ones where a specific technique is enabled or blocked by the control.
+        </span>
+      </div>
+    );
+  }
   return (
     <div>
       <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">

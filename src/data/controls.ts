@@ -38,6 +38,8 @@ export interface Control {
   deploymentSharePct?: number;
   exceptionPopulation?: string;
   populationNote?: string;
+  /** how old the evidence for this control may be before it goes stale (days) */
+  maxAgeDays: number;
   before: ControlSnapshot;
   after: ControlSnapshot;
   /** promoted / meaningfully changed by the evidence-bundle upload */
@@ -62,6 +64,7 @@ interface Seed {
   exception?: string;
   population?: string;
   showcase?: boolean;
+  maxAge?: number;
 }
 
 const S = (state: ControlState, ev: EvidenceClass, prov: string[] = [], gap?: GapReason): ControlSnapshot => ({
@@ -117,7 +120,7 @@ const seeds: Seed[] = [
 
   { n: 438, d: 'Establish cadence to review and update control policies', cap: 'found', iso: ['5.1.2'], nist: ['AC-1', 'AT-1', 'AU-1'], req: ['review_schedule', 'last_review_date', 'change_log'], before: ['green', 'artifact'], after: ['green', 'artifact'] },
   { n: 440, d: 'Ensure all information systems enforce access rights restrictions consistent with control policies', cap: 'found', iso: ['9.4.1'], nist: ['AC-3'], req: ['acl_export', 'enforcement_test', 'deny_by_default_flag'], before: ['yellow', 'testimonial'], after: ['green', 'artifact'], changed: true, attackKey: 'JNCSF-440' },
-  { n: 459, d: 'Provide ongoing security awareness training to employees and contractors upon hiring with continued training at regularly defined intervals', cap: 'found', iso: ['7.2.2'], nist: ['AT-2'], req: ['lms_completion_export', 'curriculum', 'cadence'], before: ['yellow', 'testimonial'], after: ['yellow', 'artifact'], changed: true, share: 78 },
+  { n: 459, d: 'Provide ongoing security awareness training to employees and contractors upon hiring with continued training at regularly defined intervals', cap: 'found', iso: ['7.2.2'], nist: ['AT-2'], req: ['lms_completion_export', 'curriculum', 'cadence'], before: ['yellow', 'testimonial'], after: ['yellow', 'artifact'], changed: true, share: 78, maxAge: 365 },
   { n: 465, d: 'Document, monitor, and retain individual information system security training activities and records', cap: 'found', iso: [], nist: ['AT-4'], req: ['training_records_export', 'retention_period'], before: ['unknown', 'none', 'not_provided'], after: ['green', 'artifact'], changed: true },
   { n: 479, d: 'Sanitize media prior to disposal in accordance with organizational policies', cap: 'found', iso: ['8.3.2', '11.2.7'], nist: ['MP-6'], req: ['sanitisation_procedure', 'destruction_certificates'], before: ['unknown', 'none', 'uncollectable_by_design'], after: ['unknown', 'none', 'uncollectable_by_design'] },
   { n: 512, d: 'Establish a process to screen all individuals filling organizational positions', cap: 'found', iso: ['7.1.1'], nist: ['PS-2'], req: ['screening_policy', 'completion_records'], before: ['unknown', 'none', 'declined'], after: ['unknown', 'none', 'declined'] },
@@ -143,6 +146,7 @@ export const controls: Control[] = seeds.map((s) => {
     deploymentSharePct: s.share,
     exceptionPopulation: s.exception,
     populationNote: s.population,
+    maxAgeDays: s.maxAge ?? 90,
     before,
     after,
     changed: s.changed ?? false,
@@ -156,16 +160,23 @@ export function snapshotFor(c: Control, uploaded: boolean): ControlSnapshot {
   return uploaded ? c.after : c.before;
 }
 
-// Gap-reason breakdown of the 126 Unknowns before upload (brief §6.4). `not_requested`
-// is a design invariant — a non-zero value indicates a defect.
-export const GAP_REASON_BREAKDOWN: { reason: GapReason; count: number; invariant?: boolean }[] = [
-  { reason: 'not_provided', count: 71 },
-  { reason: 'uncollectable_by_design', count: 24 },
-  { reason: 'insufficient_signal', count: 14 },
-  { reason: 'declined', count: 9 },
-  { reason: 'insufficient_permission', count: 5 },
-  { reason: 'stale', count: 3 },
-  { reason: 'not_requested', count: 0, invariant: true },
+// Gap-reason breakdown of the Unknowns (brief §6.4). `not_requested` is a design
+// invariant — a non-zero value indicates a defect. `before` sums to 126, `after` to 36.
+export interface GapReasonRow {
+  reason: GapReason;
+  before: number;
+  after: number;
+  invariant?: boolean;
+}
+
+export const GAP_REASON_BREAKDOWN: GapReasonRow[] = [
+  { reason: 'not_provided', before: 71, after: 4 },
+  { reason: 'uncollectable_by_design', before: 24, after: 24 },
+  { reason: 'insufficient_signal', before: 14, after: 2 },
+  { reason: 'declined', before: 9, after: 3 },
+  { reason: 'insufficient_permission', before: 5, after: 2 },
+  { reason: 'stale', before: 3, after: 1 },
+  { reason: 'not_requested', before: 0, after: 0, invariant: true },
 ];
 
 export const GAP_REASON_LABEL: Record<GapReason, string> = {
