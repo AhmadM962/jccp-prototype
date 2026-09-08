@@ -68,11 +68,11 @@ npm run dev          # Vite dev server → http://localhost:5173
 | | |
 |---|---|
 | Organisation | **Ministry of Digital Services** (fictional) |
-| Sector / size | Government · 250–1000 staff |
+| Sector / size | Defence, Security & Government Services · 250–1000 staff |
+| Regulator | **NCSC** — derived from the sector (see §4.6) |
 | Estate | ~400 endpoints · 38 servers · 620 users · Windows/AD with a small Linux tier |
 | Hosting | MoDEE Government Private Cloud |
-| Regulator | NCSC |
-| No | operational technology · in-house development · BYOD · cross-border cloud |
+| No | operational technology · in-house development · BYOD · cross-border cloud · critical infrastructure (CICSC off by default) |
 
 ### Fixture numbers (these reconcile exactly and must not drift)
 
@@ -179,6 +179,35 @@ sign-off.
 the JNCSF control it implements. Switching role re-filters the sidebar and redirects you if
 the current screen is not permitted.
 
+### 4.6 Sectors and regulators (`data/sectors.ts`)
+
+The Profile's **Sector** dropdown offers the **eight official critical-infrastructure
+sectors** from the NCSC CICSC Guidance document; each carries its regulator, and the
+top-bar **"Regulator:"** label is derived from the selected sector — a single value read
+from state, so choosing *Energy* makes the whole app read "Regulator: EMRC".
+
+| Sector | Regulator |
+|---|---|
+| Defence, Security & Government Services *(demo default)* | NCSC |
+| Energy | EMRC |
+| Finance | CBJ |
+| Health | Ministry of Health |
+| Telecommunications | TRC |
+| Transport | Land / Aviation / Maritime Commissions |
+| Water | JWA |
+| Manufacturing | Ministry of Industry & Trade |
+
+### 4.7 Two frameworks — JNCSF and CICSC
+
+**JNCSF** (576 controls) is what this tool assesses. **CICSC** — the Critical Infrastructure
+Cyber Security Controls — is a *second, separate* framework: **405 controls across three
+cumulative implementation levels, Level 1 (135 controls) mandatory**, for organisations
+that operate critical infrastructure. JCCP does not assess CICSC, but the profile records
+whether the organisation is subject to it, and that scope boundary is disclosed on the
+dashboard and carried inside the OSCAL package (see the *Operates critical infrastructure*
+toggle in §6.1). A clean JNCSF interval is **not** complete assurance for an
+organisation with unassessed CICSC obligations.
+
 ---
 
 ## 5. Navigation shell
@@ -209,13 +238,13 @@ demonstrate the two-stage scoping challenge.
 
 | Field | Type | Notes |
 |---|---|---|
-| Sector | dropdown | Government / Financial services / Healthcare / Energy & utilities / Telecommunications / Education |
+| Sector | dropdown | the **8 official CICSC sectors** (§4.6); a live *"Regulator: …"* hint sits under the field |
 | Size band | dropdown | `< 50` / `50–250` / `250–1000` / `> 1000 staff` |
 | Hosting model | dropdown | MoDEE Government Private Cloud / Own data centre / Third-party in Jordan / Foreign cloud |
 | Named attestation | text | accountable officer's name |
 | Endpoints / Servers / Users | number | estate size |
-| Designated critical national infrastructure | checkbox | |
 | **Architecture toggles** ×6 | **tri-state** — `Yes` / `No` / `Don't know` | see below |
+| **Operates critical infrastructure** | on/off toggle | boolean `operatesCriticalInfrastructure`; **default off**; does **not** change the 340 count — CICSC is a separate framework |
 | PDPL data holdings ×4 | checkbox | Health / Biometric / Financial / Religious or political (all unchecked by default) |
 
 **The six architecture toggles** (each a `Yes / No / Don't know` segmented control):
@@ -234,6 +263,19 @@ denominator) and flags them for verification during collection. Choosing `Don't 
 a violet note under the toggle and a *"N controls held in scope by a 'Don't know' answer"*
 line in the side panel.
 
+**Operates critical infrastructure toggle.** Off by default. When switched **on**, a blue
+**factual info panel** (not a challenge — this is a disclosure, not a contested claim)
+appears beneath it:
+
+> **Critical infrastructure scope note.** This organisation is also subject to the Critical
+> Infrastructure Cyber Security Controls (CICSC) — 405 controls across three implementation
+> levels, with Level 1 (135 controls) mandatory. A substantial number of Level 2/3 controls
+> have no JNCSF correspondence at all. This assessment does not evaluate CICSC.
+
+The applicable-controls number stays **340** — CICSC is a different framework, not a JNCSF
+applicability condition. The toggle's real effect shows on the **Dashboard** and in the
+**OSCAL Export** (see §6.4, §6.8).
+
 **Layout — right column ("Live scoping" card, sticky):**
 
 - Big number = applicable controls (default **340**), recomputes live as toggles change.
@@ -246,8 +288,9 @@ line in the side panel.
 **The scoping challenge — two stages:**
 
 - **Stage 1 (soft, prior-based).** Fires ~0.9 s after you set *Cloud services = No*, while
-  no decision is recorded. An amber card: *"Government entities of 250–1000 staff almost
-  always consume at least one cloud service. Declaring none removes 23 controls…"*. It
+  no decision is recorded. An amber card: *"{Sector} entities of {size band} almost always
+  consume at least one cloud service. Declaring none removes 23 controls…"* (the sector and
+  size are read live from the profile). It
   **requires a typed justification (≥ 12 chars)** and the *"Continue to request plan"*
   button is disabled until you decide.
   - **`Confirm exclusion & record`** — records `{ decision: 'confirmed', justification,
@@ -419,8 +462,8 @@ obligation"*.
 
 | Box | Contents |
 |---|---|
-| **Completeness statement — cannot be dismissed** | *"This assessment covers 304 of 340 applicable controls. 36 are unevidenced. 24 are outside the tool's collection reach. Assurance level: L2 — Tool-evidenced. Compliance is reported as an interval because a point estimate would conceal what was not established."* |
-| **Scope exclusions — 236 of 576 controls** | *"236 controls (41.0%) marked Not Applicable. Sector baseline for Government: 34.0% — ⚠ your rate is above baseline. 12 exclusions carry no recorded justification · {scoping-challenge status}."* + **`Review all 236 exclusions →`** button. |
+| **Completeness statement — cannot be dismissed** | *"This assessment covers 304 of 340 applicable controls. 36 are unevidenced. 24 are outside the tool's collection reach. Assurance level: L2 — Tool-evidenced. Compliance is reported as an interval because a point estimate would conceal what was not established."* — **plus, when *Operates critical infrastructure* is on**, a second sentence in the same non-dismissible box: *"This organisation operates critical infrastructure and is subject to the Critical Infrastructure Cyber Security Controls (405 controls, three implementation levels) in addition to the Jordan National Cybersecurity Framework. This assessment does not evaluate CICSC compliance, and a favourable JNCSF result does not represent complete assurance against the organisation's full regulatory obligation."* |
+| **Scope exclusions — 236 of 576 controls** | *"236 controls (41.0%) marked Not Applicable. Sector baseline for {live sector label}: 34.0% — ⚠ your rate is above baseline. 12 exclusions carry no recorded justification · {scoping-challenge status}."* + **`Review all 236 exclusions →`** button. |
 
 **Why controls are unevidenced** (card). Horizontal Recharts bar chart of gap reasons —
 **switches between the before breakdown (sums to 126) and the after breakdown (sums to
@@ -497,8 +540,14 @@ or a control-ID link. An unknown ID shows a graceful "No such control" card.
    *Control → Mitigation (M1026 Privileged Account Management) → Technique cards
    (T1078, T1548, T1021)* + the plain-language line *"Because JNCSF-102 is not enforced,
    you are exposed to T1078 Valid Accounts, …"* (technique cards dim when the control is
-   Green). Where none exists: *"No ATT&CK mapping. This is a governance control with no
-   direct adversary-technique correspondence. 8 of the 48 seeded controls carry mappings."*
+   Green). **The mitigation card carries a provenance tag:** a green
+   **`✓ Official — CICSC Threat Annex`** when the control is covered by the Threat Annex's
+   official NIST-to-ATT&CK mapping (access control, authentication, malware protection —
+   JNCSF-102, 440, 435, 394), or a grey **`⑂ Derived — transitive via NIST, reviewed`** when
+   the mapping was built transitively (JNCSF → NIST 800-53 → ATT&CK) and manually checked
+   (JNCSF-30, 7, 163, 307). Where no mapping exists: *"No ATT&CK mapping. This is a
+   governance control with no direct adversary-technique correspondence. 8 of the 48 seeded
+   controls carry mappings."*
 6. **Population data** (where relevant) — numerator/denominator with provenance
    (*"410 of 512 endpoints (denominator: AD computer objects)…"*), deployment share, and a
    red *"Named exception retained: 43 of 512 privileged accounts have no MFA enforcement"*.
@@ -579,6 +628,20 @@ POA&M. Each: description · **`Preview JSON`** (opens a dark modal of OSCAL-shap
 embeds a `jccp:coverage-metadata` block with the `compliance-interval`, `assurance-level`
 and `analyst-overrides` count — reflecting the current before/after state) · a **`.json`**
 per-model download.
+
+Every model's metadata also carries a **`jccp:scope-boundary`** block reflecting the
+*Operates critical infrastructure* toggle:
+
+```json
+"jccp:scope-boundary": {
+  "framework": "JNCSF",
+  "operates-critical-infrastructure": true,
+  "cicsc-assessed": false,
+  "note": "CICSC (405 controls) not assessed. JNCSF result alone does not represent complete assurance for this organisation."
+}
+```
+
+so the scope boundary travels with the exported package, not just the on-screen dashboard.
 
 **Signed package card** — algorithm (Ed25519) · signing identity
 (`JCCP Appliance — MoDS-JCCP-01`) · timestamp · a mock signature hash · a **`Verify
@@ -711,7 +774,9 @@ Reset the demo before each. Each journey is a self-contained ~3–10 minute stor
 
 | # | Screen | Action | What the audience sees |
 |---|---|---|---|
-| 1 | **Profile** | Confirm the profile. Then set **Cloud services → No**. | Applicable drops **340 → 317**. After a beat the amber **Stage-1 challenge** appears: *"Government entities of 250–1000 staff almost always consume at least one cloud service…"* — and **"Continue" is disabled**. |
+| 0 | **Profile** | Point at the **Sector** field (Defence, Security & Government Services → *Regulator: NCSC* in the top bar). Optionally change it to **Energy** and back — the top-bar regulator flips to **EMRC** and back, everywhere. | The regulator label is sector-driven, not hardcoded. |
+| 1 | **Profile** | Confirm the profile. Then set **Cloud services → No**. | Applicable drops **340 → 317**. After a beat the amber **Stage-1 challenge** appears: *"Defence, Security & Government Services entities of 250–1000 staff almost always consume at least one cloud service…"* — and **"Continue" is disabled**. |
+| 1b | **Profile** *(optional CICSC beat)* | Flip **Operates critical infrastructure → on**. | A blue **CICSC scope note** appears; the **340 count does not change**. This adds a sentence to the dashboard completeness statement (step 9) and a `jccp:scope-boundary` block to the export (step 13). Leave it on for the rest of the run, or off — your call. |
 | 2 | **Profile** | This is the "know what you don't know" beat — set it back: click **`Restore cloud services`**. | Applicable returns to 340; a decision is recorded (*"Cloud scope restored by Assessment Owner"*). |
 | 3 | **Profile** | Click the big **`340`** number. | Opens the **exclusion register**: 236 controls, 41.0% N/A rate vs a 34% sector baseline (*above baseline*), 12 with no recorded justification. "Under-scoping is the first way a score gets inflated." Back to Profile → **`Continue to request plan →`**. |
 | 4 | **Request Plan** | Read the header. Point at the **Automated (14)** vs **Manual (8)** split; hover one command → `Copy`; point at a *"Declining leaves 8 controls permanently Unknown"* line. | *"22 artifacts from 8 systems. Provide all 22 → projected coverage 94%. The other 24 are structurally uncollectable."* → **`Continue to intake →`**. |
@@ -719,11 +784,11 @@ Reset the demo before each. Each journey is a self-contained ~3–10 minute stor
 | 6 | **Intake → Interviews** | Back to the role list; point at the **review queue** and the amber **conflict flag** row. | Multi-user reality: three assignees, statuses, and *"Executive and Operator disagree on MFA enforcement scope — operator wins on configuration."* |
 | 7 | **Intake → Evidence bundle** | Switch tab. Click **`Simulate collector bundle upload (fills 14)`**. | 14 slots fill; the **ingestion** animation runs (partial · failed · declined); the **module ledger** appears with the rule *"a failed module yields Unknown, never Gap"*; then the green **"90 evidence gaps closed"** banner. |
 | 8 | **Dashboard** | Click **`Reveal on dashboard →`**. | **THE MOMENT.** The interval band **springs** 50.0–87.1% → **70.6–81.2%** (width 37.1 → 10.6). Coverage **62.9% → 89.4%**. Assurance **L1 → L2**. The donut and per-capability bars update. |
-| 9 | **Dashboard** | Scroll: the **completeness statement** (non-dismissible), the **scope-exclusions** box, the **"Why L2 not L3"** explainer, the **gap-reason chart** (now *"36 Unknowns after"* — down from 126). | Honesty about what is still not known. |
+| 9 | **Dashboard** | Scroll: the **completeness statement** (non-dismissible — and if you flipped CICSC on at step 1b, it now carries the extra "does not represent complete assurance" sentence), the **scope-exclusions** box (*"Sector baseline for Defence, Security & Government Services"*), the **"Why L2 not L3"** explainer, the **gap-reason chart** (now *"36 Unknowns after"* — down from 126). | Honesty about what is still not known. |
 | 10 | **Gap Matrix** | Click *"See the 90 promoted controls…"*. Tick **"Show only what changed after evidence upload"**. | 90 controls light up with `✨ promoted`. Point at a capability header: **`worst established: ■ Gap 12 · unestablished: ◇ 62`** — two figures, never merged. |
-| 11 | **Control Detail — JNCSF-102** | Open the showcase control. | State **Gap** · a 3-item **evidence trail** with a quote, `raw/ad-privileged-groups.csv row 412`, a hash, **`View raw`** · population *410 of 512 endpoints* · named exception *43 privileged accounts without MFA* · the **ATT&CK chain** to T1078 / T1548 / T1021. |
+| 11 | **Control Detail — JNCSF-102** | Open the showcase control. | State **Gap** · a 3-item **evidence trail** with a quote, `raw/ad-privileged-groups.csv row 412`, a hash, **`View raw`** · population *410 of 512 endpoints* · named exception *43 privileged accounts without MFA* · the **ATT&CK chain** to T1078 / T1548 / T1021 with a green **`Official — CICSC Threat Annex`** provenance tag on the mitigation. Open **JNCSF-307** for the contrast — a grey **`Derived — transitive via NIST`** tag. |
 | 12 | **Remediation** | **All actions** tab → sort **risk-weighted**. Then **What you didn't provide** → click **`Simulate providing this`** on the SIEM inventory. | *"Enforce MFA on all privileged accounts — closes 11 controls, removes T1110/T1078/T1550."* The projected band shows *"Interval becomes 72.9–81.2% (all pass) or 70.6–78.8% (all fail)"* — a correct **outcome range**, never narrower than the real band. |
-| 13 | **OSCAL Export** | **`Preview JSON`** on *Assessment Results*. Then **`Download package (.zip)`** → the review modal. | The `jccp:coverage-metadata` block carries the **interval and assurance level inside the package**. The review modal offers **redact personal data** before submission. |
+| 13 | **OSCAL Export** | **`Preview JSON`** on *Assessment Results*. Then **`Download package (.zip)`** → the review modal. | The `jccp:coverage-metadata` block carries the **interval and assurance level inside the package**; the **`jccp:scope-boundary`** block carries the CICSC boundary (`cicsc-assessed: false`). The review modal offers **redact personal data** before submission. |
 | 14 | **Chat** | Ask **"Why is JNCSF-102 a gap for us?"** then **"Are we compliant enough to pass an NCSC audit?"**. | First: a **grounded** answer citing `raw/ad-privileged-groups.csv row 412` and the three techniques. Second: a **refusal** — *"I can't predict a regulator's determination."* |
 
 ---
@@ -815,6 +880,8 @@ Reset the demo before each. Each journey is a self-contained ~3–10 minute stor
 | Four-state model + N/A + Unknown | `StateBadge`, everywhere | colour + shape + label, greyscale-safe |
 | Evidence-class ceiling | Control Detail §4 | testimony → Yellow max; artifact → Green |
 | Tri-state scoping toggles | Profile | `Don't know` keeps controls in scope, flags for verification |
+| Sector-driven regulator | Profile sector dropdown, top bar | 8 official CICSC sectors; regulator label derived (Energy → EMRC, etc.) |
+| CICSC scope boundary | Profile toggle, Dashboard, `/export` | 405-control framework; not assessed; disclosed non-dismissibly + in the OSCAL package |
 | Two-stage scoping challenge | Profile / Intake / Dashboard | soft prior (typed justification) → hard post-upload contradiction |
 | Exclusion register | `/exclusions`, Profile `340` click | 236 excluded, why, by what fact, unjustified flagged |
 | Interval collapse (the moment) | Intake → Dashboard | 50.0–87.1% → 70.6–81.2%, springs on reveal |
@@ -825,6 +892,7 @@ Reset the demo before each. Each journey is a self-contained ~3–10 minute stor
 | Evidence age / staleness | Dashboard, Control Detail | oldest 84 days; amber past the control's window |
 | Assurance demotion explainer | Dashboard | *why L2 not L3*, and what would change it |
 | ATT&CK on every control | Control Detail §5 | incl. the explicit "no mapping" state |
+| ATT&CK mapping provenance | Control Detail §5 | green "Official — CICSC Threat Annex" vs grey "Derived — transitive via NIST" tag per mapping |
 | Override discipline | Control Detail | mandatory justification → analyst-signed → audit trail → moves the dashboard |
 | Projection as an outcome range | Remediation Tab C | best/worst band after providing an artifact; can't beat the real band |
 | Merged action list | Remediation "All actions" | evidence + fixes, ranked, with acceptance criteria |
@@ -844,3 +912,8 @@ The 340-applicable / before-after fixture numbers are frozen and reconcile exact
 changing the profile after collection is a *what-if* and does not retroactively rescore
 (the Stage-2 contradiction block exists precisely to surface that tension). ~48 of the 576
 controls are seeded as clickable detail pages; the rest are aggregate counts.
+
+**CICSC is disclosed, not assessed.** The prototype records that an organisation is subject
+to CICSC and carries that boundary into every disclosure, but it does not evaluate any of
+the 405 CICSC controls, implement the three implementation levels, or cross-reference the
+CBJ maturity model. That is deliberate scope for this pass.
