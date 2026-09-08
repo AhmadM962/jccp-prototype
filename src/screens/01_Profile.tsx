@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, ArrowRight, HelpCircle, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, ArrowRight, HelpCircle, ShieldAlert, CheckCircle2, Info } from 'lucide-react';
 import { Card, Button, SectionLabel, Pill } from '../components/ui';
 import { useAssessment } from '../store/useAssessment';
 import { ROLE_LABEL } from '../store/useAssessment';
@@ -13,6 +13,7 @@ import {
   type OrgProfile,
   type Ternary,
 } from '../data/scenario';
+import { SECTORS, sectorById } from '../data/sectors';
 import { SECTOR_BASELINE } from '../data/exclusions';
 
 const TOGGLES: { key: keyof OrgProfile; label: string; hint: string }[] = [
@@ -94,10 +95,11 @@ export default function Profile() {
             <label className="block">
               <SectionLabel>Sector</SectionLabel>
               <select value={profile.sector} onChange={(e) => setProfile({ sector: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                {['Government', 'Financial services', 'Healthcare', 'Energy & utilities', 'Telecommunications', 'Education'].map((s) => (
-                  <option key={s}>{s}</option>
+                {SECTORS.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
                 ))}
               </select>
+              <span className="mt-1 block text-[11px] text-slate-400">Regulator: {sectorById(profile.sector).regulator}</span>
             </label>
             <label className="block">
               <SectionLabel>Size band</SectionLabel>
@@ -141,11 +143,6 @@ export default function Profile() {
             </label>
           </div>
 
-          <label className="mt-3 flex items-center gap-2.5 text-sm">
-            <input type="checkbox" checked={profile.criticalInfrastructure} onChange={(e) => setProfile({ criticalInfrastructure: e.target.checked })} className="h-4 w-4 rounded border-slate-300" />
-            Designated critical national infrastructure
-          </label>
-
           <SectionLabel>
             <span className="mt-5 block">Architecture — answer Yes, No, or Don't know</span>
           </SectionLabel>
@@ -159,6 +156,39 @@ export default function Profile() {
                 onChange={(v) => setProfile({ [t.key]: v } as Partial<OrgProfile>)}
               />
             ))}
+
+            {/* CICSC scope boundary — a separate framework, not a JNCSF applicability condition */}
+            <div className="rounded-lg border border-slate-200 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-slate-800">Operates critical infrastructure</div>
+                  <div className="text-[11px] text-slate-400">
+                    Subjects this organisation to CICSC (405 controls, 3 implementation levels) in addition to
+                    JNCSF — not yet assessed by this tool
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setProfile({ operatesCriticalInfrastructure: !profile.operatesCriticalInfrastructure })}
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition ${profile.operatesCriticalInfrastructure ? 'bg-accent' : 'bg-slate-300'}`}
+                  aria-pressed={profile.operatesCriticalInfrastructure}
+                >
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${profile.operatesCriticalInfrastructure ? 'left-4' : 'left-0.5'}`} />
+                </button>
+              </div>
+              {profile.operatesCriticalInfrastructure && (
+                <div className="mt-2 flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 text-[11px] leading-snug text-blue-900">
+                  <Info size={13} className="mt-0.5 shrink-0 text-blue-500" />
+                  <span>
+                    <span className="font-semibold">Critical infrastructure scope note.</span> This organisation
+                    is also subject to the Critical Infrastructure Cyber Security Controls (CICSC) — 405
+                    controls across three implementation levels, with Level 1 (135 controls) mandatory. A
+                    substantial number of Level 2/3 controls have no JNCSF correspondence at all. This
+                    assessment does not evaluate CICSC.
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
           <SectionLabel>
@@ -215,7 +245,7 @@ export default function Profile() {
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-bold text-amber-900">Confirm this scoping decision</h3>
                   <p className="mt-1 text-sm leading-relaxed text-amber-800">
-                    {SECTOR_BASELINE.sector} entities of {SECTOR_BASELINE.sizeBand} almost always consume at
+                    {sectorById(profile.sector).label} entities of {profile.sizeBand} almost always consume at
                     least one cloud service. Declaring none removes 23 controls from your assessment. Please
                     confirm and record a justification.
                   </p>

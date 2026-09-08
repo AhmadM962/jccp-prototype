@@ -90,7 +90,7 @@ export const evidenceRequests: EvidenceRequest[] = [
 // National rollup (brief §7.9) — anonymised, NCSC-facing sector view.
 // Distribution is over INTERVAL bands (not point estimates), segmented by assurance level.
 export const nationalRollup = {
-  sector: 'Government',
+  sector: 'Defence, Security & Government Services',
   entitiesInScope: 47,
   submitted: 12,
   overdue: 8,

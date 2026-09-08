@@ -13,9 +13,7 @@ export interface Exclusion {
 }
 
 export const SECTOR_BASELINE = {
-  sector: 'Government',
-  sizeBand: '250–1000 staff',
-  /** typical Not-Applicable rate for this sector/size */
+  /** typical Not-Applicable rate for a same-size public-sector entity (sector-agnostic in the demo) */
   naRatePct: 34,
   /** typical count of cloud-conditional controls a same-profile entity keeps in scope */
   cloudServicesTypical: 1,

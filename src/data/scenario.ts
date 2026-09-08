@@ -1,5 +1,7 @@
 // The demo organisation, evidence request plan, and module execution ledger (brief §6, §7.2, §7.3).
 
+import { DEFAULT_SECTOR_ID } from './sectors';
+
 /** Architecture toggles are tri-state. Ambiguity must never shrink the denominator:
  *  'unknown' is treated exactly like 'yes' for scoping, and the affected controls are
  *  flagged for verification during collection. */
@@ -7,14 +9,13 @@ export type Ternary = 'yes' | 'no' | 'unknown';
 
 export interface OrgProfile {
   orgName: string;
+  /** sector id — see data/sectors.ts. Drives the regulator label. */
   sector: string;
   sizeBand: string;
   endpoints: number;
   servers: number;
   users: number;
   hostingModel: 'gov-private-cloud' | 'own-datacentre' | 'third-party-jordan' | 'foreign-cloud';
-  regulators: string[];
-  criticalInfrastructure: boolean;
   namedAttestation: string;
   hasOperationalTech: Ternary;
   usesCloud: Ternary;
@@ -22,6 +23,9 @@ export interface OrgProfile {
   inHouseDevelopment: Ternary;
   hasSOC: Ternary;
   byodPermitted: Ternary;
+  /** subjects the org to CICSC (405 controls) in addition to JNCSF — separate framework,
+   *  NOT a JNCSF applicability condition, so it does not change the 340 count. */
+  operatesCriticalInfrastructure: boolean;
   pdplHoldings: {
     health: boolean;
     biometric: boolean;
@@ -32,14 +36,12 @@ export interface OrgProfile {
 
 export const defaultProfile: OrgProfile = {
   orgName: 'Ministry of Digital Services',
-  sector: 'Government',
+  sector: DEFAULT_SECTOR_ID, // Defence, Security & Government Services → regulator NCSC
   sizeBand: '250–1000 staff',
   endpoints: 400,
   servers: 38,
   users: 620,
   hostingModel: 'gov-private-cloud',
-  regulators: ['NCSC'],
-  criticalInfrastructure: false,
   namedAttestation: '',
   hasOperationalTech: 'no',
   usesCloud: 'yes',
@@ -47,6 +49,7 @@ export const defaultProfile: OrgProfile = {
   inHouseDevelopment: 'no',
   hasSOC: 'yes',
   byodPermitted: 'no',
+  operatesCriticalInfrastructure: false,
   pdplHoldings: {
     health: false,
     biometric: false,

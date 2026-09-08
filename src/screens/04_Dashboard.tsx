@@ -22,6 +22,7 @@ import { dashboardView } from '../lib/derive';
 import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL } from '../data/controls';
 import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
 import { EXCLUSIONS, SECTOR_BASELINE } from '../data/exclusions';
+import { sectorById } from '../data/sectors';
 
 const fmt1 = (n: number) => n.toFixed(1);
 
@@ -349,7 +350,7 @@ export default function Dashboard() {
           </div>
           <p className="text-sm leading-relaxed text-slate-700">
             <strong className="tnum">{TOTALS.notApplicable}</strong> controls ({fmt1(naRate)}%) are marked Not
-            Applicable. Sector baseline for {SECTOR_BASELINE.sector}:{' '}
+            Applicable. Sector baseline for {sectorById(profile.sector).label}:{' '}
             <span className="tnum">{fmt1(SECTOR_BASELINE.naRatePct)}%</span> —{' '}
             {naRate > SECTOR_BASELINE.naRatePct ? (
               <span className="font-semibold text-amber-800">⚠ your rate is above baseline</span>

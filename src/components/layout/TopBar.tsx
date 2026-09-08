@@ -3,6 +3,7 @@ import { RotateCcw, Lock, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { NAV } from './nav';
 import { useAssessment, ROLE_LABEL, type Role } from '../../store/useAssessment';
+import { sectorById } from '../../data/sectors';
 
 const ROLE_NOTE: Record<Role, string> = {
   owner: 'full access + collection progress',
@@ -27,7 +28,7 @@ export default function TopBar() {
       <div>
         <h1 className="text-base font-semibold text-slate-900">{title}</h1>
         <p className="text-xs text-slate-500">
-          {profile.orgName} · {profile.sector} · Regulator: {profile.regulators.join(', ') || 'NCSC'}
+          {profile.orgName} · {sectorById(profile.sector).label} · Regulator: {sectorById(profile.sector).regulator}
         </p>
       </div>
       <div className="flex items-center gap-3">

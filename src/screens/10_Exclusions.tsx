@@ -2,13 +2,16 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
+import { useAssessment } from '../store/useAssessment';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { EXCLUSIONS, EXCLUSION_COUNTS, EXCLUSION_TRIGGERS, SECTOR_BASELINE } from '../data/exclusions';
+import { sectorById } from '../data/sectors';
 
 const fmt1 = (n: number) => n.toFixed(1);
 
 export default function Exclusions() {
   const [params] = useSearchParams();
+  const sectorLabel = useAssessment((s) => sectorById(s.profile.sector).label);
   const [capF, setCapF] = useState<string>(params.get('cap') ?? 'all');
   const [factF, setFactF] = useState<string>('all');
   const [onlyUnjustified, setOnlyUnjustified] = useState(false);
@@ -44,7 +47,7 @@ export default function Exclusions() {
           <div>
             <div className="tnum text-2xl font-bold text-slate-900">{fmt1(SECTOR_BASELINE.naRatePct)}%</div>
             <div className="text-[11px] text-slate-500">
-              {SECTOR_BASELINE.sector} sector baseline{' '}
+              {sectorLabel} sector baseline{' '}
               {naRate > SECTOR_BASELINE.naRatePct && <span className="font-semibold text-amber-700">· above</span>}
             </div>
           </div>

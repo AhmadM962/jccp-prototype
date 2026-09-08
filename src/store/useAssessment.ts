@@ -139,8 +139,8 @@ export const useAssessment = create<AssessmentState>()(
       resolveProfileChallenge: (decision) => set({ profileChallenge: decision }),
       clearProfileChallenge: () => set({ profileChallenge: null }),
     }),
-    // Storage key carries a version suffix: the state shape changed (overrides gained an
-    // audit record, the challenge became a decision object), so stale v1 data is ignored.
-    { name: 'jccp-assessment-v2' },
+    // Storage key carries a version suffix: the profile shape changed (sector is now an id,
+    // regulator is derived, CICSC toggle added), so stale earlier data is ignored.
+    { name: 'jccp-assessment-v3' },
   ),
 );
