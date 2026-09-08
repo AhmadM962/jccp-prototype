@@ -1,4 +1,4 @@
-import { ArrowRight, Shield, Crosshair, MinusCircle } from 'lucide-react';
+import { ArrowRight, Shield, Crosshair, MinusCircle, BadgeCheck, GitBranch } from 'lucide-react';
 import { attackBridge, type AttackEntry } from '../data/attack';
 
 const MAPPED_COUNT = Object.keys(attackBridge).length;
@@ -39,6 +39,24 @@ export default function AttackExposure({
           </div>
           <div className="text-sm font-semibold text-blue-800">{entry.mitigation}</div>
           <div className="text-[11px] text-blue-600">{entry.mitigationName}</div>
+          <div
+            className={`mt-1 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium ${
+              entry.source === 'official'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                : 'border-slate-300 bg-slate-100 text-slate-500'
+            }`}
+            title={entry.sourceLabel}
+          >
+            {entry.source === 'official' ? (
+              <>
+                <BadgeCheck size={10} /> Official — CICSC Threat Annex
+              </>
+            ) : (
+              <>
+                <GitBranch size={10} /> Derived — transitive via NIST, reviewed
+              </>
+            )}
+          </div>
         </div>
         <ArrowRight size={16} className="mx-auto shrink-0 rotate-90 text-slate-300 sm:rotate-0" />
         <div className="flex flex-wrap gap-2">
