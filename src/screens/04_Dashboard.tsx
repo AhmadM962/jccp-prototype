@@ -35,6 +35,7 @@ const TOP_RISKS = [
 function ExecutiveDashboard() {
   const uploaded = useAssessment((s) => s.evidenceUploaded);
   const overrides = useAssessment((s) => s.overriddenControls);
+  const operatesCI = useAssessment((s) => s.profile.operatesCriticalInfrastructure);
   const view = dashboardView(uploaded, overrides);
   const eff = view.effective;
   const cs = completenessStatement(uploaded);
@@ -101,6 +102,15 @@ function ExecutiveDashboard() {
           controls. <strong className="tnum">{cs.unevidenced}</strong> are unevidenced. Compliance is reported
           as an interval because a point estimate would conceal what was not established.
         </p>
+        {operatesCI && (
+          <p className="mt-2 border-t border-slate-200 pt-2 text-sm leading-relaxed text-slate-700">
+            This organisation operates critical infrastructure and is subject to the Critical Infrastructure
+            Cyber Security Controls (405 controls, three implementation levels) in addition to the Jordan
+            National Cybersecurity Framework. This assessment does not evaluate CICSC compliance, and a
+            favourable JNCSF result does not represent complete assurance against the organisation's full
+            regulatory obligation.
+          </p>
+        )}
       </div>
 
       <p className="text-[11px] text-slate-400">
@@ -342,6 +352,15 @@ export default function Dashboard() {
             Assurance level: <strong>{cs.assurance}</strong>. Compliance is reported as an interval because a
             point estimate would conceal what was not established.
           </p>
+          {profile.operatesCriticalInfrastructure && (
+            <p className="mt-2 border-t border-slate-200 pt-2 text-sm leading-relaxed text-slate-700">
+              This organisation operates critical infrastructure and is subject to the Critical Infrastructure
+              Cyber Security Controls (405 controls, three implementation levels) in addition to the Jordan
+              National Cybersecurity Framework. This assessment does not evaluate CICSC compliance, and a
+              favourable JNCSF result does not represent complete assurance against the organisation's full
+              regulatory obligation.
+            </p>
+          )}
         </div>
 
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50/60 p-5">

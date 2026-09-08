@@ -8,7 +8,7 @@ import { TOTALS } from '../data/capabilities';
 const HASH = 'e7c1 9a02 44bd 8f10 55ce 7731 a9b0 2d4f 88e0 1c6a 90ff 43d2';
 const SIGNING = { alg: 'Ed25519', identity: 'JCCP Appliance — MoDS-JCCP-01', at: '2026-09-08T10:04:00+03:00' };
 
-function oscalDoc(model: string, uploaded: boolean, overrideCount: number) {
+function oscalDoc(model: string, uploaded: boolean, overrideCount: number, operatesCI: boolean) {
   const t = uploaded ? TOTALS.after : TOTALS.before;
   const common = {
     uuid: '0b9d5f2c-8a41-4e77-9c1e-6f2b3a5d7e10',
@@ -28,6 +28,14 @@ function oscalDoc(model: string, uploaded: boolean, overrideCount: number) {
       'interval-width-points': t.widthPts,
       'analyst-overrides': overrideCount,
       note: 'Point estimates are intentionally omitted. A regulator reads the interval.',
+    },
+    'jccp:scope-boundary': {
+      framework: 'JNCSF',
+      'operates-critical-infrastructure': operatesCI,
+      'cicsc-assessed': false,
+      note: operatesCI
+        ? 'CICSC (405 controls) not assessed. JNCSF result alone does not represent complete assurance for this organisation.'
+        : 'Organisation does not operate critical infrastructure; CICSC does not apply.',
     },
   };
   if (model === 'Assessment Results') {
@@ -75,7 +83,8 @@ const MODELS = [
 function JsonModal({ model, onClose }: { model: string; onClose: () => void }) {
   const uploaded = useAssessment((s) => s.evidenceUploaded);
   const overrideCount = Object.keys(useAssessment((s) => s.overriddenControls)).length;
-  const json = JSON.stringify(oscalDoc(model, uploaded, overrideCount), null, 2);
+  const operatesCI = useAssessment((s) => s.profile.operatesCriticalInfrastructure);
+  const json = JSON.stringify(oscalDoc(model, uploaded, overrideCount, operatesCI), null, 2);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
       <div className="max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
