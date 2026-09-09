@@ -15,6 +15,7 @@ import {
 } from '../data/scenario';
 import { SECTORS, sectorById } from '../data/sectors';
 import { SECTOR_BASELINE } from '../data/exclusions';
+import { Term } from '../tour/Term';
 
 const TOGGLES: { key: keyof OrgProfile; label: string; hint: string }[] = [
   { key: 'hasOperationalTech', label: 'Operational technology', hint: 'ICS / SCADA / building management — adds 41 controls' },
@@ -28,9 +29,9 @@ const TOGGLES: { key: keyof OrgProfile; label: string; hint: string }[] = [
 const TRI: Ternary[] = ['yes', 'no', 'unknown'];
 const TRI_LABEL: Record<Ternary, string> = { yes: 'Yes', no: 'No', unknown: "Don't know" };
 
-function TriToggle({ value, onChange, label, hint }: { value: Ternary; onChange: (v: Ternary) => void; label: string; hint: string }) {
+function TriToggle({ value, onChange, label, hint, dataTour }: { value: Ternary; onChange: (v: Ternary) => void; label: string; hint: string; dataTour?: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 px-3 py-2.5">
+    <div data-tour={dataTour} className="rounded-lg border border-slate-200 px-3 py-2.5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-sm font-medium text-slate-800">{label}</div>
@@ -90,8 +91,8 @@ export default function Profile() {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div className="space-y-6">
-        <Card title="Organisation profile" subtitle="Scoping inputs — these set which of the 576 JNCSF controls apply">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <Card dataTour="profile-header" title="Organisation profile" subtitle="Scoping inputs — these set which of the 576 JNCSF controls apply">
+          <div data-tour="profile-identity" className="grid gap-4 sm:grid-cols-2">
             <label className="block">
               <SectionLabel>Sector</SectionLabel>
               <select value={profile.sector} onChange={(e) => setProfile({ sector: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
@@ -146,12 +147,13 @@ export default function Profile() {
           <SectionLabel>
             <span className="mt-5 block">Architecture — answer Yes, No, or Don't know</span>
           </SectionLabel>
-          <div className="grid gap-2">
+          <div data-tour="profile-toggles" className="grid gap-2">
             {TOGGLES.map((t) => (
               <TriToggle
                 key={t.key}
                 label={t.label}
                 hint={t.hint}
+                dataTour={t.key === 'usesCloud' ? 'profile-cloud' : undefined}
                 value={profile[t.key] as Ternary}
                 onChange={(v) => setProfile({ [t.key]: v } as Partial<OrgProfile>)}
               />
@@ -304,6 +306,7 @@ export default function Profile() {
         <div className="flex items-center justify-end gap-3">
           {stage1Pending && <span className="text-[11px] text-amber-700">Record the scoping decision to continue.</span>}
           <Button
+            dataTour="profile-continue"
             disabled={stage1Pending}
             onClick={() => {
               setPhase('planning');
@@ -316,13 +319,17 @@ export default function Profile() {
       </div>
 
       <div className="lg:sticky lg:top-2 lg:self-start">
-        <Card title="Live scoping">
-          <button onClick={() => navigate('/exclusions')} className="block w-full text-center">
-            <div className="tnum text-4xl font-bold text-slate-900 hover:text-accent">{applicable}</div>
-            <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Applicable controls</div>
+        <Card dataTour="profile-applicable" title="Live scoping">
+          <div className="text-center">
+            <div className="tnum text-4xl font-bold text-slate-900">{applicable}</div>
+            <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <Term k="applicable controls">Applicable controls</Term>
+            </div>
             <div className="tnum mt-1 text-sm text-slate-500">of {TOTAL_CONTROLS} total · {TOTAL_CONTROLS - applicable} excluded</div>
-            <div className="mt-0.5 text-[11px] text-accent underline">view exclusion register</div>
-          </button>
+            <button onClick={() => navigate('/exclusions')} className="mt-0.5 text-[11px] text-accent underline hover:text-blue-700">
+              view exclusion register
+            </button>
+          </div>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
             <motion.div className="h-full bg-accent" animate={{ width: `${(applicable / TOTAL_CONTROLS) * 100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} />
           </div>
@@ -347,8 +354,9 @@ export default function Profile() {
             </p>
           )}
           <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-            Grey (not-applicable) controls are excluded from the denominator entirely. Under-scoping is the
-            first way a score gets inflated — every exclusion is cross-checked against collected evidence.
+            Grey (<Term k="not applicable">not-applicable</Term>) controls are excluded from the denominator
+            entirely. Under-scoping is the first way a score gets inflated — every exclusion is cross-checked
+            against collected evidence.
           </p>
           {role !== 'owner' && role !== 'analyst' && (
             <Pill tone="slate">Viewing as {ROLE_LABEL[role]} — read only</Pill>

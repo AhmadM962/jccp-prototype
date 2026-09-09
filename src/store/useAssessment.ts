@@ -54,8 +54,15 @@ interface AssessmentState {
   /** exclusions the user has opened / acknowledged (demo affordance) */
   reviewedExclusions: string[];
 
+  /** guided-tour overlay — ephemeral, never persisted */
+  tourActive: boolean;
+  tourStep: number;
+
   setPhase: (p: Phase) => void;
   setRole: (r: Role) => void;
+  startTour: () => void;
+  endTour: () => void;
+  tourGoto: (n: number) => void;
   setProfile: (patch: Partial<OrgProfile>) => void;
   setPdpl: (patch: Partial<OrgProfile['pdplHoldings']>) => void;
   uploadEvidence: () => void;
@@ -84,6 +91,8 @@ const initial = {
   overriddenControls: {} as Record<string, OverrideRecord>,
   profileChallenge: null as ChallengeDecision | null,
   reviewedExclusions: [] as string[],
+  tourActive: false,
+  tourStep: 0,
 };
 
 export const useAssessment = create<AssessmentState>()(
@@ -93,6 +102,11 @@ export const useAssessment = create<AssessmentState>()(
 
       setPhase: (p) => set({ phase: p }),
       setRole: (r) => set({ role: r }),
+      // A guided tour walks the whole assessment from the beginning, so it starts from the
+      // documented pre-upload state (same as the "Reset demo" action).
+      startTour: () => set({ ...initial, tourActive: true, tourStep: 0 }),
+      endTour: () => set({ tourActive: false }),
+      tourGoto: (n) => set({ tourStep: Math.max(0, n) }),
       setProfile: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
       setPdpl: (patch) =>
         set((s) => ({ profile: { ...s.profile, pdplHoldings: { ...s.profile.pdplHoldings, ...patch } } })),
@@ -141,6 +155,10 @@ export const useAssessment = create<AssessmentState>()(
     }),
     // Storage key carries a version suffix: the profile shape changed (sector is now an id,
     // regulator is derived, CICSC toggle added), so stale earlier data is ignored.
-    { name: 'jccp-assessment-v3' },
+    // Tour state is ephemeral and never persisted.
+    {
+      name: 'jccp-assessment-v3',
+      partialize: ({ tourActive, tourStep, ...rest }) => rest,
+    },
   ),
 );

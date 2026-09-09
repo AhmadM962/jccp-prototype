@@ -43,11 +43,21 @@ export default function GapMatrix() {
   const [onlyChanged, setOnlyChanged] = useState(params.get('changed') === '1');
   const [onlyOverrides, setOnlyOverrides] = useState(params.get('overrides') === '1');
 
-  // consume the params once, then clear them so filter state is the source of truth
+  // consume params: open the requested capability / apply filters, then clear them so the
+  // in-component state is the source of truth. Re-runs if params arrive after mount (the
+  // guided tour navigates here with ?cap=del while the screen is already open).
   useEffect(() => {
-    if ([...params.keys()].length) setParams({}, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (![...params.keys()].length) return;
+    const cap = params.get('cap');
+    if (cap) setOpen((o) => ({ ...o, [cap]: true }));
+    const st = params.get('state');
+    if (st) setStateF(st as ControlState);
+    const gp = params.get('gap');
+    if (gp) setGapF(gp as GapReason);
+    if (params.get('changed') === '1') setOnlyChanged(true);
+    if (params.get('overrides') === '1') setOnlyOverrides(true);
+    setParams({}, { replace: true });
+  }, [params, setParams]);
 
   const rows = useMemo(() => {
     return controls
@@ -72,7 +82,7 @@ export default function GapMatrix() {
 
   return (
     <div className="space-y-5">
-      <Card>
+      <Card dataTour="gm-filters">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
             <Search size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
@@ -168,7 +178,13 @@ export default function GapMatrix() {
                   ) : (
                     <div className="border-t border-slate-100">
                       {capRows.map(({ c, snap }) => (
-                        <ControlRow key={c.id} control={c} snap={snap} highlight={onlyChanged || (uploaded && c.changed)} />
+                        <ControlRow
+                          key={c.id}
+                          control={c}
+                          snap={snap}
+                          highlight={onlyChanged || (uploaded && c.changed)}
+                          dataTour={c.id === 'JNCSF-102' ? 'gm-row-102' : undefined}
+                        />
                       ))}
                     </div>
                   )}

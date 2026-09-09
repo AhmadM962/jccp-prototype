@@ -173,11 +173,11 @@ export default function ControlDetail() {
 
       {/* 3. Evidence trail */}
       {canSeeEvidence ? (
-        <Card title="Evidence trail" subtitle="Every finding traces to a quote or an artifact locator with a hash">
+        <Card dataTour="cd-evidence" title="Evidence trail" subtitle="Every finding traces to a quote or an artifact locator with a hash">
           <EvidenceTrail items={evItems} />
         </Card>
       ) : (
-        <Card title="Evidence trail">
+        <Card dataTour="cd-evidence" title="Evidence trail">
           <p className="text-sm text-slate-500">
             Evidence excerpts are hidden in the {ROLE_LABEL[role]} view — they may contain account names and
             other personal data.
@@ -210,7 +210,7 @@ export default function ControlDetail() {
       </Card>
 
       {/* 5. ATT&CK exposure — always rendered */}
-      <Card title="ATT&CK exposure" subtitle="Control → Mitigation → Techniques">
+      <Card dataTour="cd-attack" title="ATT&CK exposure" subtitle="Control → Mitigation → Techniques">
         <AttackExposure controlId={control.id} entry={attack} enforced={effectiveState === 'green'} />
       </Card>
 

@@ -6,15 +6,17 @@ export function Card({
   title,
   subtitle,
   right,
+  dataTour,
 }: {
   children: ReactNode;
   className?: string;
   title?: ReactNode;
   subtitle?: ReactNode;
   right?: ReactNode;
+  dataTour?: string;
 }) {
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
+    <div data-tour={dataTour} className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
       {(title || right) && (
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-3.5">
           <div>
@@ -69,6 +71,7 @@ export function Button({
   disabled,
   className = '',
   type = 'button',
+  dataTour,
 }: {
   children: ReactNode;
   onClick?: () => void;
@@ -76,6 +79,7 @@ export function Button({
   disabled?: boolean;
   className?: string;
   type?: 'button' | 'submit';
+  dataTour?: string;
 }) {
   const variants: Record<string, string> = {
     primary: 'bg-accent text-white hover:bg-blue-700 disabled:bg-slate-300',
@@ -86,6 +90,7 @@ export function Button({
   return (
     <button
       type={type}
+      data-tour={dataTour}
       onClick={onClick}
       disabled={disabled}
       className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed ${variants[variant]} ${className}`}

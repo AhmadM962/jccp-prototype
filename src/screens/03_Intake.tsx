@@ -58,16 +58,16 @@ function InterviewPanel({ role, onComplete }: { role: InterviewRole; onComplete:
         subtitle={role.persona}
         right={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setPlaying(true)} disabled={playing || shown >= role.turns.length}>
+            <Button dataTour="intake-play" variant="outline" onClick={() => setPlaying(true)} disabled={playing || shown >= role.turns.length}>
               <Play size={13} /> Play
             </Button>
-            <Button variant="ghost" onClick={skip} disabled={shown >= role.turns.length}>
+            <Button dataTour="intake-skip" variant="ghost" onClick={skip} disabled={shown >= role.turns.length}>
               <SkipForward size={13} /> Skip
             </Button>
           </div>
         }
       >
-        <div ref={scrollRef} className="scroll-slim max-h-[420px] space-y-3 overflow-y-auto pr-1">
+        <div ref={scrollRef} data-tour="intake-transcript" className="scroll-slim max-h-[420px] space-y-3 overflow-y-auto pr-1">
           {role.turns.slice(0, shown).map((turn, i) => (
             <motion.div
               key={i}
@@ -121,7 +121,7 @@ function InterviewPanel({ role, onComplete }: { role: InterviewRole; onComplete:
       </Card>
 
       <div>
-        <Card title="Extracted claims" subtitle="Testimony is capped at Yellow — never Green">
+        <Card dataTour="intake-claims" title="Extracted claims" subtitle="Testimony is capped at Yellow — never Green">
           <div className="space-y-2.5">
             {role.claims.slice(0, claimsVisible).map((claim, i) => (
               <motion.div
@@ -133,7 +133,9 @@ function InterviewPanel({ role, onComplete }: { role: InterviewRole; onComplete:
                 <p className="text-[13px] text-slate-800">{claim.text}</p>
                 {claim.note && <p className="mt-1 text-[11px] text-slate-500">{claim.note}</p>}
                 <div className="mt-2 flex items-center justify-between">
-                  <Pill tone="amber">Testimony only — capped at Yellow</Pill>
+                  <span data-tour={i === 0 ? 'intake-testimony' : undefined}>
+                    <Pill tone="amber">Testimony only — capped at Yellow</Pill>
+                  </span>
                   <span className="tnum text-[11px] text-slate-400">
                     conf {claim.confidence.toFixed(2)}
                   </span>
@@ -198,7 +200,7 @@ function BundlePanel() {
         title="Evidence intake"
         subtitle={`${filled} of ${slots.length} artifact slots filled · ${controlsEvidenced} controls evidenced · est. coverage ${covEstimate}%`}
         right={
-          <Button onClick={run} disabled={stage >= 0 && !done}>
+          <Button dataTour="bundle-upload" onClick={run} disabled={stage >= 0 && !done}>
             <UploadCloud size={13} /> {done ? 'Bundle processed' : 'Simulate collector bundle upload (fills 14)'}
           </Button>
         }
@@ -271,7 +273,7 @@ function BundlePanel() {
 
       {done && (
         <>
-          <Card title="Module execution ledger" subtitle="Which collector modules ran, and with what result">
+          <Card dataTour="module-ledger" title="Module execution ledger" subtitle="Which collector modules ran, and with what result">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -326,7 +328,7 @@ function BundlePanel() {
                 Interval collapses 50.0–87.1% → 70.6–81.2% · coverage 62.9% → 89.4% · assurance L1 → L2
               </div>
             </div>
-            <Button onClick={() => navigate('/dashboard')}>
+            <Button dataTour="bundle-reveal" onClick={() => navigate('/dashboard')}>
               Reveal on dashboard <ArrowRight size={15} />
             </Button>
           </div>
@@ -362,7 +364,7 @@ export default function Intake() {
           </p>
         </div>
       )}
-      <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+      <div data-tour="intake-tabs" className="flex gap-1 rounded-lg bg-slate-100 p-1">
         {(
           [
             ['interviews', 'Interviews'],
@@ -371,6 +373,7 @@ export default function Intake() {
         ).map(([id, label]) => (
           <button
             key={id}
+            data-tour={id === 'bundle' ? 'intake-tab-bundle' : 'intake-tab-interviews'}
             onClick={() => setTab(id)}
             className={`flex-1 rounded-md px-3 py-1.5 text-sm font-semibold transition ${
               tab === id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
@@ -415,12 +418,12 @@ function InterviewList({ onOpen, done }: { onOpen: (id: string) => void; done: s
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div data-tour="intake-roles" className="grid gap-4 sm:grid-cols-3">
         {interviews.map((r) => {
           const link = links[r.id];
           return (
             <div key={r.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <button onClick={() => onOpen(r.id)} className="text-left">
+              <button data-tour={`intake-role-${r.id}`} onClick={() => onOpen(r.id)} className="text-left">
                 <div className="text-sm font-bold text-slate-900 hover:text-accent">{r.title}</div>
                 <div className="mt-0.5 text-xs text-slate-500">{r.persona}</div>
               </button>

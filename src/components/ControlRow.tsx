@@ -17,14 +17,17 @@ export default function ControlRow({
   control,
   snap,
   highlight = false,
+  dataTour,
 }: {
   control: Control;
   snap: ControlSnapshot;
   highlight?: boolean;
+  dataTour?: string;
 }) {
   return (
     <motion.div layout initial={false}>
       <Link
+        data-tour={dataTour}
         to={`/control/${control.id}`}
         className={`flex items-center gap-3 border-b border-slate-100 px-4 py-3 text-sm transition hover:bg-slate-50 ${
           highlight ? 'bg-blue-50/60' : ''

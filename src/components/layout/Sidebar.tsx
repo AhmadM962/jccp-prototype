@@ -32,6 +32,7 @@ export default function Sidebar() {
             <NavLink
               key={item.to}
               to={item.to}
+              data-tour={`nav-${item.to}`}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition ${
                   isActive ? 'bg-ink-700 font-semibold text-white' : 'text-slate-400 hover:bg-ink-800 hover:text-slate-200'

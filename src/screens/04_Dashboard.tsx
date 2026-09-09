@@ -23,6 +23,7 @@ import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL } from '../data/controls';
 import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
 import { EXCLUSIONS, SECTOR_BASELINE } from '../data/exclusions';
 import { sectorById } from '../data/sectors';
+import { Term } from '../tour/Term';
 
 const fmt1 = (n: number) => n.toFixed(1);
 
@@ -211,7 +212,11 @@ export default function Dashboard() {
 
       {/* Top row: three cards */}
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr_1fr]">
-        <Card title="Compliance Interval" subtitle="Never a single percentage — the band is the cost of missing evidence">
+        <Card dataTour="dash-interval" title="Compliance Interval" subtitle="Never a single percentage — the band is the cost of missing evidence">
+          <p className="text-center text-[11px] text-slate-400">
+            The <Term k="compliance interval">compliance interval</Term>: true compliance lies somewhere in
+            this band. Its width is what the assessment could not establish.
+          </p>
           <div className="py-3">
             <ScoreInterval
               lower={eff.lowerPct}
@@ -236,7 +241,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card title="Coverage" subtitle={`${cs.covered} of ${cs.applicable} applicable controls`}>
+        <Card dataTour="dash-coverage" title="Coverage" subtitle={`${cs.covered} of ${cs.applicable} applicable controls`}>
           <div className="h-[190px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -260,6 +265,9 @@ export default function Dashboard() {
               </li>
             ))}
           </ul>
+          <p className="mt-1.5 text-[10px] text-slate-400">
+            <Term k="coverage">Coverage</Term> is the share of applicable controls with evidence.
+          </p>
           {uploaded && (
             <p className="mt-2 border-t border-slate-100 pt-2 text-[11px] text-slate-500">
               Oldest evidence: <span className="tnum font-semibold">{EVIDENCE_FRESHNESS.oldestDays} days</span>{' '}
@@ -269,7 +277,7 @@ export default function Dashboard() {
           )}
         </Card>
 
-        <Card title="Assurance level" subtitle="How the evidence was established">
+        <Card dataTour="dash-assurance" title="Assurance level" subtitle="How the evidence was established">
           <ol className="space-y-2">
             {ASSURANCE_LEVELS.map((l) => {
               const active = l.id === currentAssurance;
@@ -301,7 +309,7 @@ export default function Dashboard() {
       </div>
 
       {/* Per-capability rows */}
-      <Card title="By capability" subtitle="Each capability carries its own interval and coverage figure">
+      <Card dataTour="dash-capabilities" title="By capability" subtitle="Each capability carries its own interval and coverage figure">
         <div className="divide-y divide-slate-100">
           {capabilities.map((c) => {
             if (!c.organisationallyAssessable) {
@@ -341,16 +349,17 @@ export default function Dashboard() {
 
       {/* Completeness + scope exclusions, side by side */}
       <div className="grid gap-5 lg:grid-cols-2">
-        <div className="rounded-xl border-2 border-slate-300 bg-white p-5">
+        <div data-tour="dash-completeness" className="rounded-xl border-2 border-slate-300 bg-white p-5">
           <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
             <Info size={14} /> Completeness statement — cannot be dismissed
           </div>
           <p className="text-sm leading-relaxed text-slate-700">
-            This assessment covers <strong className="tnum">{cs.covered} of {cs.applicable}</strong> applicable
-            controls. <strong className="tnum">{cs.unevidenced}</strong> are unevidenced.{' '}
-            <strong className="tnum">{cs.uncollectable}</strong> are outside the tool's collection reach.
-            Assurance level: <strong>{cs.assurance}</strong>. Compliance is reported as an interval because a
-            point estimate would conceal what was not established.
+            This assessment covers <strong className="tnum">{cs.covered} of {cs.applicable}</strong>{' '}
+            <Term k="applicable controls">applicable controls</Term>.{' '}
+            <strong className="tnum">{cs.unevidenced}</strong> are unevidenced.{' '}
+            <strong className="tnum">{cs.uncollectable}</strong> are outside the tool's collection reach.{' '}
+            <Term k="assurance level">Assurance level</Term>: <strong>{cs.assurance}</strong>. Compliance is
+            reported as an interval because a point estimate would conceal what was not established.
           </p>
           {profile.operatesCriticalInfrastructure && (
             <p className="mt-2 border-t border-slate-200 pt-2 text-sm leading-relaxed text-slate-700">

@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { RotateCcw, Lock, ChevronDown } from 'lucide-react';
+import { RotateCcw, Lock, ChevronDown, Compass } from 'lucide-react';
 import { useState } from 'react';
 import { NAV } from './nav';
 import { useAssessment, ROLE_LABEL, type Role } from '../../store/useAssessment';
@@ -18,6 +18,7 @@ export default function TopBar() {
   const item = NAV.find((n) => pathname.startsWith(n.to));
   const title = pathname.startsWith('/control/') ? 'Control Detail / Evidence Inspector' : item?.label ?? 'JCCP';
   const resetDemo = useAssessment((s) => s.resetDemo);
+  const startTour = useAssessment((s) => s.startTour);
   const profile = useAssessment((s) => s.profile);
   const role = useAssessment((s) => s.role);
   const setRole = useAssessment((s) => s.setRole);
@@ -26,7 +27,7 @@ export default function TopBar() {
   return (
     <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
       <div>
-        <h1 className="text-base font-semibold text-slate-900">{title}</h1>
+        <h1 data-tour="page-title" className="text-base font-semibold text-slate-900">{title}</h1>
         <p className="text-xs text-slate-500">
           {profile.orgName} · {sectorById(profile.sector).label} · Regulator: {sectorById(profile.sector).regulator}
         </p>
@@ -61,7 +62,14 @@ export default function TopBar() {
             </>
           )}
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+        <button
+          onClick={startTour}
+          className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700"
+          title="Restart the guided tour"
+        >
+          <Compass size={12} /> Guided tour
+        </button>
+        <span className="hidden items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 lg:inline-flex">
           <Lock size={12} /> On-premise · read-only
         </span>
         <button

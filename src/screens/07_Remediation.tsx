@@ -218,7 +218,7 @@ function AllActionsTab() {
         ))}
       </div>
       {items.map((it, i) => (
-        <Card key={it.id}>
+        <Card key={it.id} dataTour={i === 0 ? 'rem-first' : undefined}>
           <div className="flex items-start gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-500">
               {i + 1}

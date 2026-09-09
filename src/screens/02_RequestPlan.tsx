@@ -7,7 +7,7 @@ import { requestPlan, REQUEST_PLAN_SUMMARY, type RequestArtifact } from '../data
 
 const TOP_N = 10;
 
-function ArtifactTable({ rows }: { rows: RequestArtifact[] }) {
+function ArtifactTable({ rows, tourFirstRow }: { rows: RequestArtifact[]; tourFirstRow?: string }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -22,8 +22,8 @@ function ArtifactTable({ rows }: { rows: RequestArtifact[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((a) => (
-            <tr key={a.artifact} className="border-b border-slate-100 align-top">
+          {rows.map((a, i) => (
+            <tr key={a.artifact} data-tour={i === 0 ? tourFirstRow : undefined} className="border-b border-slate-100 align-top">
               <td className="py-3 pr-4 font-medium text-slate-800">
                 {a.artifact}
                 <div className="text-[11px] font-normal text-slate-400">{a.formatHint}</div>
@@ -70,7 +70,7 @@ export default function RequestPlan() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card dataTour="plan-header">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 text-accent">
             <Server size={22} />
@@ -92,10 +92,11 @@ export default function RequestPlan() {
       </Card>
 
       <Card
+        dataTour="plan-automated"
         title="Automated"
         subtitle={`${REQUEST_PLAN_SUMMARY.automatedCount} artifacts collected by the signed collector · covers ${REQUEST_PLAN_SUMMARY.automatedControls} controls · ~15 min`}
         right={
-          <div className="flex flex-col items-end gap-1">
+          <div data-tour="plan-collectors" className="flex flex-col items-end gap-1">
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setCollector('Windows/AD')}>
                 <HardDriveDownload size={13} /> Windows/AD collector
@@ -112,7 +113,7 @@ export default function RequestPlan() {
           </div>
         }
       >
-        <ArtifactTable rows={automated} />
+        <ArtifactTable rows={automated} tourFirstRow="plan-firstrow" />
       </Card>
 
       <Card

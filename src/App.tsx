@@ -17,6 +17,9 @@ import Exclusions from './screens/10_Exclusions';
 import Admin from './screens/11_Admin';
 import Tasks from './screens/12_Tasks';
 import Rollup from './screens/13_Rollup';
+import Tour from './tour/Tour';
+import WelcomeGate from './tour/WelcomeGate';
+import HelpPanel from './tour/HelpPanel';
 
 /** Redirect to the role's first allowed screen if the current path isn't permitted. */
 function RoleGate({ children }: { children: ReactNode }) {
@@ -38,6 +41,9 @@ export default function App() {
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-1 text-center text-[11px] text-amber-800">
+          Demonstration prototype · fictional organisation · no data is stored or transmitted.
+        </div>
         <main className="scroll-slim flex-1 overflow-y-auto bg-slate-50">
           <div className="mx-auto max-w-6xl px-6 py-6">
             <RoleGate>
@@ -62,6 +68,9 @@ export default function App() {
           </div>
         </main>
       </div>
+      <HelpPanel />
+      <WelcomeGate />
+      <Tour />
     </div>
   );
 }
