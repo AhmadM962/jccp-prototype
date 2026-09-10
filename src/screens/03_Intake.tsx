@@ -184,7 +184,7 @@ function BundlePanel() {
       uploadEvidence();
       return;
     }
-    const t = setTimeout(() => setStage((s) => s + 1), 700);
+    const t = setTimeout(() => setStage((s) => s + 1), 300);
     return () => clearTimeout(t);
   }, [stage, uploadEvidence]);
 

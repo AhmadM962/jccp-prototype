@@ -9,6 +9,7 @@ import { helpFor } from './helpContent';
 export default function HelpPanel() {
   const { pathname } = useLocation();
   const tourActive = useAssessment((s) => s.tourActive);
+  const navOpen = useAssessment((s) => s.navOpen);
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const help = helpFor(pathname);
@@ -18,7 +19,7 @@ export default function HelpPanel() {
     if (open) panelRef.current?.focus();
   }, [open]);
 
-  if (tourActive) return null; // the tour is doing the explaining
+  if (tourActive || navOpen) return null; // tour is explaining, or the nav drawer is open
 
   return (
     <div className="fixed bottom-4 right-4 z-[55] flex flex-col items-end gap-2">
@@ -29,7 +30,7 @@ export default function HelpPanel() {
           role="dialog"
           aria-label={`Help: ${help.title}`}
           onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
-          className="w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-2xl focus:outline-none"
+          className="w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border border-slate-200 bg-white p-4 shadow-2xl focus:outline-none"
         >
           <div className="mb-1.5 flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900">{help.title}</h3>

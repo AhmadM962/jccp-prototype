@@ -55,7 +55,7 @@ export default function WelcomeGate() {
         if (e.key === 'Escape') explore();
       }}
     >
-      <div className="w-full max-w-lg rounded-2xl bg-white p-7 shadow-2xl">
+      <div className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-7">
         <h2 id="welcome-title" className="text-lg font-bold text-slate-900">
           Jordan Cyber Compliance Platform
         </h2>

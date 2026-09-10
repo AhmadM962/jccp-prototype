@@ -36,6 +36,7 @@ export default function Tour() {
   const goto = useAssessment((s) => s.tourGoto);
   const end = useAssessment((s) => s.endTour);
   const startTour = useAssessment((s) => s.startTour);
+  const setNavOpen = useAssessment((s) => s.setNavOpen);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -93,6 +94,18 @@ export default function Tour() {
         await sleep(160);
       }
       if (runId.current !== myRun) return;
+
+      // On mobile the nav lives in an off-canvas drawer: open it for steps that
+      // target or click a sidebar item, close it for every other step.
+      const actionTargets =
+        s.preAction && s.preAction.type === 'click'
+          ? [s.preAction.target]
+          : s.preAction && s.preAction.type === 'clickSeq'
+          ? s.preAction.targets
+          : [];
+      const needsNav = [s.target, ...actionTargets].some((t) => t?.startsWith('nav-'));
+      setNavOpen(needsNav);
+      if (needsNav) await sleep(240); // let the drawer slide in
 
       if (s.preAction) {
         await runAction(s.preAction, myRun);
@@ -185,6 +198,11 @@ export default function Tour() {
     return () => window.removeEventListener('keydown', onKey);
   }, [active, end]);
 
+  // ─── leave the mobile nav drawer closed once the tour is over ─────────────
+  useEffect(() => {
+    if (!active) setNavOpen(false);
+  }, [active, setNavOpen]);
+
   // ─── measure the tooltip so we can flip it near edges ─────────────────────
   useLayoutEffect(() => {
     if (ttRef.current) {
@@ -202,10 +220,18 @@ export default function Tour() {
   const targetDisabled = clickAdvance && (!targetElRef.current || targetElRef.current.hasAttribute('disabled'));
 
   // ── tooltip position ──
+  const isNarrow = vw < 640;
   let ttLeft = vw / 2 - ttSize.w / 2;
   let ttTop = vh / 2 - ttSize.h / 2;
   let caret: 'up' | 'down' | null = null;
-  if (box) {
+  if (box && isNarrow) {
+    // phone: dock the card to whichever end is clear of the spotlight — no caret,
+    // never covering the highlighted element
+    const hole = { top: box.top - PAD, height: box.height + PAD * 2 };
+    const spotMid = hole.top + hole.height / 2;
+    ttTop = spotMid > vh / 2 ? 12 : vh - ttSize.h - 12;
+    ttLeft = Math.min(Math.max(8, vw / 2 - ttSize.w / 2), vw - ttSize.w - 8);
+  } else if (box) {
     const hole = { top: box.top - PAD, left: box.left - PAD, width: box.width + PAD * 2, height: box.height + PAD * 2 };
     const below = hole.top + hole.height + 14;
     const above = hole.top - ttSize.h - 14;

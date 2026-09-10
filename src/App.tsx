@@ -41,11 +41,11 @@ export default function App() {
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
-        <div className="border-b border-amber-200 bg-amber-50 px-4 py-1 text-center text-[11px] text-amber-800">
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-1 text-center text-[10px] leading-tight text-amber-800 sm:text-[11px]">
           Demonstration prototype · fictional organisation · no data is stored or transmitted.
         </div>
         <main className="scroll-slim flex-1 overflow-y-auto bg-slate-50">
-          <div className="mx-auto max-w-6xl px-6 py-6">
+          <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-6">
             <RoleGate>
               <Routes>
                 <Route path="/" element={<Navigate to="/profile" replace />} />

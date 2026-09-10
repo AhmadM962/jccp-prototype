@@ -57,12 +57,15 @@ interface AssessmentState {
   /** guided-tour overlay — ephemeral, never persisted */
   tourActive: boolean;
   tourStep: number;
+  /** mobile nav drawer — ephemeral, never persisted */
+  navOpen: boolean;
 
   setPhase: (p: Phase) => void;
   setRole: (r: Role) => void;
   startTour: () => void;
   endTour: () => void;
   tourGoto: (n: number) => void;
+  setNavOpen: (v: boolean) => void;
   setProfile: (patch: Partial<OrgProfile>) => void;
   setPdpl: (patch: Partial<OrgProfile['pdplHoldings']>) => void;
   uploadEvidence: () => void;
@@ -99,9 +102,11 @@ export const useAssessment = create<AssessmentState>()(
   persist(
     (set) => ({
       ...initial,
+      navOpen: false,
 
       setPhase: (p) => set({ phase: p }),
       setRole: (r) => set({ role: r }),
+      setNavOpen: (v) => set({ navOpen: v }),
       // A guided tour walks the whole assessment from the beginning, so it starts from the
       // documented pre-upload state (same as the "Reset demo" action).
       startTour: () => set({ ...initial, tourActive: true, tourStep: 0 }),
@@ -158,7 +163,7 @@ export const useAssessment = create<AssessmentState>()(
     // Tour state is ephemeral and never persisted.
     {
       name: 'jccp-assessment-v3',
-      partialize: ({ tourActive, tourStep, ...rest }) => rest,
+      partialize: ({ tourActive, tourStep, navOpen, ...rest }) => rest,
     },
   ),
 );

@@ -328,7 +328,7 @@ export default function Dashboard() {
               <Link
                 key={c.id}
                 to={`/gap-matrix?cap=${c.id}`}
-                className="grid grid-cols-[220px_1fr_120px] items-center gap-4 py-3.5 transition hover:bg-slate-50"
+                className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 py-3.5 transition hover:bg-slate-50 sm:grid-cols-[200px_1fr_110px]"
               >
                 <div>
                   <div className="text-sm font-semibold text-slate-800">{c.shortName}</div>
@@ -336,7 +336,9 @@ export default function Dashboard() {
                     {stat.green}G · {stat.yellow}Y · {stat.red}R · {stat.unknown} unknown
                   </div>
                 </div>
-                <ScoreInterval variant="row" lower={stat.interval[0]} upper={stat.interval[1]} widthPts={stat.interval[1] - stat.interval[0]} />
+                <div className="order-3 col-span-2 sm:order-none sm:col-span-1">
+                  <ScoreInterval variant="row" lower={stat.interval[0]} upper={stat.interval[1]} widthPts={stat.interval[1] - stat.interval[0]} />
+                </div>
                 <div className="text-right">
                   <div className="tnum text-sm font-bold text-slate-900">{stat.coveragePct.toFixed(1)}%</div>
                   <div className="text-[10px] uppercase tracking-wide text-slate-400">coverage</div>
