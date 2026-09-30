@@ -8,6 +8,7 @@ import { useAssessment } from '../store/useAssessment';
 import { remediationPlan, evidenceRequests } from '../data/remediation';
 import { requestPlan } from '../data/scenario';
 import { TOTALS } from '../data/capabilities';
+import { UNCOLLECTABLE_COUNT } from '../data/controls';
 import { projectProvision } from '../lib/scoring';
 
 const fmt1 = (n: number) => n.toFixed(1);
@@ -96,8 +97,8 @@ function RequestsTab() {
           />
         </div>
         <p className="mt-2 text-[11px] text-slate-400">
-          The band cannot fall below <span className="tnum">{fmt1((24 / base.applicable) * 100)} pts</span> of
-          width — the 24 structurally uncollectable controls stay Unknown regardless of what is provided.
+          The band cannot fall below <span className="tnum">{fmt1((UNCOLLECTABLE_COUNT / base.applicable) * 100)} pts</span> of
+          width — the {UNCOLLECTABLE_COUNT} structurally uncollectable controls stay Unknown regardless of what is provided.
         </p>
       </Card>
 

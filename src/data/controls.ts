@@ -24,6 +24,24 @@ export interface ControlSnapshot {
   providedSignals: string[];
 }
 
+// Why a signal is (or isn't) negative-capable — the reason a control can be a Gap
+// rather than Unknown (brief §Change 7).
+export type EvidenceBasis = 'negative_capable' | 'by_rule' | 'judgement' | 'uncertainty';
+
+export const EVIDENCE_BASIS_LABEL: Record<EvidenceBasis, string> = {
+  negative_capable: 'Negative-capable',
+  by_rule: 'By rule',
+  judgement: 'Judgement',
+  uncertainty: 'Uncertainty',
+};
+
+export const EVIDENCE_BASIS_MEANING: Record<EvidenceBasis, string> = {
+  negative_capable: 'Absence of a positive finding proves the negative.',
+  by_rule: 'Documentary — absence proves nothing, by the nature of the evidence.',
+  judgement: 'A named mechanism makes absence uninformative.',
+  uncertainty: 'We could not establish completeness — the recoverable case.',
+};
+
 export interface Control {
   id: string; // "JNCSF-102"
   num: number;
@@ -45,6 +63,11 @@ export interface Control {
   /** promoted / meaningfully changed by the evidence-bundle upload */
   changed: boolean;
   showcase?: boolean;
+  /** why this control's evidence is or isn't negative-capable */
+  evidenceBasis: EvidenceBasis;
+  /** requires an organisational arrangement no module can observe — can reach Partial on
+   *  documentary evidence, but never Compliant without analyst attestation */
+  noConclusivePath?: boolean;
 }
 
 type Snap = [ControlState, EvidenceClass, GapReason?];
@@ -100,7 +123,7 @@ const seeds: Seed[] = [
   { n: 116, d: 'Configure information systems to identify and authenticate organizational users', cap: 'del', iso: ['9.4.1'], nist: ['IA-2'], req: ['auth_provider_config', 'directory_binding'], before: ['green', 'artifact'], after: ['green', 'artifact'] },
 
   { n: 139, d: 'Establish a process to routinely review that user access rights align with control policies', cap: 'ops', iso: ['9.2.5', '9.2.2', '9.2.3'], nist: ['AC-2'], req: ['recertification_campaign', 'attestation_records'], before: ['unknown', 'none', 'not_provided'], after: ['green', 'artifact'], changed: true },
-  { n: 141, d: 'Establish a process to appropriately remove or adjust access rights from users as specified in control policies', cap: 'ops', iso: ['9.2.6', '9.2.2', '9.2.5'], nist: ['AC-2', 'PS-4', 'PS-5'], req: ['leavers_feed', 'disable_latency', 'orphan_account_scan'], before: ['yellow', 'testimonial'], after: ['red', 'artifact'], changed: true },
+  { n: 141, d: 'Establish a process to appropriately remove or adjust access rights from users as specified in control policies', cap: 'ops', iso: ['9.2.6', '9.2.2', '9.2.5'], nist: ['AC-2', 'PS-4', 'PS-5'], req: ['leavers_feed', 'disable_latency', 'orphan_account_scan'], before: ['yellow', 'testimonial'], after: ['red', 'artifact'], changed: true, attackKey: 'JNCSF-141' },
   { n: 142, d: 'Configure information systems to limit the number of unsuccessful logon attempts within a defined time period', cap: 'ops', iso: [], nist: ['AC-7'], req: ['lockout_policy_gpo', 'threshold_value'], before: ['unknown', 'none', 'not_provided'], after: ['green', 'artifact'], changed: true },
   { n: 146, d: 'Configure information systems to prevent further user access after a defined period of user inactivity', cap: 'ops', iso: [], nist: ['AC-11'], req: ['screen_lock_gpo', 'timeout_value'], before: ['unknown', 'none', 'not_provided'], after: ['green', 'artifact'], changed: true },
   { n: 163, d: 'Configure information systems to require authorization procedures before connecting mobile devices', cap: 'ops', iso: ['6.2.1'], nist: ['AC-19'], req: ['device_control_policy', 'usb_enforcement_state'], before: ['unknown', 'none', 'not_provided'], after: ['red', 'artifact'], changed: true, attackKey: 'JNCSF-163' },
@@ -129,6 +152,32 @@ const seeds: Seed[] = [
   { n: 573, d: 'Design and apply physical protection against natural disasters, malicious attacks, and accidents', cap: 'found', iso: ['11.1.4'], nist: [], req: ['facility_assessment', 'environmental_controls_report'], before: ['unknown', 'none', 'uncollectable_by_design'], after: ['unknown', 'none', 'uncollectable_by_design'] },
 ];
 
+// Controls requiring an organisational arrangement (an assigned authorising official, a
+// documented separation-of-duties review) that no module can observe. Of 66 authored
+// controls framework-wide, 7 have no conclusive path at all; these 3 are represented in
+// the seeded catalogue below.
+const NO_CONCLUSIVE_PATH_NUMS = new Set([6, 20, 100]);
+
+// Exactly one control is 'uncertainty' rather than 'by_rule' or 'judgement' — the
+// recoverable case (brief: "of 115 signals, exactly one is false through uncertainty").
+const UNCERTAINTY_NUMS = new Set([32]);
+
+// Documentary/policy controls — a document existing doesn't prove the practice is
+// followed, so absence of a finding proves nothing.
+const BY_RULE_NUMS = new Set([1, 3, 6, 14, 20, 25]);
+
+// Controls where a named mechanism (a review process, a declined request) makes an
+// absent finding uninformative rather than proof of a gap.
+const JUDGEMENT_NUMS = new Set([100, 190, 252, 479, 512, 538, 573]);
+
+function evidenceBasisFor(n: number, evidenceClass: EvidenceClass): EvidenceBasis {
+  if (UNCERTAINTY_NUMS.has(n)) return 'uncertainty';
+  if (BY_RULE_NUMS.has(n)) return 'by_rule';
+  if (JUDGEMENT_NUMS.has(n)) return 'judgement';
+  if (evidenceClass === 'artifact') return 'negative_capable';
+  return 'judgement';
+}
+
 export const controls: Control[] = seeds.map((s) => {
   const before = S(s.before[0], s.before[1], [], s.before[2]);
   const after = S(s.after[0], s.after[1], [], s.after[2]);
@@ -151,6 +200,8 @@ export const controls: Control[] = seeds.map((s) => {
     after,
     changed: s.changed ?? false,
     showcase: s.showcase,
+    evidenceBasis: evidenceBasisFor(s.n, after.evidenceClass),
+    noConclusivePath: NO_CONCLUSIVE_PATH_NUMS.has(s.n),
   };
 });
 
@@ -161,7 +212,8 @@ export function snapshotFor(c: Control, uploaded: boolean): ControlSnapshot {
 }
 
 // Gap-reason breakdown of the Unknowns (brief §6.4). `not_requested` is a design
-// invariant — a non-zero value indicates a defect. `before` sums to 126, `after` to 36.
+// invariant — a non-zero value indicates a defect. `before` sums to 207, `after` to 59 —
+// reconciling exactly to TOTALS.before.unknown / TOTALS.after.unknown in capabilities.ts.
 export interface GapReasonRow {
   reason: GapReason;
   before: number;
@@ -170,14 +222,44 @@ export interface GapReasonRow {
 }
 
 export const GAP_REASON_BREAKDOWN: GapReasonRow[] = [
-  { reason: 'not_provided', before: 71, after: 4 },
-  { reason: 'uncollectable_by_design', before: 24, after: 24 },
-  { reason: 'insufficient_signal', before: 14, after: 2 },
-  { reason: 'declined', before: 9, after: 3 },
-  { reason: 'insufficient_permission', before: 5, after: 2 },
-  { reason: 'stale', before: 3, after: 1 },
+  { reason: 'not_provided', before: 117, after: 7 },
+  { reason: 'uncollectable_by_design', before: 39, after: 39 },
+  { reason: 'insufficient_signal', before: 23, after: 3 },
+  { reason: 'declined', before: 15, after: 5 },
+  { reason: 'insufficient_permission', before: 8, after: 3 },
+  { reason: 'stale', before: 5, after: 2 },
   { reason: 'not_requested', before: 0, after: 0, invariant: true },
 ];
+
+/** Structurally uncollectable controls — no supported method can ever reach them,
+ *  regardless of what evidence is provided. Constant before/after (brief §6.4). */
+export const UNCOLLECTABLE_COUNT = 39;
+
+// Evidence-signal basis breakdown, framework-wide (brief §Change 7). Of 115 signals,
+// exactly one is false through uncertainty rather than rule or judgement — the
+// recoverable case, distinct from a documentary limit or a deliberate design choice.
+export interface EvidenceBasisRow {
+  basis: EvidenceBasis;
+  count: number;
+}
+
+export const EVIDENCE_BASIS_BREAKDOWN: EvidenceBasisRow[] = [
+  { basis: 'negative_capable', count: 68 },
+  { basis: 'by_rule', count: 31 },
+  { basis: 'judgement', count: 15 },
+  { basis: 'uncertainty', count: 1 },
+];
+// 68 + 31 + 15 + 1 = 115
+export const EVIDENCE_SIGNAL_TOTAL = 115;
+
+// No-conclusive-path controls (brief §Change 7): require an organisational arrangement
+// rather than a system state. Can reach Partial on documentary evidence, but never
+// Compliant without analyst attestation.
+export const NO_CONCLUSIVE_PATH_STATS = {
+  authoredTotal: 66,
+  noPath: 7,
+  seededNoPath: 3,
+};
 
 export const GAP_REASON_LABEL: Record<GapReason, string> = {
   not_provided: 'Not provided',

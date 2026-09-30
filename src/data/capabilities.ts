@@ -1,4 +1,6 @@
 // The six JNCSF capabilities (brief §5.1) plus before/after fixture stats (§6.2, §6.3).
+// Figures below are the measured before/after tables — every per-capability row
+// reconciles exactly to the portfolio TOTALS at the bottom of this file.
 
 export interface CapabilityStat {
   applicable: number;
@@ -31,8 +33,8 @@ export const capabilities: Capability[] = [
     shortName: 'Architecture & Portfolio',
     totalControls: 25,
     organisationallyAssessable: true,
-    before: { applicable: 22, evidenced: 12, green: 8, yellow: 3, red: 1, unknown: 10, coveragePct: 54.5, interval: [43.2, 88.6] },
-    after: { applicable: 22, evidenced: 18, green: 12, yellow: 4, red: 2, unknown: 4, coveragePct: 81.8, interval: [63.6, 81.8] },
+    before: { applicable: 25, evidenced: 15, green: 10, yellow: 3, red: 2, unknown: 10, coveragePct: 60.0, interval: [46.0, 86.0] },
+    after: { applicable: 25, evidenced: 23, green: 15, yellow: 5, red: 3, unknown: 2, coveragePct: 92.0, interval: [70.0, 78.0] },
   },
   {
     id: 'dev',
@@ -40,8 +42,8 @@ export const capabilities: Capability[] = [
     shortName: 'Development',
     totalControls: 69,
     organisationallyAssessable: true,
-    before: { applicable: 20, evidenced: 8, green: 5, yellow: 2, red: 1, unknown: 12, coveragePct: 40.0, interval: [30.0, 90.0] },
-    after: { applicable: 20, evidenced: 15, green: 10, yellow: 3, red: 2, unknown: 5, coveragePct: 75.0, interval: [57.5, 82.5] },
+    before: { applicable: 50, evidenced: 30, green: 20, yellow: 6, red: 4, unknown: 20, coveragePct: 60.0, interval: [46.0, 86.0] },
+    after: { applicable: 50, evidenced: 45, green: 30, yellow: 9, red: 6, unknown: 5, coveragePct: 90.0, interval: [69.0, 79.0] },
   },
   {
     id: 'del',
@@ -49,8 +51,8 @@ export const capabilities: Capability[] = [
     shortName: 'Delivery',
     totalControls: 44,
     organisationallyAssessable: true,
-    before: { applicable: 40, evidenced: 32, green: 24, yellow: 6, red: 2, unknown: 8, coveragePct: 80.0, interval: [67.5, 87.5] },
-    after: { applicable: 40, evidenced: 37, green: 28, yellow: 7, red: 2, unknown: 3, coveragePct: 92.5, interval: [78.8, 86.3] },
+    before: { applicable: 44, evidenced: 32, green: 22, yellow: 6, red: 4, unknown: 12, coveragePct: 72.7, interval: [56.8, 84.1] },
+    after: { applicable: 44, evidenced: 42, green: 28, yellow: 9, red: 5, unknown: 2, coveragePct: 95.5, interval: [73.9, 78.4] },
   },
   {
     id: 'ops',
@@ -58,8 +60,8 @@ export const capabilities: Capability[] = [
     shortName: 'Operations',
     totalControls: 299,
     organisationallyAssessable: true,
-    before: { applicable: 180, evidenced: 118, green: 82, yellow: 24, red: 12, unknown: 62, coveragePct: 65.6, interval: [52.2, 86.7] },
-    after: { applicable: 180, evidenced: 162, green: 112, yellow: 33, red: 17, unknown: 18, coveragePct: 90.0, interval: [71.4, 81.4] },
+    before: { applicable: 299, evidenced: 192, green: 135, yellow: 36, red: 21, unknown: 107, coveragePct: 64.2, interval: [51.2, 87.0] },
+    after: { applicable: 299, evidenced: 272, green: 188, yellow: 54, red: 30, unknown: 27, coveragePct: 91.0, interval: [71.9, 80.9] },
   },
   {
     id: 'found',
@@ -67,8 +69,8 @@ export const capabilities: Capability[] = [
     shortName: 'Foundational',
     totalControls: 139,
     organisationallyAssessable: true,
-    before: { applicable: 78, evidenced: 44, green: 31, yellow: 5, red: 8, unknown: 34, coveragePct: 56.4, interval: [42.9, 86.5] },
-    after: { applicable: 78, evidenced: 72, green: 48, yellow: 13, red: 11, unknown: 6, coveragePct: 92.3, interval: [69.9, 77.6] },
+    before: { applicable: 139, evidenced: 81, green: 58, yellow: 15, red: 8, unknown: 58, coveragePct: 58.3, interval: [47.1, 88.8] },
+    after: { applicable: 139, evidenced: 116, green: 84, yellow: 22, red: 10, unknown: 23, coveragePct: 83.5, interval: [68.3, 84.9] },
   },
   {
     id: 'natl',
@@ -81,32 +83,35 @@ export const capabilities: Capability[] = [
 
 export const capabilityById = (id: string) => capabilities.find((c) => c.id === id);
 
-// Portfolio-level fixture totals (brief §6.1–6.3).
+// Portfolio-level fixture totals (brief §6.1–6.3). The framework is 93% universal — only
+// 38 of 576 controls are conditional on the five applicability variables — and this
+// government-ministry demo organisation excludes exactly the 19 in_house_development
+// controls, leaving 557 of 576 applicable.
 export const TOTALS = {
   totalControls: 576,
-  notApplicable: 236,
-  applicable: 340,
+  notApplicable: 19,
+  applicable: 557,
   before: {
-    evidenced: 214,
-    green: 150,
-    yellow: 40,
-    red: 24,
-    unknown: 126,
-    coveragePct: 62.9,
-    interval: [50.0, 87.1] as [number, number],
-    widthPts: 37.1,
+    evidenced: 350,
+    green: 245,
+    yellow: 66,
+    red: 39,
+    unknown: 207,
+    coveragePct: 62.8,
+    interval: [49.9, 87.1] as [number, number],
+    widthPts: 37.2,
     assurance: 'L1',
   },
   after: {
-    evidenced: 304,
-    green: 210,
-    yellow: 60,
-    red: 34,
-    unknown: 36,
+    evidenced: 498,
+    green: 345,
+    yellow: 99,
+    red: 54,
+    unknown: 59,
     coveragePct: 89.4,
-    interval: [70.6, 81.2] as [number, number],
+    interval: [70.8, 81.4] as [number, number],
     widthPts: 10.6,
     assurance: 'L2',
-    gapsClosed: 90,
+    gapsClosed: 148,
   },
 };

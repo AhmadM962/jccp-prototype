@@ -58,7 +58,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/profile',
     target: 'profile-toggles',
     title: 'What technology they run',
-    body: 'These switches decide which controls are in scope. An organisation that writes no software of its own isn’t meaningfully assessed against secure-coding controls. Each switch adds or removes a group of controls.',
+    body: 'These are the five variables that actually gate anything in this framework — measured, not guessed: in-house development, outsourced development, mobile devices, wireless networks, remote access. An organisation that writes no software of its own isn’t meaningfully assessed against secure-coding controls. Each switch adds or removes a small, named group of controls; nothing else in the framework is conditional.',
   },
   {
     id: 'the-number',
@@ -66,7 +66,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/profile',
     target: 'profile-applicable',
     title: 'The number that matters',
-    body: 'This is the denominator for everything that follows. 340 of 576 controls apply here. Watch it change as switches are flipped — scoping is visible, not hidden. Under-scoping is the easiest way to inflate a compliance score, which is why the system records and publishes every exclusion.',
+    body: 'This is the denominator for everything that follows. 557 of 576 controls apply here — the framework is 93% universal, so only the five variables below can move this number. Watch it change as switches are flipped — scoping is visible, not hidden. Under-scoping is the easiest way to inflate a compliance score, which is why the system records and publishes every exclusion.',
   },
   {
     id: 'challenge',
@@ -74,7 +74,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/profile',
     target: 'profile-cloud',
     title: 'The system challenges the answers',
-    body: 'Declarations are treated as claims, not facts. Turning “uses cloud services” off would remove 23 controls from the assessment. The system pushes back and asks for a written justification before allowing it — and later, if collected evidence contradicts the declaration, it blocks the assessment entirely.',
+    body: 'Declarations are treated as claims, not facts — even ones that don’t change the scope. “Uses cloud services” doesn’t gate any controls here; cloud is governed by a separate policy. But turning it off is still a claim worth checking. The system pushes back and asks for a written justification before allowing it — and later, if collected evidence contradicts the declaration, it blocks the assessment entirely.',
   },
   {
     id: 'move-on-1',
@@ -94,7 +94,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/request-plan',
     target: 'plan-header',
     title: 'The plan comes first',
-    body: 'The system says what it needs before collection starts. This answers the question every organisation asks: “how would I know what I’m missing?” The list is calculated from the 340 applicable controls — not written by hand.',
+    body: 'The system says what it needs before collection starts. This answers the question every organisation asks: “how would I know what I’m missing?” The list is calculated from the 557 applicable controls — not written by hand.',
   },
   {
     id: 'reading-a-row',
@@ -199,7 +199,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/dashboard',
     target: 'dash-interval',
     title: 'Never one number',
-    body: 'Compliance is reported as a range, never a single percentage. The lower figure assumes every unestablished control fails. The upper assumes they all pass. The truth is somewhere between. The width of this band is exactly how much the assessment did not establish — before the evidence arrived it was 37 points wide; now it is 10.6.',
+    body: 'Compliance is reported as a range, never a single percentage. The lower figure assumes every unestablished control fails. The upper assumes they all pass. The truth is somewhere between. The width of this band is exactly how much the assessment did not establish — before the evidence arrived it was 37.2 points wide; now it is 10.6.',
   },
   {
     id: 'coverage',
@@ -207,7 +207,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/dashboard',
     target: 'dash-coverage',
     title: 'Coverage',
-    body: 'How much was actually examined. 304 of 340 controls now have evidence. The remainder splits into controls that could still be evidenced, and controls no supported method can ever reach — shown separately, because one is a to-do list and the other is a permanent limit.',
+    body: 'How much was actually examined. 498 of 557 controls now have evidence. The remainder splits into controls that could still be evidenced, and controls no supported method can ever reach — shown separately, because one is a to-do list and the other is a permanent limit.',
   },
   {
     id: 'assurance',
@@ -277,7 +277,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/control/JNCSF-102',
     target: 'cd-attack',
     title: 'What an attacker gains',
-    body: 'A compliance gap is translated into real-world risk. Because privileged accounts lack multi-factor authentication, this organisation is exposed to specific, named attack techniques. The mapping comes from the NCSC’s own published threat material.',
+    body: 'A compliance gap is translated into real-world risk. Because privileged accounts lack multi-factor authentication, this organisation is exposed to specific, named attack techniques. The badge says whether that mapping is official — straight from the NCSC’s own published Threat Annex — or derived and reviewed; only 35% of controls carry any mapping at all, and this is one of them.',
   },
   {
     id: 'go-remediation',

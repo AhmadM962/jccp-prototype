@@ -191,8 +191,8 @@ function BundlePanel() {
   const slots = requestPlan;
   const filled = slots.filter((s) => uploadedSlots[s.artifact]).length;
   const controlsEvidenced = slots.filter((s) => uploadedSlots[s.artifact]).reduce((a, s) => a + s.controlsUnlocked, 0);
-  // demo coverage estimate: baseline 62.9% + provided share of the collectable gap
-  const covEstimate = Math.min(94, 62.9 + (controlsEvidenced / 340) * 100 * 0.85).toFixed(1);
+  // demo coverage estimate: baseline 62.8% + provided share of the collectable gap
+  const covEstimate = Math.min(93, 62.8 + (controlsEvidenced / 557) * 100 * 0.85).toFixed(1);
 
   return (
     <div className="space-y-5">
@@ -323,9 +323,9 @@ function BundlePanel() {
 
           <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4">
             <div>
-              <div className="text-sm font-bold text-emerald-900">90 evidence gaps closed</div>
+              <div className="text-sm font-bold text-emerald-900">148 evidence gaps closed</div>
               <div className="text-xs text-emerald-700">
-                Interval collapses 50.0–87.1% → 70.6–81.2% · coverage 62.9% → 89.4% · assurance L1 → L2
+                Interval collapses 49.9–87.1% → 70.8–81.4% · coverage 62.8% → 89.4% · assurance L1 → L2
               </div>
             </div>
             <Button dataTour="bundle-reveal" onClick={() => navigate('/dashboard')}>
@@ -355,12 +355,12 @@ export default function Intake() {
       {contradiction && (
         <div className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
           <div className="flex items-center gap-2 font-bold">
-            <AlertTriangle size={16} /> Scoping contradiction — blocked pending review
+            <AlertTriangle size={16} /> Declaration contradiction — blocked pending review
           </div>
           <p className="mt-1">
             The collected bundle contains cloud agent entries, but the profile declares no cloud services.
-            The scoping decision is blocked pending review on the{' '}
-            <RouterLink to="/profile" className="font-semibold underline">Profile</RouterLink> screen.
+            Cloud use is not a JNCSF scoping condition, but a contradicted declaration is blocked pending
+            review on the <RouterLink to="/profile" className="font-semibold underline">Profile</RouterLink> screen.
           </p>
         </div>
       )}

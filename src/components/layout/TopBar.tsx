@@ -3,7 +3,7 @@ import { RotateCcw, Lock, ChevronDown, Compass, Menu } from 'lucide-react';
 import { useState } from 'react';
 import { NAV } from './nav';
 import { useAssessment, ROLE_LABEL, type Role } from '../../store/useAssessment';
-import { sectorById } from '../../data/sectors';
+import { sectorById, regulatorDisplay } from '../../data/sectors';
 
 const ROLE_NOTE: Record<Role, string> = {
   owner: 'full access + collection progress',
@@ -38,7 +38,7 @@ export default function TopBar() {
         <div className="min-w-0">
           <h1 data-tour="page-title" className="truncate text-sm font-semibold text-slate-900 sm:text-base">{title}</h1>
           <p className="hidden truncate text-xs text-slate-500 sm:block">
-            {profile.orgName} · {sectorById(profile.sector).label} · Regulator: {sectorById(profile.sector).regulator}
+            {profile.orgName} · {sectorById(profile.sector).label} · Regulator: {regulatorDisplay(profile.sector)}
           </p>
         </div>
       </div>

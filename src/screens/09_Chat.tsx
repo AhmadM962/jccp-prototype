@@ -70,7 +70,7 @@ const CANNED: QA[] = [
   },
   {
     q: 'What is our compliance score?',
-    a: 'Your interval is 70.6–81.2% at 89.4% coverage — read from the assessment, not computed by me. The scoring engine is deterministic; I only retrieve. Open the dashboard for the breakdown.',
+    a: 'Your interval is 70.8–81.4% at 89.4% coverage — read from the assessment, not computed by me. The scoring engine is deterministic; I only retrieve. Open the dashboard for the breakdown.',
     citations: [{ label: 'Dashboard · Compliance interval', to: '/dashboard' }],
   },
   {
