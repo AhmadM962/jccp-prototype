@@ -17,14 +17,18 @@ export interface OrgProfile {
   users: number;
   hostingModel: 'gov-private-cloud' | 'own-datacentre' | 'third-party-jordan' | 'foreign-cloud';
   namedAttestation: string;
-  hasOperationalTech: Ternary;
-  usesCloud: Ternary;
-  crossBorderCloud: Ternary;
+  /** The five measured JNCSF applicability variables (38 controls gated in total). */
   inHouseDevelopment: Ternary;
-  hasSOC: Ternary;
-  byodPermitted: Ternary;
+  outsourcedDevelopment: Ternary;
+  mobileDevices: Ternary;
+  wirelessNetwork: Ternary;
+  remoteAccess: Ternary;
+  /** NOT a JNCSF scoping condition — cloud is governed separately by the MoDEE cloud
+   *  policy, so this never changes the applicable count. Kept only to drive the
+   *  profile-challenge demo (a declaration the system cross-checks against evidence). */
+  usesCloud: Ternary;
   /** subjects the org to CICSC (405 controls) in addition to JNCSF — separate framework,
-   *  NOT a JNCSF applicability condition, so it does not change the 340 count. */
+   *  NOT a JNCSF applicability condition, so it does not change the 557 count. */
   operatesCriticalInfrastructure: boolean;
   pdplHoldings: {
     health: boolean;
@@ -36,19 +40,21 @@ export interface OrgProfile {
 
 export const defaultProfile: OrgProfile = {
   orgName: 'Ministry of Digital Services',
-  sector: DEFAULT_SECTOR_ID, // Defence, Security & Government Services → regulator NCSC
+  sector: DEFAULT_SECTOR_ID, // Government Services → no regulator designated
   sizeBand: '250–1000 staff',
   endpoints: 400,
   servers: 38,
   users: 620,
   hostingModel: 'gov-private-cloud',
   namedAttestation: '',
-  hasOperationalTech: 'no',
-  usesCloud: 'yes',
-  crossBorderCloud: 'no',
+  // A government ministry with no in-house software development: excludes exactly the
+  // 19 in_house_development controls, and nothing else.
   inHouseDevelopment: 'no',
-  hasSOC: 'yes',
-  byodPermitted: 'no',
+  outsourcedDevelopment: 'yes',
+  mobileDevices: 'yes',
+  wirelessNetwork: 'yes',
+  remoteAccess: 'yes',
+  usesCloud: 'yes',
   operatesCriticalInfrastructure: false,
   pdplHoldings: {
     health: false,
@@ -58,11 +64,11 @@ export const defaultProfile: OrgProfile = {
   },
 };
 
-// Denominator model: baseline applicable when the default profile is set.
-export const BASELINE_APPLICABLE = 340;
+// Denominator model: every control starts in scope; each toggle answered "no" removes
+// the controls it gates. 576 total, 38 conditional on these five variables (93% of the
+// framework is universal) — the default profile above removes 19, leaving 557 applicable.
+export const BASELINE_APPLICABLE = 576;
 export const TOTAL_CONTROLS = 576;
-export const CLOUD_CONDITIONAL_CONTROLS = 23;
-export const SOC_CONDITIONAL_CONTROLS = 6;
 
 /** in scope = 'yes' or 'unknown'; only an explicit 'no' can remove controls */
 const inScope = (t: Ternary) => t !== 'no';
@@ -76,13 +82,17 @@ export interface ProfileDelta {
   noDelta: number;
 }
 
+// The five real applicability variables, with measured control counts (brief: 19 + 9 + 4
+// + 4 + 2 = 38 of 576 controls are conditional). "Operational technology", "cloud
+// services" and "cross-border processing" were candidates that did not survive contact
+// with the framework text — OT and cloud are governed by separate instruments (CICSC and
+// the MoDEE cloud policy respectively), so JNCSF does not gate on them.
 export const PROFILE_DELTAS: ProfileDelta[] = [
-  { key: 'hasOperationalTech', label: 'Operational technology', inScopeDelta: 41, noDelta: 0 },
-  { key: 'usesCloud', label: 'Cloud services', inScopeDelta: 0, noDelta: -CLOUD_CONDITIONAL_CONTROLS },
-  { key: 'crossBorderCloud', label: 'Cross-border cloud processing', inScopeDelta: 12, noDelta: 0 },
-  { key: 'inHouseDevelopment', label: 'In-house software development', inScopeDelta: 49, noDelta: 0 },
-  { key: 'hasSOC', label: 'Security operations centre', inScopeDelta: 0, noDelta: -SOC_CONDITIONAL_CONTROLS },
-  { key: 'byodPermitted', label: 'BYOD permitted', inScopeDelta: 8, noDelta: 0 },
+  { key: 'inHouseDevelopment', label: 'In-house software development', inScopeDelta: 0, noDelta: -19 },
+  { key: 'outsourcedDevelopment', label: 'Outsourced development', inScopeDelta: 0, noDelta: -9 },
+  { key: 'mobileDevices', label: 'Mobile devices', inScopeDelta: 0, noDelta: -4 },
+  { key: 'wirelessNetwork', label: 'Wireless network', inScopeDelta: 0, noDelta: -4 },
+  { key: 'remoteAccess', label: 'Remote access', inScopeDelta: 0, noDelta: -2 },
 ];
 
 export function computeApplicable(p: OrgProfile): number {
@@ -161,9 +171,9 @@ export const REQUEST_PLAN_SUMMARY = {
   automatedControls: requestPlan
     .filter((r) => r.method === 'automated')
     .reduce((s, r) => s + r.controlsUnlocked, 0),
-  applicable: 340,
-  uncollectable: 24,
-  projectedCoveragePct: 94,
+  applicable: 557,
+  uncollectable: 39,
+  projectedCoveragePct: 93,
 };
 
 // ─── Module execution ledger (brief §7.3) ─────────────────────────────────────

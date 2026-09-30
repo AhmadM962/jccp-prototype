@@ -1,5 +1,8 @@
-// The scope-exclusion register: the 236 controls marked Not Applicable, why, and by what.
-// The demo seeds a representative, inspectable subset; the rest roll up as a count.
+// The scope-exclusion register: the 19 controls marked Not Applicable, why, and by what.
+// The framework measures as 93% universal — only 38 of 576 controls are conditional on
+// the five applicability variables — and this government-ministry demo organisation
+// triggers exactly one of them (no in-house software development), so all 19 exclusions
+// are seeded here; nothing is rolled up.
 
 export interface Exclusion {
   id: string;
@@ -13,65 +16,46 @@ export interface Exclusion {
 }
 
 export const SECTOR_BASELINE = {
-  /** typical Not-Applicable rate for a same-size public-sector entity (sector-agnostic in the demo) */
-  naRatePct: 34,
-  /** typical count of cloud-conditional controls a same-profile entity keeps in scope */
-  cloudServicesTypical: 1,
+  /** typical Not-Applicable rate for a same-size public-sector entity — low, because 93%
+   *  of the framework is universal and most entities trigger at most one or two of the
+   *  five conditional variables */
+  naRatePct: 5,
 };
 
-// 30 seeded exclusions of the 236. Counts by capability roll the rest up.
+// All 19 in-scope exclusions — the full register for this organisation, not a sample.
 export const EXCLUSIONS: Exclusion[] = [
   { id: 'JNCSF-58', description: 'Perform secure code review on all developed applications', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: '' },
-  { id: 'JNCSF-61', description: 'Apply static application security testing in the build pipeline', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house development; all software is COTS or SaaS.' },
-  { id: 'JNCSF-63', description: 'Apply dynamic application security testing before release', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house development; all software is COTS or SaaS.' },
-  { id: 'JNCSF-66', description: 'Maintain a software bill of materials for developed products', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: '' },
-  { id: 'JNCSF-70', description: 'Operate a secure software development lifecycle policy', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house development.' },
+  { id: 'JNCSF-59', description: 'Apply secure coding standards to in-house development', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house development; all software is COTS or vendor-delivered.' },
+  { id: 'JNCSF-60', description: 'Maintain a secure coding training programme for developers', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No developers employed by the entity.' },
+  { id: 'JNCSF-61', description: 'Apply static application security testing (SAST) in the build pipeline', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house development; all software is COTS or vendor-delivered.' },
+  { id: 'JNCSF-62', description: 'Apply software composition analysis to identify vulnerable dependencies', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: '' },
+  { id: 'JNCSF-63', description: 'Apply dynamic application security testing (DAST) before release', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house development; all software is COTS or vendor-delivered.' },
+  { id: 'JNCSF-64', description: 'Conduct manual penetration testing of developed applications before release', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No developed applications to test; vendor products are assessed under the outsourced-development controls.' },
+  { id: 'JNCSF-65', description: 'Remediate application security findings prior to production deployment', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: '' },
+  { id: 'JNCSF-66', description: 'Maintain a software bill of materials (SBOM) for developed products', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: '' },
+  { id: 'JNCSF-67', description: 'Sign and verify the integrity of build artifacts', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house build pipeline.' },
+  { id: 'JNCSF-68', description: 'Operate a secrets-management solution for development pipelines', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: '' },
+  { id: 'JNCSF-69', description: 'Scan container images built in-house for vulnerabilities pre-deployment', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No container images are built by the entity.' },
+  { id: 'JNCSF-70', description: 'Operate a secure software development lifecycle (SDLC) policy', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house development.' },
+  { id: 'JNCSF-71', description: 'Conduct design-stage security reviews for new application features', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: '' },
   { id: 'JNCSF-72', description: 'Separate development, test and production environments for in-house software', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house development.' },
+  { id: 'JNCSF-73', description: 'Restrict production data from being used in development or test environments', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: '' },
   { id: 'JNCSF-77', description: 'Manage source code repository access and integrity', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: '' },
+  { id: 'JNCSF-79', description: 'Maintain a code-signing key management procedure', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house build pipeline.' },
   { id: 'JNCSF-80', description: 'Threat-model developed applications during design', capability: 'dev', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house development.' },
-
-  { id: 'JNCSF-210', description: 'Segregate operational technology networks from corporate IT', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'hasOperationalTech = no', justification: 'No OT, ICS or SCADA assets operated by the entity.' },
-  { id: 'JNCSF-213', description: 'Apply an OT-specific patch and change management regime', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'hasOperationalTech = no', justification: 'No OT assets.' },
-  { id: 'JNCSF-216', description: 'Monitor OT protocols for anomalous commands', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'hasOperationalTech = no', justification: 'No OT assets.' },
-  { id: 'JNCSF-219', description: 'Maintain an OT asset inventory with safety classification', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'hasOperationalTech = no', justification: '' },
-  { id: 'JNCSF-222', description: 'Establish OT incident response procedures with safety authority', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'hasOperationalTech = no', justification: '' },
-
-  { id: 'JNCSF-158', description: 'Enforce mobile device management on personally-owned devices', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'byodPermitted = no', justification: 'BYOD not permitted; only corporate-managed devices connect.' },
-  { id: 'JNCSF-160', description: 'Containerise corporate data on personally-owned devices', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'byodPermitted = no', justification: 'BYOD not permitted.' },
-  { id: 'JNCSF-165', description: 'Apply conditional access checks for unmanaged devices', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'byodPermitted = no', justification: '' },
-
-  { id: 'JNCSF-291', description: 'Apply data-residency controls for cross-border cloud processing', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'crossBorderCloud = no', justification: 'All cloud processing is within Jordan.' },
-  { id: 'JNCSF-293', description: 'Assess foreign lawful-access exposure for cloud providers', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'crossBorderCloud = no', justification: 'All cloud processing is within Jordan.' },
-  { id: 'JNCSF-296', description: 'Maintain standard contractual clauses for international transfers', capability: 'arch', triggeredBy: 'Profile declaration', triggerFact: 'crossBorderCloud = no', justification: '' },
-
-  { id: 'JNCSF-121', description: 'Operate a public key infrastructure certificate authority', capability: 'del', triggeredBy: 'Scoping decision', triggerFact: 'no internal CA operated', justification: 'Certificates issued by a government shared CA; entity does not run a CA.' },
-  { id: 'JNCSF-124', description: 'Manage HSM key ceremonies for an internal CA', capability: 'del', triggeredBy: 'Scoping decision', triggerFact: 'no internal CA operated', justification: '' },
-  { id: 'JNCSF-330', description: 'Operate a bug bounty or coordinated disclosure programme', capability: 'ops', triggeredBy: 'Scoping decision', triggerFact: 'no public-facing products', justification: '' },
-  { id: 'JNCSF-333', description: 'Publish a security.txt disclosure contact', capability: 'ops', triggeredBy: 'Scoping decision', triggerFact: 'no public-facing products', justification: 'No externally-marketed products; citizen portal disclosure handled by NCSC route.' },
-  { id: 'JNCSF-347', description: 'Maintain a supplier code security assurance programme', capability: 'del', triggeredBy: 'Scoping decision', triggerFact: 'no software suppliers under contract', justification: '' },
-  { id: 'JNCSF-402', description: 'Operate a container image registry hardening baseline', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No container platform operated by the entity.' },
-  { id: 'JNCSF-405', description: 'Scan container images for vulnerabilities pre-deployment', capability: 'ops', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: '' },
-  { id: 'JNCSF-511', description: 'Operate a physical security operations centre with guard force', capability: 'found', triggeredBy: 'Scoping decision', triggerFact: 'facilities managed by MoPWH', justification: 'Building physical security is provided by the Ministry of Public Works; covered under their assessment.' },
-  { id: 'JNCSF-518', description: 'Maintain a fleet vehicle tracking and security programme', capability: 'found', triggeredBy: 'Scoping decision', triggerFact: 'no operational vehicle fleet', justification: '' },
-  { id: 'JNCSF-540', description: 'Conduct penetration testing of developed products before release', capability: 'found', triggeredBy: 'Profile declaration', triggerFact: 'inHouseDevelopment = no', justification: 'No in-house development.' },
 ];
 
-/** Per-capability count of ALL exclusions (seeded + rolled-up), summing to 236. */
+/** Per-capability count of all 19 exclusions. */
 export const EXCLUSION_COUNTS: Record<Exclusion['capability'], number> = {
-  arch: 3,
-  dev: 49,
-  del: 4,
-  ops: 119,
-  found: 61,
+  arch: 0,
+  dev: 19,
+  del: 0,
+  ops: 0,
+  found: 0,
 };
-// 3 + 49 + 4 + 119 + 61 = 236
+// 0 + 19 + 0 + 0 + 0 = 19
 
 export const EXCLUSION_TRIGGERS = [
-  { fact: 'inHouseDevelopment = no', label: 'No in-house software development', count: 62 },
-  { fact: 'hasOperationalTech = no', label: 'No operational technology', count: 41 },
-  { fact: 'crossBorderCloud = no', label: 'No cross-border cloud processing', count: 12 },
-  { fact: 'byodPermitted = no', label: 'BYOD not permitted', count: 8 },
-  { fact: 'scoping decision', label: 'Scoping decision (documented)', count: 89 },
-  { fact: 'national obligation', label: 'National-level obligation (Capability 6)', count: 24 },
+  { fact: 'inHouseDevelopment = no', label: 'No in-house software development', count: 19 },
 ];
-// 62 + 41 + 12 + 8 + 89 + 24 = 236
+// 19
