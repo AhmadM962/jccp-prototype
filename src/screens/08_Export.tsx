@@ -74,7 +74,7 @@ function oscalDoc(model: string, uploaded: boolean, overrideCount: number, opera
 
 const MODELS = [
   { name: 'Catalog', desc: 'The pinned JNCSF control catalogue (576 controls).' },
-  { name: 'Profile', desc: 'The applicable-control baseline for this organisation (340).' },
+  { name: 'Profile', desc: 'The applicable-control baseline for this organisation (557).' },
   { name: 'System Security Plan', desc: 'Declared implementation of each applicable control.' },
   { name: 'Assessment Results', desc: 'Findings, evidence class, and gap reasons per control.' },
   { name: 'POA&M', desc: 'Plan of action & milestones — ranked remediation.' },
@@ -112,7 +112,7 @@ function ReviewModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (re
         <p className="mt-2 text-sm text-slate-600">The package discloses to NCSC:</p>
         <ul className="mt-1.5 space-y-1 text-[13px] text-slate-700">
           <li>· The compliance interval, coverage and assurance level</li>
-          <li>· Per-control findings, evidence class and gap reasons (340 controls)</li>
+          <li>· Per-control findings, evidence class and gap reasons (557 controls)</li>
           <li>· The POA&amp;M and its target dates</li>
           <li>· Evidence <em>locators and hashes</em> — not the raw files</li>
           <li className="text-amber-700">· Evidence excerpts may contain account names (e.g. <code className="font-mono">svc-backup</code>, <code className="font-mono">a.haddad-adm</code>)</li>
@@ -152,7 +152,7 @@ export default function ExportScreen() {
               regulator sees the interval — not a bare number.
             </p>
             <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-emerald-700">
-              <BadgeCheck size={14} /> Validates against OSCAL 1.1.2 · 5 models · 340 control implementations · 0 errors
+              <BadgeCheck size={14} /> Validates against OSCAL 1.1.2 · 5 models · 557 control implementations · 0 errors
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">

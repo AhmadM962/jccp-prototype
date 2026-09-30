@@ -146,8 +146,8 @@ export default function Exclusions() {
           </table>
         </div>
         <p className="mt-3 text-[11px] text-slate-400">
-          Showing a representative {EXCLUSIONS.length} of {TOTALS.notApplicable} exclusions. The remainder
-          roll up in the capability counts above.
+          Showing all {EXCLUSIONS.length} of {TOTALS.notApplicable} exclusions — the full register for this
+          organisation, not a sample.
         </p>
       </Card>
     </div>
