@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Users, Clock, X, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Check, Users, Clock, X, ShieldCheck, ShieldQuestion } from 'lucide-react';
 import { Card, Pill, Button, SectionLabel } from '../components/ui';
 import StateBadge, { STATE_META } from '../components/StateBadge';
 import EvidenceTrail from '../components/EvidenceTrail';
@@ -13,6 +13,8 @@ import {
   EVIDENCE_CLASS_LABEL,
   GAP_REASON_LABEL,
   EVIDENCE_CEILING,
+  EVIDENCE_BASIS_LABEL,
+  EVIDENCE_BASIS_MEANING,
   type EvidenceClass,
   type ControlState,
 } from '../data/controls';
@@ -174,6 +176,14 @@ export default function ControlDetail() {
       {/* 3. Evidence trail */}
       {canSeeEvidence ? (
         <Card dataTour="cd-evidence" title="Evidence trail" subtitle="Every finding traces to a quote or an artifact locator with a hash">
+          <div className="mb-3 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px]">
+            <ShieldQuestion size={14} className="mt-0.5 shrink-0 text-slate-400" />
+            <span>
+              <span className="font-semibold text-slate-700">Evidence basis: {EVIDENCE_BASIS_LABEL[control.evidenceBasis]}.</span>{' '}
+              <span className="text-slate-600">{EVIDENCE_BASIS_MEANING[control.evidenceBasis]}</span>{' '}
+              <span className="text-slate-400">This is why an absent finding here can be a Gap rather than Unknown.</span>
+            </span>
+          </div>
           <EvidenceTrail items={evItems} />
         </Card>
       ) : (
@@ -183,6 +193,19 @@ export default function ControlDetail() {
             other personal data.
           </p>
         </Card>
+      )}
+
+      {control.noConclusivePath && (
+        <div className="flex items-start gap-2 rounded-lg border-2 border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
+          <ShieldQuestion size={16} className="mt-0.5 shrink-0 text-violet-500" />
+          <div>
+            <p className="font-semibold">No conclusive evidence path.</p>
+            <p className="mt-1 leading-relaxed text-violet-800">
+              This control requires an organisational arrangement rather than a system state. It can reach
+              Partial on documentary evidence, but never Compliant without analyst attestation.
+            </p>
+          </div>
+        </div>
       )}
 
       {/* 4. Evidence sufficiency ladder */}

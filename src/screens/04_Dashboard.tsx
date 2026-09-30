@@ -20,7 +20,7 @@ import { capabilities, TOTALS } from '../data/capabilities';
 import { ASSURANCE_LEVELS } from '../lib/scoring';
 import { coverageBreakdown, completenessStatement } from '../lib/coverage';
 import { dashboardView } from '../lib/derive';
-import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL } from '../data/controls';
+import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
 import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
 import { EXCLUSIONS, SECTOR_BASELINE } from '../data/exclusions';
 import { sectorById, regulatorDisplay } from '../data/sectors';
@@ -504,6 +504,18 @@ export default function Dashboard() {
           <span>
             <strong>not_requested = 0</strong> is a <em>design invariant</em>. The tool always asks for every
             artifact it needs; a non-zero value here would indicate a defect in the request planner.
+          </span>
+        </div>
+        <div className="mt-2 flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+          <Info size={13} className="mt-0.5 shrink-0 text-slate-400" />
+          <span>
+            Every evidence signal records why it is or isn't negative-capable, framework-wide: of{' '}
+            <strong className="tnum">{EVIDENCE_SIGNAL_TOTAL}</strong> signals,{' '}
+            <strong className="tnum">{EVIDENCE_BASIS_BREAKDOWN.find((b) => b.basis === 'uncertainty')?.count}</strong>{' '}
+            is false through uncertainty rather than rule or judgement — the recoverable case. Also,{' '}
+            <strong className="tnum">{NO_CONCLUSIVE_PATH_STATS.noPath}</strong> of{' '}
+            <strong className="tnum">{NO_CONCLUSIVE_PATH_STATS.authoredTotal}</strong> authored controls have no
+            conclusive path at all — each such control's detail page states the limit.
           </span>
         </div>
       </Card>
