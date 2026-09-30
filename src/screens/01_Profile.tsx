@@ -13,17 +13,20 @@ import {
   type OrgProfile,
   type Ternary,
 } from '../data/scenario';
-import { SECTORS, sectorById } from '../data/sectors';
+import { SECTORS, sectorById, regulatorDisplay } from '../data/sectors';
 import { SECTOR_BASELINE } from '../data/exclusions';
 import { Term } from '../tour/Term';
 
+// The five measured JNCSF applicability variables (38 of 576 controls are conditional on
+// these; the framework is 93% universal). "Operational technology", "cross-border
+// processing" and similar candidates did not survive contact with the framework text —
+// OT is governed by the separate CICSC instrument, so JNCSF does not gate on it.
 const TOGGLES: { key: keyof OrgProfile; label: string; hint: string }[] = [
-  { key: 'hasOperationalTech', label: 'Operational technology', hint: 'ICS / SCADA / building management — adds 41 controls' },
-  { key: 'usesCloud', label: 'Cloud services', hint: 'declaring "no" removes 23 controls — the evidence bundle is cross-checked' },
-  { key: 'crossBorderCloud', label: 'Cross-border cloud processing', hint: 'data leaves Jordan — adds 12 controls' },
-  { key: 'inHouseDevelopment', label: 'In-house software development', hint: 'adds 49 Development controls' },
-  { key: 'hasSOC', label: 'Security operations centre', hint: 'declaring "no" removes 6 monitoring controls' },
-  { key: 'byodPermitted', label: 'BYOD permitted', hint: 'adds 8 mobile-device controls' },
+  { key: 'inHouseDevelopment', label: 'In-house software development', hint: 'declaring "no" removes 19 Development controls' },
+  { key: 'outsourcedDevelopment', label: 'Outsourced development', hint: 'declaring "no" removes 9 controls' },
+  { key: 'mobileDevices', label: 'Mobile devices', hint: 'declaring "no" removes 4 controls' },
+  { key: 'wirelessNetwork', label: 'Wireless network', hint: 'declaring "no" removes 4 controls' },
+  { key: 'remoteAccess', label: 'Remote access', hint: 'declaring "no" removes 2 controls' },
 ];
 
 const TRI: Ternary[] = ['yes', 'no', 'unknown'];
@@ -97,10 +100,13 @@ export default function Profile() {
               <SectionLabel>Sector</SectionLabel>
               <select value={profile.sector} onChange={(e) => setProfile({ sector: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 {SECTORS.map((s) => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
+                  <option key={s.id} value={s.id} title={s.arabicLabel}>{s.label}</option>
                 ))}
               </select>
-              <span className="mt-1 block text-[11px] text-slate-400">Regulator: {sectorById(profile.sector).regulator}</span>
+              <span className="mt-1 block text-[11px] text-slate-400" dir="rtl">{sectorById(profile.sector).arabicLabel}</span>
+              <span className={`mt-1 block text-[11px] ${sectorById(profile.sector).regulator ? 'text-slate-400' : 'font-medium text-amber-700'}`}>
+                Regulator: {regulatorDisplay(profile.sector)}
+              </span>
             </label>
             <label className="block">
               <SectionLabel>Size band</SectionLabel>
@@ -145,7 +151,7 @@ export default function Profile() {
           </div>
 
           <SectionLabel>
-            <span className="mt-5 block">Architecture — answer Yes, No, or Don't know</span>
+            <span className="mt-5 block">Applicability variables — answer Yes, No, or Don't know</span>
           </SectionLabel>
           <div data-tour="profile-toggles" className="grid gap-2">
             {TOGGLES.map((t) => (
@@ -153,11 +159,21 @@ export default function Profile() {
                 key={t.key}
                 label={t.label}
                 hint={t.hint}
-                dataTour={t.key === 'usesCloud' ? 'profile-cloud' : undefined}
                 value={profile[t.key] as Ternary}
                 onChange={(v) => setProfile({ [t.key]: v } as Partial<OrgProfile>)}
               />
             ))}
+
+            {/* Cloud services — NOT a JNCSF applicability condition (governed separately by
+                the MoDEE cloud policy). Kept only to drive the scoping-challenge demo below:
+                a declaration the system cross-checks against collected evidence. */}
+            <TriToggle
+              label="Cloud services"
+              hint="does not change the applicable count — cloud is governed by the MoDEE cloud policy, not JNCSF. Declarations are still cross-checked against evidence."
+              dataTour="profile-cloud"
+              value={profile.usesCloud}
+              onChange={(v) => setProfile({ usesCloud: v })}
+            />
 
             {/* CICSC scope boundary — a separate framework, not a JNCSF applicability condition */}
             <div className="rounded-lg border border-slate-200 px-3 py-2.5">
@@ -223,9 +239,9 @@ export default function Profile() {
                   <h3 className="text-sm font-bold text-red-900">Contradiction — scoping decision blocked</h3>
                   <p className="mt-1 text-sm leading-relaxed text-red-800">
                     Your profile declares no cloud services, but the collected bundle contains cloud agent
-                    entries in the software inventory and cloud endpoints in the firewall configuration. This
-                    scoping decision is <strong>blocked pending review</strong> — the 23 cloud-conditional
-                    controls cannot be excluded while the evidence contradicts the declaration.
+                    entries in the software inventory and cloud endpoints in the firewall configuration. Cloud
+                    use does not change which controls apply — JNCSF does not gate on it — but a declaration
+                    the evidence contradicts is <strong>blocked pending review</strong> regardless.
                   </p>
                   <div className="mt-3">
                     <Button variant="danger" onClick={() => { setProfile({ usesCloud: 'yes' }); clearProfileChallenge(); }}>
@@ -248,8 +264,9 @@ export default function Profile() {
                   <h3 className="text-sm font-bold text-amber-900">Confirm this scoping decision</h3>
                   <p className="mt-1 text-sm leading-relaxed text-amber-800">
                     {sectorById(profile.sector).label} entities of {profile.sizeBand} almost always consume at
-                    least one cloud service. Declaring none removes 23 controls from your assessment. Please
-                    confirm and record a justification.
+                    least one cloud service. This declaration does not change which controls apply — cloud is
+                    governed by the MoDEE cloud policy, not JNCSF — but it will be cross-checked against the
+                    evidence bundle. Please confirm and record a justification.
                   </p>
                   <textarea
                     value={justification}
@@ -350,7 +367,8 @@ export default function Profile() {
           )}
           {profile.usesCloud === 'no' && (
             <p className="mt-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-700">
-              Cloud declared absent — 23 cloud-conditional controls removed from scope.
+              Cloud declared absent — the applicable count is unaffected (cloud is not a JNCSF scoping
+              condition), but this declaration is cross-checked against collected evidence.
             </p>
           )}
           <p className="mt-3 text-[11px] leading-relaxed text-slate-500">

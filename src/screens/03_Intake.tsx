@@ -355,12 +355,12 @@ export default function Intake() {
       {contradiction && (
         <div className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
           <div className="flex items-center gap-2 font-bold">
-            <AlertTriangle size={16} /> Scoping contradiction — blocked pending review
+            <AlertTriangle size={16} /> Declaration contradiction — blocked pending review
           </div>
           <p className="mt-1">
             The collected bundle contains cloud agent entries, but the profile declares no cloud services.
-            The scoping decision is blocked pending review on the{' '}
-            <RouterLink to="/profile" className="font-semibold underline">Profile</RouterLink> screen.
+            Cloud use is not a JNCSF scoping condition, but a contradicted declaration is blocked pending
+            review on the <RouterLink to="/profile" className="font-semibold underline">Profile</RouterLink> screen.
           </p>
         </div>
       )}
