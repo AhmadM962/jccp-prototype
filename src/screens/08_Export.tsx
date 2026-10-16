@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileJson, ShieldCheck, X, Download, BadgeCheck, Eye } from 'lucide-react';
+import { FileJson, ShieldCheck, X, Download, Info, Eye } from 'lucide-react';
 import { Card, Pill, Button } from '../components/ui';
 import { Provenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
@@ -152,8 +152,8 @@ export default function ExportScreen() {
               Five OSCAL models. Coverage metadata and the assurance level travel inside the package, so the
               regulator sees the interval — not a bare number.
             </p>
-            <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-emerald-700">
-              <BadgeCheck size={14} /> OSCAL 1.1.2 · 5 models · 557 control implementations. Validation runs in the assessment engine, not in this preview.
+            <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-slate-500">
+              <Info size={14} /> OSCAL 1.1.2 · 5 models · 557 control implementations. Validation runs in the assessment engine, not in this preview.
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">

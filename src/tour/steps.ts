@@ -301,7 +301,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'closing',
     act: 'Done',
     title: 'That’s the full journey',
-    body: 'What you have just seen: scoping that is visible and challenged · evidence that must be proven, not claimed · a result that states its own uncertainty · findings traceable to source · and a prioritised plan of action. Everything ran in your browser. No data was collected or transmitted.',
+    body: 'What you have just seen: scoping that is visible and challenged · evidence that must be proven, not claimed · a result that states its own uncertainty · findings traceable to source · and a prioritised plan of action. Everything ran in your browser. Nothing is transmitted, and your progress is kept in this browser only.',
     final: true,
   },
 ];

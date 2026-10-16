@@ -1,5 +1,7 @@
 // lib/scoring.ts — pure, deterministic bounded-score math (brief §8).
 
+import type { ShareBasis } from '../data/controls';
+
 export const WEIGHTS = { green: 1.0, red: 0.0 } as const;
 
 // Yellow partial-credit quartiles by deployment share (a fraction of the estate, 0–1).
@@ -20,13 +22,15 @@ export function yellowQuartileForShare(share: number): 1 | 2 | 3 | 4 {
   return 4;
 }
 
-/** Partial credit a Yellow control earns for its deployment share. A share that rests on
- *  testimony alone is capped at the second quartile however high the claim. An unknown
+/** Partial credit a Yellow control earns for its deployment share. A `claimed` share — one a
+ *  person asserted rather than one counted from collected data — is capped at the second
+ *  quartile however high the claim. Whether a share is claimed is a fact in the data
+ *  (`ControlSnapshot.deploymentShareBasis`); this function only applies the rule. An unknown
  *  share keeps the flat 0.5. */
-export function yellowWeightForShare(share: number | undefined, testimonyOnly = false): number {
+export function yellowWeightForShare(share: number | undefined, basis: ShareBasis = 'measured'): number {
   if (share === undefined) return 0.5;
   const credit = YELLOW_QUARTILE[`q${yellowQuartileForShare(share)}` as keyof typeof YELLOW_QUARTILE];
-  return testimonyOnly ? Math.min(credit, YELLOW_QUARTILE.q2) : credit;
+  return basis === 'claimed' ? Math.min(credit, YELLOW_QUARTILE.q2) : credit;
 }
 
 export interface BoundedScore {
@@ -42,6 +46,18 @@ export interface BoundedScore {
 export function assertInterval(lower: number, upper: number, where: string): void {
   if (lower > upper) {
     throw new Error(`Impossible interval in ${where}: lower ${lower} > upper ${upper}`);
+  }
+}
+
+/** The runtime guard at the point where an interval reaches the screen (called by
+ *  `ScoreInterval`, which every drawn band passes through). Throws unless lower <= upper and,
+ *  when a width is given, the width equals upper - lower: the band, the headline numbers and any
+ *  caption built from the same width cannot disagree. Units are whatever the caller uses, as
+ *  long as lower, upper and width share them. */
+export function assertDisplayedInterval(lower: number, upper: number, width: number | undefined, where: string): void {
+  assertInterval(lower, upper, where);
+  if (width !== undefined && Math.abs(width - (upper - lower)) > 1e-6) {
+    throw new Error(`Displayed interval inconsistent in ${where}: width ${width} != upper ${upper} - lower ${lower}`);
   }
 }
 

@@ -107,22 +107,24 @@ export default function ControlDetail() {
   const oldest = evItems.reduce((m, it) => Math.max(m, ageDays(it.timestamp)), 0);
   const stale = oldest > control.maxAgeDays;
 
-  // Partial credit this control's deployment share earns (src/lib/scoring.ts). A share that rests
-  // on testimony alone — the evidence in effect for this control is testimony or nothing — is
-  // capped at the second quartile. The aggregate on the dashboard does not use this (flat 0.5).
+  // Partial credit this control's deployment share earns (src/lib/scoring.ts). A share whose basis
+  // is `claimed` is capped at the second quartile; the basis is a fact in the data
+  // (deploymentShareBasis on the snapshot in effect), not something derived here. A missing basis is
+  // treated as claimed. The aggregate on the dashboard does not use this (flat 0.5).
   let shareCreditText: string | undefined;
   if (control.deploymentSharePct !== undefined) {
     const share = control.deploymentSharePct / 100;
-    const testimonyOnly = effectiveClass === 'testimonial' || effectiveClass === 'none';
-    const credit = yellowWeightForShare(share, testimonyOnly);
+    const basis = base.deploymentShareBasis ?? 'claimed';
+    const credit = yellowWeightForShare(share, basis);
     const capped = credit < yellowWeightForShare(share);
     const quartile = capped
-      ? `${YELLOW_QUARTILE_NAME[2]}; capped because the share rests on testimony alone`
+      ? `${YELLOW_QUARTILE_NAME[2]}; capped because the share is claimed, not measured`
       : YELLOW_QUARTILE_NAME[yellowQuartileForShare(share)];
+    const shown = `Deployment share ${control.deploymentSharePct}% (${basis})`;
     shareCreditText =
       effectiveState === 'yellow'
-        ? `Deployment share ${control.deploymentSharePct}% — partial credit ${credit} (${quartile}) for this control.`
-        : `Deployment share ${control.deploymentSharePct}% — would earn partial credit ${credit} (${quartile}) if Partial; this control is currently ${STATE_META[effectiveState].label}, so none applies.`;
+        ? `${shown} — partial credit ${credit} (${quartile}) for this control.`
+        : `${shown} — would earn partial credit ${credit} (${quartile}) if Partial; this control is currently ${STATE_META[effectiveState].label}, so none applies.`;
   }
 
   const related = controls

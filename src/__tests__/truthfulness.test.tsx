@@ -35,7 +35,7 @@ beforeEach(() => {
 });
 
 describe('3.1 the storage claim', () => {
-  it.each(['no data is stored', 'Nothing you do here is saved'])('"%s" is not in src/', (needle) => {
+  it.each(['no data is stored', 'Nothing you do here is saved', 'No data was collected or transmitted'])('"%s" is not in src/', (needle) => {
     expect(filesContaining(needle)).toEqual([]);
   });
   it('the replacement text is present', () => {
@@ -43,6 +43,7 @@ describe('3.1 the storage claim', () => {
     expect(filesContaining('Your progress is saved in this browser so you can pick up where you left off.')).toEqual([
       '/src/tour/WelcomeGate.tsx',
     ]);
+    expect(filesContaining('Nothing is transmitted, and your progress is kept in this browser only.')).toEqual(['/src/tour/steps.ts']);
   });
 });
 
@@ -58,10 +59,11 @@ describe('3.2 partial-credit quartile', () => {
     expect(yellowWeightForShare(0.25)).toBe(0.25);
     expect(yellowWeightForShare(0)).toBe(0.1);
   });
-  it('a share known only from testimony is capped at the second quartile', () => {
-    expect(yellowWeightForShare(0.8, true)).toBe(0.5);
-    expect(yellowWeightForShare(0.99, true)).toBe(0.5);
-    expect(yellowWeightForShare(0.3, true)).toBe(0.25);
+  it('a claimed share is capped at the second quartile', () => {
+    expect(yellowWeightForShare(0.8, 'claimed')).toBe(0.5);
+    expect(yellowWeightForShare(0.99, 'claimed')).toBe(0.5);
+    expect(yellowWeightForShare(0.3, 'claimed')).toBe(0.25);
+    expect(yellowWeightForShare(0.8, 'measured')).toBe(0.85);
   });
   it('yellowWeightForShare has at least one caller in src/screens/', () => {
     const callers = SRC.filter(([p, t]) => p.startsWith('/src/screens/') && t.includes('yellowWeightForShare('));
@@ -70,13 +72,13 @@ describe('3.2 partial-credit quartile', () => {
   it('Control Detail shows the actual credit (artifact-backed share, Partial)', () => {
     useAssessment.setState({ evidenceUploaded: true });
     const { container } = renderAt('/control/JNCSF-459', <ControlDetail />, '/control/:id');
-    expect(container.textContent).toContain('Deployment share 78% — partial credit 0.85 (top quartile) for this control.');
+    expect(container.textContent).toContain('Deployment share 78% (measured) — partial credit 0.85 (top quartile) for this control.');
     expect(container.textContent).not.toContain('partial-credit quartile applied to the Yellow weighting');
   });
-  it('Control Detail applies the testimony cap before upload and says so', () => {
+  it('Control Detail applies the cap to a claimed share before upload and says so', () => {
     const { container } = renderAt('/control/JNCSF-102', <ControlDetail />, '/control/:id');
     expect(container.textContent).toContain(
-      'Deployment share 80% — partial credit 0.5 (second quartile; capped because the share rests on testimony alone) for this control.',
+      'Deployment share 80% (claimed) — partial credit 0.5 (second quartile; capped because the share is claimed, not measured) for this control.',
     );
   });
   it('Control Detail does not claim credit for a control that is not Partial', () => {
@@ -103,6 +105,13 @@ describe('3.3 the OSCAL validation claim', () => {
     const line = Array.from(container.querySelectorAll('p')).find((p) => p.textContent?.includes('Validation runs in the assessment engine'));
     expect(line?.textContent).toContain('OSCAL 1.1.2 · 5 models · 557 control implementations. Validation runs in the assessment engine, not in this preview.');
     expect(line?.closest('[data-tier]')?.getAttribute('data-tier')).toBe('planned');
+  });
+  it('the line carries a neutral mark, not a green tick', () => {
+    const { container } = renderAt('/export', <ExportScreen />);
+    const line = Array.from(container.querySelectorAll('p')).find((p) => p.textContent?.includes('Validation runs in the assessment engine'))!;
+    expect(line.className).not.toMatch(/emerald|green/);
+    expect(line.querySelector('svg')?.getAttribute('class') ?? '').not.toMatch(/check/);
+    expect(raw['/src/screens/08_Export.tsx']).not.toContain('BadgeCheck');
   });
 });
 
