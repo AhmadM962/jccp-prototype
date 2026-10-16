@@ -175,7 +175,7 @@ export const REQUEST_PLAN_SUMMARY = {
   applicable: planAfter.views.unweighted.applicable,
   /** applicable controls with at least one authored evidence path: what the plan can ask about */
   authoredScope: planAfter.views.authored_scope.applicable,
-  /** Unknown because no evidence requirement is authored: stay Unknown whatever is provided */
+  /** Unknown because no evidence requirement is authored: stay Unknown unless an artifact collected for another control shows one unmet */
   unauthored: planAfter.unknownUnauthored,
   /** coverage if every artifact were provided: every control except the unauthored Unknowns */
   projectedCoveragePct: +(((planAfter.views.unweighted.applicable - planAfter.unknownUnauthored) * 100) / planAfter.views.unweighted.applicable).toFixed(1),

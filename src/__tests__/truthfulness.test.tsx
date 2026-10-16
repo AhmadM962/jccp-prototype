@@ -144,13 +144,18 @@ describe('3.4 projection floor, pool and invariant', () => {
     expect(p.resultingWidthPts).toBeCloseTo(FLOOR, 10);
     expect(p.bestCase.lower).toBeLessThanOrEqual(p.bestCase.upper);
   });
-  it('the dashboard and the projection card quote the same floor', () => {
+  it('the dashboard (before the upload) and the projection card (from the post-upload verdict) each quote their own floor, and they differ by exactly the control observed from the bundle', () => {
+    const before = MINISTRY.before;
+    const FLOOR_BEFORE = bandFloorPts(APPLICABLE_CONTROLS, before.unknownUnauthored + before.views.unweighted.width.uncollectable[0]);
+    expect(FLOOR_BEFORE).toBeCloseTo((492 / 557) * 100, 10);
+    expect(FLOOR_BEFORE.toFixed(1)).toBe('88.3');
+    expect(((FLOOR_BEFORE - FLOOR) * APPLICABLE_CONTROLS) / 100).toBeCloseTo(1, 10);
     const dash = renderAt('/dashboard', <Dashboard />);
-    expect(dash.container.textContent).toContain(`at best to ${FLOOR.toFixed(1)} points`);
+    expect(dash.container.textContent).toContain(`by the evidence the plan asks for, at best to ${FLOOR_BEFORE.toFixed(1)} points`);
     dash.unmount();
     const rem = renderAt('/remediation', <Remediation />);
     fireEvent.click(rem.getByText("What you didn't provide"));
-    expect(rem.container.textContent).toContain(`The band cannot fall below ${FLOOR.toFixed(1)} pts of width`);
+    expect(rem.container.textContent).toContain(`the band cannot fall below ${FLOOR.toFixed(1)} pts of width`);
   });
   it('providing everything lands exactly on the floor', () => {
     useAssessment.setState({ providedRequests: ['req-siem', 'req-linux', 'req-priv', 'req-backup', 'req-lms'] });
@@ -182,7 +187,7 @@ describe('3.5 the chat quotes the live interval', () => {
   it('differs between before and after upload and matches the dashboard each time', () => {
     const before = askScore(renderAt('/chat', <Chat />));
     expect(before).toContain(quoted(false));
-    expect(before).toContain('0.3–97.5% at 2.9% coverage'); // the engine's data under rule R (the pre-upload projection stated in ministry.ts)
+    expect(before).toContain('0.3–97.6% at 2.7% coverage'); // the engine's data under rule R (the pre-upload projection stated in ministry.ts)
     document.body.innerHTML = '';
     useAssessment.setState({ evidenceUploaded: true });
     const after = askScore(renderAt('/chat', <Chat />));

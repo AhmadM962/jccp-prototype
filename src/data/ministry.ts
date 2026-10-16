@@ -11,12 +11,11 @@
 //   - all 21 Compliant verdicts rest on machine collection (evidence kind machine_collected);
 //     none rests on a document, so no Compliant can exist before an upload;
 //   - the engine's assurance distribution over the settled verdicts has 15 at L0 or L1, and
-//     those 15 are exactly the before-state's verdicts outside the unauthored set.
-// The one thing in `before` that is a choice, and not the engine's data, is JNCSF-139: it has no
-// authored path (so it is outside the authored scope) but carries a Gap whose basis is `observed`,
-// which the engine's assurance rule scores as L2 -- machine evidence that presumably arrived with
-// collection. It is KEPT in `before` (16 verdicts = 15 + 1), because no authored
-// path produces it and the authored-scope movement is the same either way. One control, either way.
+//     those 15 are exactly the before-state's verdicts, with no exception.
+// A control with no authored path can still have a verdict: 1 does (JNCSF-139), a Gap whose basis is
+// `observed` over an artifact. An artifact arrives with the bundle, so it is Unknown in `before` and a Gap in
+// `after`: the upload changes a control outside the authored scope, by observation. The golden file carries no
+// date on a claim, so nothing in the data shows that artifact predates the bundle.
 //
 // Tier: illustrative. These are real engine figures, but the prototype does not read them from the engine.
 
@@ -78,30 +77,30 @@ export const MINISTRY: { before: StateFigures; after: StateFigures } = {
   before: {
     green: 0,
     yellow: 14,
-    red: 2,
-    unknown: 541,
-    unknownUnauthored: 491,
+    red: 1,
+    unknown: 542,
+    unknownUnauthored: 492,
     unevidencedByReason: { not_provided: 50 },
     partialCredit: [9, 5],
     creditNumerator: [9, 5],
     views: {
       unweighted: {
-        applicable: APPLICABLE_CONTROLS, unknown: 541, known: 16,
-        lower: [9, 2785], upper: [2714, 2785],
-        coverage: [16, APPLICABLE_CONTROLS], totalWeight: [APPLICABLE_CONTROLS, 1],
-        width: { unauthored: [491, APPLICABLE_CONTROLS], unevidenced: [50, APPLICABLE_CONTROLS], uncollectable: [0, 1] },
+        applicable: APPLICABLE_CONTROLS, unknown: 542, known: 15,
+        lower: [9, 2785], upper: [2719, 2785],
+        coverage: [15, APPLICABLE_CONTROLS], totalWeight: [APPLICABLE_CONTROLS, 1],
+        width: { unauthored: [492, APPLICABLE_CONTROLS], unevidenced: [50, APPLICABLE_CONTROLS], uncollectable: [0, 1] },
       },
       weighted_including_underived: {
-        applicable: APPLICABLE_CONTROLS, unknown: 541, known: 16,
-        lower: [167, 49840], upper: [48537, 49840],
-        coverage: [16, APPLICABLE_CONTROLS], totalWeight: [2492, 5],
-        width: { unauthored: [625, 712], unevidenced: [33, 356], uncollectable: [0, 1] },
+        applicable: APPLICABLE_CONTROLS, unknown: 542, known: 15,
+        lower: [167, 49840], upper: [48637, 49840],
+        coverage: [15, APPLICABLE_CONTROLS], totalWeight: [2492, 5],
+        width: { unauthored: [4385, 4984], unevidenced: [33, 356], uncollectable: [0, 1] },
       },
       weighted_derived_only: {
-        applicable: 390, unknown: 377, known: 13,
-        lower: [97, 33140], upper: [32067, 33140],
-        coverage: [1, 30], totalWeight: [1657, 5],
-        width: { unauthored: [2835, 3314], unevidenced: [181, 1657], uncollectable: [0, 1] },
+        applicable: 390, unknown: 378, known: 12,
+        lower: [97, 33140], upper: [32167, 33140],
+        coverage: [2, 65], totalWeight: [1657, 5],
+        width: { unauthored: [2845, 3314], unevidenced: [181, 1657], uncollectable: [0, 1] },
       },
       authored_scope: {
         applicable: 65, unknown: 50, known: 15,
@@ -114,7 +113,7 @@ export const MINISTRY: { before: StateFigures; after: StateFigures } = {
       arch: { applicable: 25, authored: 5, green: 0, yellow: 2, red: 0, unknown: 23, unknownUnauthored: 20, creditNumerator: [1, 5] },
       dev: { applicable: 50, authored: 3, green: 0, yellow: 0, red: 0, unknown: 50, unknownUnauthored: 47, creditNumerator: [0, 1] },
       del: { applicable: 44, authored: 44, green: 0, yellow: 11, red: 1, unknown: 32, unknownUnauthored: 0, creditNumerator: [3, 2] },
-      ops: { applicable: 299, authored: 9, green: 0, yellow: 1, red: 1, unknown: 297, unknownUnauthored: 289, creditNumerator: [1, 10] },
+      ops: { applicable: 299, authored: 9, green: 0, yellow: 1, red: 0, unknown: 298, unknownUnauthored: 290, creditNumerator: [1, 10] },
       found: { applicable: 139, authored: 4, green: 0, yellow: 0, red: 0, unknown: 139, unknownUnauthored: 135, creditNumerator: [0, 1] },
     },
   },
@@ -180,13 +179,43 @@ export const ASSURANCE = {
   reported: 'L1',
 } as const;
 
-/** The two premises of the before-state's rule, asserted by the generator from the engine's output. */
+/** The premises of the before-state's rule, asserted by the generator from the engine's output. */
 export const RULE_R_PROVENANCE = {
   /** Compliant verdicts in the engine's output, and how many of them rest on machine collection */
   compliant: 21,
   compliantMachineCollected: 21,
-  /** the before-state's verdicts, the L0/L1 verdicts among them, and those kept from outside the authored scope */
-  beforeVerdicts: 16,
+  /** the before-state's verdicts, which are exactly the engine's L0 and L1 verdicts */
+  beforeVerdicts: 15,
   beforeVerdictsAtL0OrL1: 15,
-  beforeVerdictsKeptOutsideAuthoredScope: 1,
+  /** verdicts for controls with no authored path: observed from an artifact, so they arrive with the bundle */
+  verdictsOutsideAuthoredScope: 1,
 } as const;
+
+/** Controls with no authored evidence path that nonetheless have a verdict after the upload. */
+export const VERDICT_OUTSIDE_AUTHORED_SCOPE: readonly { id: string; state: 'green' | 'yellow' | 'red'; gapBasis: string | null }[] = [{ id: 'JNCSF-139', state: 'red', gapBasis: 'observed' }];
+
+export type CheckCause = 'declined_module' | 'unresolved_profile_challenge' | 'unusable_evidence_proportion' | 'na_rate_above_baseline';
+export type CheckStatus = 'passed' | 'triggered' | 'not_assessed';
+/** One of the engine's demotion checks. An assessed check carries its measured value (count of `of`) and the
+ *  threshold it was compared with; a check that could not run carries neither and says why in `because`. */
+export interface DemotionCheck {
+  cause: CheckCause;
+  status: CheckStatus;
+  count: number | null;
+  of: number | null;
+  threshold: Frac | null;
+  /** why a check could not run */
+  because: 'not_modelled' | 'no_baseline' | null;
+  components: readonly (readonly [string, number])[];
+}
+
+/** Every demotion check the engine runs, always all four, in the engine's order. `DEMOTIONS_APPLIED` is how
+ *  many levels the reported level was demoted from the base level. */
+export const DEMOTION_CHECKS: readonly DemotionCheck[] = [
+  { cause: 'declined_module', status: 'passed', count: 4, of: 56, threshold: [1, 5], because: null, components: [] },
+  { cause: 'unresolved_profile_challenge', status: 'not_assessed', count: null, of: null, threshold: null, because: 'not_modelled', components: [] },
+  { cause: 'unusable_evidence_proportion', status: 'passed', count: 1, of: APPLICABLE_CONTROLS, threshold: [1, 5], because: null, components: [['stale', 1], ['future_dated', 0]] },
+  { cause: 'na_rate_above_baseline', status: 'not_assessed', count: null, of: null, threshold: null, because: 'no_baseline', components: [] },
+];
+export const DEMOTIONS_APPLIED = 0;
+export const BASE_LEVEL = 'L1';

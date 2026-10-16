@@ -104,7 +104,8 @@ interface Seed {
   population?: string;
   showcase?: boolean;
   maxAge?: number;
-  /** no evidence requirement authored: Unknown (`unauthored`) before and after, never changed */
+  /** no evidence requirement authored: Unknown (`unauthored`) in both snapshots. True of every unauthored SEED; it is not
+   *  a property of unauthored controls (the engine has one, JNCSF-139, with a verdict, and it is not in the sample). */
   unauthored?: boolean;
 }
 

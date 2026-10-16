@@ -11,6 +11,7 @@ import { TOTALS } from '../data/capabilities';
 import { GAP_REASON_BREAKDOWN, controls } from '../data/controls';
 import { APPLICABLE_CONTROLS } from '../data/figures';
 import { MINISTRY } from '../data/ministry';
+import { movedOutOfUnknown } from '../lib/coverage';
 import { evidenceRequests } from '../data/remediation';
 import { bandFloorPts, projectFromNumerator } from '../lib/scoring';
 
@@ -34,20 +35,21 @@ beforeEach(() => {
 });
 
 describe('4.1 each "resolved" figure is computed from its own source and named precisely', () => {
-  // Round 2: the upload only moves controls that have an authored evidence requirement, so "resolved" is
-  // stated inside the authored scope. The framework-wide Unknown count (541 before, 505 after) also moves
-  // by 36, because nothing outside the scope moves; the sample is a different population again.
+  // Round 2: "resolved" is stated inside the authored scope, where the upload meets a requirement. The
+  // framework-wide Unknown count (542 before, 505 after) moves by 37: those 36, and one control outside the scope
+  // that an artifact in the bundle shows unmet (observation, not a requirement). The sample is a different population again.
   const scope = { b: MINISTRY.before.views.authored_scope, a: MINISTRY.after.views.authored_scope };
   const resolved = scope.b.unknown - scope.a.unknown;
   const changed = controls.filter((c) => c.changed).length;
 
-  it('the sources: 541 → 505 Unknown overall, 50 → 14 inside the 65-control authored scope, 36 resolved', () => {
-    expect(MINISTRY.before.unknown).toBe(541);
+  it('the sources: 542 → 505 Unknown overall (37 moved: 36 inside the 65-control authored scope, 1 outside it by observation)', () => {
+    expect(MINISTRY.before.unknown).toBe(542);
     expect(MINISTRY.after.unknown).toBe(505);
     expect(scope.b.applicable).toBe(65);
     expect([scope.b.unknown, scope.a.unknown]).toEqual([50, 14]);
     expect(resolved).toBe(36);
-    expect(MINISTRY.before.unknown - MINISTRY.after.unknown).toBe(resolved);
+    expect(MINISTRY.before.unknown - MINISTRY.after.unknown).toBe(resolved + 1);
+    expect(movedOutOfUnknown()).toMatchObject({ total: 37, inside: 36, outside: 1 });
     expect(controls.length).toBe(48);
     // the sample's own count: seeds whose snapshot the upload changes
     expect(changed).toBe(21);
@@ -95,7 +97,7 @@ describe('4.2 the gap-reason chart accounts for every Unknown', () => {
   it('rows reconcile to the Unknown count before and after, unauthored included', () => {
     expect(GAP_REASON_BREAKDOWN.reduce((s, r) => s + r.before, 0)).toBe(TOTALS.before.unknown);
     expect(GAP_REASON_BREAKDOWN.reduce((s, r) => s + r.after, 0)).toBe(TOTALS.after.unknown);
-    expect(GAP_REASON_BREAKDOWN[0]).toMatchObject({ reason: 'unauthored', before: 491, after: 491 });
+    expect(GAP_REASON_BREAKDOWN[0]).toMatchObject({ reason: 'unauthored', before: 492, after: 491 });
   });
   it('every reason a seeded Unknown carries has a row at least as large as the seeds that carry it', () => {
     for (const when of ['before', 'after'] as const) {

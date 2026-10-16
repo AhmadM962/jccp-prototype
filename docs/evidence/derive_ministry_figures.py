@@ -74,19 +74,19 @@ print('published width parts (x W):', {k: F(pub['width'][k + '_exact']) * W for 
 
 # ------------------------------------------------------------------------------------------
 # RULE R: before the evidence bundle exists, only verdicts resting on testimony or documents
-# (assurance L0 / L1) exist. Verdicts resting on machine collection, absence checks or analyst
-# attestation do not, and every other control is Unknown. This is one stated projection of the
-# engine's per-control data, and its two premises are asserted from that data below, not assumed.
-# THE ONE CHOICE THAT IS THE PROTOTYPE'S: JNCSF-139 has no authored path (it is in the unauthored
-# set) yet carries a Gap whose basis is `observed`; by the engine's own assurance rule that is a
-# machine-evidence verdict (L2), so it presumably arrived with collection. It is KEPT in the
-# before-state, because no authored path produces it: the upload's effect on the authored scope
-# (the only thing the before/after beat claims to move) is the same either way.
+# (assurance L0 / L1) exist. Verdicts resting on machine collection, absence checks, observation of
+# an artifact or analyst attestation do not, and every other control is Unknown. This is a selection
+# by evidence kind from the engine's per-control data, with no exception: its premises are asserted
+# from that data below, not assumed.
+# JNCSF-139 has no authored path yet carries a Gap whose basis is `observed` over an artifact. An
+# artifact arrives with the bundle, so under the rule it is Unknown before and a Gap after: the upload
+# changes a control OUTSIDE the authored scope, by observation. (The golden file carries no date or age
+# on a claim, so nothing in the data shows its artifact predates the bundle; an earlier commit kept it
+# in the before-state and it was flipped on the owner's ruling.)
 # ------------------------------------------------------------------------------------------
 CAP = {'Security in Architecture and Portfolio': 'arch', 'Development': 'dev', 'Delivery': 'del', 'Operation': 'ops', 'Foundational': 'found'}
 def before(i):
     c = claims[i]
-    if i in ua: return credit(c)                                      # outside the authored scope: kept (JNCSF-139; see above)
     if c['state'] != 'unknown' and c['evidence_kind'] in ('testimony', 'document'): return credit(c)
     return None
 def frac(x): return [x.numerator, x.denominator]
@@ -162,16 +162,43 @@ print('--- assurance: distribution', dict(dist), '| total', total, '| L2-or-abov
 # premise 1: every Compliant rests on machine collection -- none on a document
 greens = [i for i in known_ids if claims[i]['state'] == 'green']
 assert greens and all(claims[i]['evidence_kind'] == 'machine_collected' for i in greens), 'a Compliant is not machine-collected'
-# premise 2: outside the unauthored set, the before-state's verdicts are exactly the engine's L0 and L1 verdicts
+# premise 2: the before-state's verdicts are exactly the engine's L0 and L1 verdicts, with no exception
 b_known = [i for i in claims if before(i) is not None]
-b_authored = [i for i in b_known if i not in ua]
-b_kept = [i for i in b_known if i in ua]
-assert set(b_authored) == {i for i in known_ids if assurance_level(claims[i]) in ('L0', 'L1')}, 'rule R is not the L0/L1 verdicts'
-assert len(b_authored) == dist['L0'] + dist['L1']
-assert b_kept == ['JNCSF-139'] and assurance_level(claims['JNCSF-139']) == 'L2' and claims['JNCSF-139']['gap_basis'] == 'observed'
-assert claims['JNCSF-139']['negative_evidence_module_run_id'] is None and claims['JNCSF-139']['satisfied_path_label'] is None
-print('--- provenance of rule R: compliants', len(greens), '(all machine_collected) | before verdicts', len(b_known), '= L0/L1', len(b_authored), '+ kept outside authored scope', len(b_kept))
-prov = {'greens': len(greens), 'b_known': len(b_known), 'b_l01': len(b_authored), 'b_kept': len(b_kept)}
+assert set(b_known) == {i for i in known_ids if assurance_level(claims[i]) in ('L0', 'L1')}, 'rule R is not the L0/L1 verdicts'
+assert len(b_known) == dist['L0'] + dist['L1']
+# premise 3: a verdict for a control with no authored path is machine evidence and so arrives with the bundle
+outside = [i for i in known_ids if i in ua]
+assert outside == ['JNCSF-139'], outside
+o = claims['JNCSF-139']
+assert assurance_level(o) == 'L2' and o['gap_basis'] == 'observed' and o['evidence_class'] == 'artifact' and o['evidence_kind'] is None
+assert o['negative_evidence_module_run_id'] is None and o['satisfied_path_label'] is None
+assert not any(before(i) is not None for i in outside)
+print('--- provenance of rule R: compliants', len(greens), '(all machine_collected) | before verdicts', len(b_known), '= the engine L0/L1 verdicts, no exception | verdicts outside the authored scope', len(outside), outside, '(observed, artifact: arrive with the bundle)')
+prov = {'greens': len(greens), 'b_known': len(b_known), 'outside': len(outside), 'outside_ids': outside}
+
+# the engine's demotion checks: every one is listed, and one that could not run is neither passed nor failed
+import re
+CANNOT_RUN = {'unresolved_profile_challenge': ('not modelled', 'not_modelled'), 'na_rate_above_baseline': ('no sector baseline', 'no_baseline')}
+checks = []
+for ch in A['checks']:
+    e = {'cause': ch['cause'], 'status': ch['status'], 'count': None, 'of': None, 'threshold': None, 'because': None, 'components': []}
+    if ch['status'] == 'not_assessed':
+        phrase, code = CANNOT_RUN[ch['cause']]
+        assert phrase in ch['detail'] and ch['measured'] is None and ch['threshold'] is None, ch['cause']
+        e['because'] = code
+    else:
+        if ch['cause'] == 'declined_module':
+            m = re.match(r'(\d+)/(\d+) in-scope signals', ch['detail']); n, dn = int(m.group(1)), int(m.group(2))
+        else:
+            assert ch['cause'] == 'unusable_evidence_proportion', ch['cause']
+            n = sum(c['count'] for c in ch['components']); dn = ch['components'][0]['denominator']
+            assert all(c['denominator'] == dn for c in ch['components'])
+            e['components'] = [(c['reason'], c['count']) for c in ch['components']]
+        assert float(F(n, dn)) == ch['measured'], ch['cause']          # the count and the denominator ARE the measured value
+        e['count'], e['of'] = n, dn; e['threshold'] = F(str(ch['threshold']))
+    checks.append(e)
+assert [c['cause'] for c in checks] == ['declined_module', 'unresolved_profile_challenge', 'unusable_evidence_proportion', 'na_rate_above_baseline']
+print('--- demotion checks:', [(c['cause'], c['status'], c['count'], c['of']) for c in checks], '| demotions applied:', len(A['demotions']))
 # framework-wide facts over the applicable controls
 basis = C.Counter(rw[i]['weight_basis'] for i in claims)
 out_basis = {k: {'controls': v, 'weight': str(F(next(r for r in rw.values() if r['weight_basis'] == k)['risk_weight'] or 1).limit_denominator(1000)) if k != 'underived' else '1'} for k, v in basis.items()}
@@ -236,13 +263,12 @@ ts = """// Figures for the demonstration organisation (a government ministry), a
 // engine's output, not assumed, and exported below as RULE_R_PROVENANCE:
 //   - all @@greens@@ Compliant verdicts rest on machine collection (evidence kind machine_collected);
 //     none rests on a document, so no Compliant can exist before an upload;
-//   - the engine's assurance distribution over the settled verdicts has @@b_l01@@ at L0 or L1, and
-//     those @@b_l01@@ are exactly the before-state's verdicts outside the unauthored set.
-// The one thing in `before` that is a choice, and not the engine's data, is JNCSF-139: it has no
-// authored path (so it is outside the authored scope) but carries a Gap whose basis is `observed`,
-// which the engine's assurance rule scores as L2 -- machine evidence that presumably arrived with
-// collection. It is KEPT in `before` (@@b_known@@ verdicts = @@b_l01@@ + @@b_kept@@), because no authored
-// path produces it and the authored-scope movement is the same either way. One control, either way.
+//   - the engine's assurance distribution over the settled verdicts has @@b_known@@ at L0 or L1, and
+//     those @@b_known@@ are exactly the before-state's verdicts, with no exception.
+// A control with no authored path can still have a verdict: @@outside@@ does (JNCSF-139), a Gap whose basis is
+// `observed` over an artifact. An artifact arrives with the bundle, so it is Unknown in `before` and a Gap in
+// `after`: the upload changes a control outside the authored scope, by observation. The golden file carries no
+// date on a claim, so nothing in the data shows that artifact predates the bundle.
 //
 // Tier: illustrative. These are real engine figures, but the prototype does not read them from the engine.
 
@@ -318,7 +344,7 @@ export const WEIGHT_BASIS_COUNTS = {
 } as const;
 """ % (state_ts(result['before'], '    '), state_ts(result['after'], '    '),
        basis_ts(result['applicable_by_weight_basis']), basis_ts(result['framework_by_weight_basis']), basis_ts(result['excluded_by_weight_basis']))
-ts = ts.replace('@@greens@@', str(prov['greens'])).replace('@@b_l01@@', str(prov['b_l01'])).replace('@@b_known@@', str(prov['b_known'])).replace('@@b_kept@@', str(prov['b_kept']))
+ts = ts.replace('@@greens@@', str(prov['greens'])).replace('@@b_known@@', str(prov['b_known'])).replace('@@outside@@', str(prov['outside']))
 ts += """
 /** The engine's assurance for this assessment (the `after` state), over its settled (non-Unknown) verdicts.
  *  The headline level is the highest level L such that the share of verdicts at L or above meets
@@ -329,16 +355,50 @@ export const ASSURANCE = {
   reported: '%s',
 } as const;
 
-/** The two premises of the before-state's rule, asserted by the generator from the engine's output. */
+/** The premises of the before-state's rule, asserted by the generator from the engine's output. */
 export const RULE_R_PROVENANCE = {
   /** Compliant verdicts in the engine's output, and how many of them rest on machine collection */
   compliant: %d,
   compliantMachineCollected: %d,
-  /** the before-state's verdicts, the L0/L1 verdicts among them, and those kept from outside the authored scope */
+  /** the before-state's verdicts, which are exactly the engine's L0 and L1 verdicts */
   beforeVerdicts: %d,
   beforeVerdictsAtL0OrL1: %d,
-  beforeVerdictsKeptOutsideAuthoredScope: %d,
+  /** verdicts for controls with no authored path: observed from an artifact, so they arrive with the bundle */
+  verdictsOutsideAuthoredScope: %d,
 } as const;
-""" % (dist['L0'], dist['L1'], dist['L2'], dist['L3'], thr.numerator, thr.denominator, head, prov['greens'], prov['greens'], prov['b_known'], prov['b_l01'], prov['b_kept'])
+
+/** Controls with no authored evidence path that nonetheless have a verdict after the upload. */
+export const VERDICT_OUTSIDE_AUTHORED_SCOPE: readonly { id: string; state: 'green' | 'yellow' | 'red'; gapBasis: string | null }[] = [%s];
+
+export type CheckCause = 'declined_module' | 'unresolved_profile_challenge' | 'unusable_evidence_proportion' | 'na_rate_above_baseline';
+export type CheckStatus = 'passed' | 'triggered' | 'not_assessed';
+/** One of the engine's demotion checks. An assessed check carries its measured value (count of `of`) and the
+ *  threshold it was compared with; a check that could not run carries neither and says why in `because`. */
+export interface DemotionCheck {
+  cause: CheckCause;
+  status: CheckStatus;
+  count: number | null;
+  of: number | null;
+  threshold: Frac | null;
+  /** why a check could not run */
+  because: 'not_modelled' | 'no_baseline' | null;
+  components: readonly (readonly [string, number])[];
+}
+
+/** Every demotion check the engine runs, always all four, in the engine's order. `DEMOTIONS_APPLIED` is how
+ *  many levels the reported level was demoted from the base level. */
+export const DEMOTION_CHECKS: readonly DemotionCheck[] = [
+%s
+];
+export const DEMOTIONS_APPLIED = %d;
+export const BASE_LEVEL = '%s';
+""" % (dist['L0'], dist['L1'], dist['L2'], dist['L3'], thr.numerator, thr.denominator, head,
+       prov['greens'], prov['greens'], prov['b_known'], prov['b_known'], prov['outside'],
+       ', '.join("{ id: '%s', state: '%s', gapBasis: %s }" % (x, claims[x]['state'], 'null' if claims[x]['gap_basis'] is None else "'%s'" % claims[x]['gap_basis']) for x in prov['outside_ids']),
+       '\n'.join("  { cause: '%s', status: '%s', count: %s, of: %s, threshold: %s, because: %s, components: [%s] }," % (
+           c['cause'], c['status'], 'null' if c['count'] is None else c['count'], 'null' if c['of'] is None else ('APPLICABLE_CONTROLS' if c['of'] == len(claims) else c['of']),
+           'null' if c['threshold'] is None else '[%d, %d]' % (c['threshold'].numerator, c['threshold'].denominator),
+           'null' if c['because'] is None else "'%s'" % c['because'], ', '.join("['%s', %d]" % t for t in c['components'])) for c in checks),
+       len(A['demotions']), GOLD_LEVEL[A['base_level']])
 open(sys.argv[2], 'w').write(ts)
 print('wrote', sys.argv[2])

@@ -86,7 +86,7 @@ export default function RequestPlan() {
               Provide all {REQUEST_PLAN_SUMMARY.artifactCount} → projected coverage{' '}
               <span className="tnum font-semibold text-slate-700">{REQUEST_PLAN_SUMMARY.projectedCoveragePct}%</span>.
               The other {REQUEST_PLAN_SUMMARY.unauthored} controls have no evidence requirement authored, so the
-              plan cannot ask for anything that would establish them: they stay Unknown regardless.
+              plan cannot ask for anything that would establish that any of them is met. They stay Unknown unless an artifact collected for another control happens to show one unmet.
             </p>
           </div>
         </div>

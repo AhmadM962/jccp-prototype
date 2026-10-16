@@ -66,7 +66,7 @@ function RequestsTab() {
   const provideRequest = useAssessment((s) => s.provideRequest);
 
   // Base = the post-upload engine verdict. Only the Unknowns that have an authored evidence requirement
-  // (and are collectable) can be resolved by providing artifacts; the rest stay Unknown whatever is provided.
+  // (and are collectable) can be resolved by providing artifacts; the rest stay Unknown unless an artifact collected for another control shows one unmet.
   const after = MINISTRY.after;
   const u = after.views.unweighted;
   const base = {
@@ -113,8 +113,9 @@ function RequestsTab() {
           />
         </div>
         <p className="mt-2 text-[11px] text-slate-400">
-          The band cannot fall below <span className="tnum">{fmt1(bandFloorPts(base.applicable, base.unresolvable))} pts</span> of
-          width — the {base.unresolvable} controls with no authored evidence requirement stay Unknown regardless of what is provided.
+          By the artifacts this plan asks for, the band cannot fall below <span className="tnum">{fmt1(bandFloorPts(base.applicable, base.unresolvable))} pts</span> of
+          width — the {base.unresolvable} controls with no authored evidence requirement are not what it asks about, and stay Unknown unless an artifact
+          collected for another control happens to show one unmet.
         </p>
       </Card>
 

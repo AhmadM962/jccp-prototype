@@ -21,8 +21,9 @@ import { useAssessment } from '../store/useAssessment';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { ASSURANCE_LEVELS, bandFloorPts } from '../lib/scoring';
 import { stateFor, unevidencedRows } from '../lib/views';
-import { coverageBreakdown, completenessStatement, unknownResolvedByUpload, seededChangedCount } from '../lib/coverage';
-import { assuranceMeasurement } from '../lib/assurance';
+import { coverageBreakdown, completenessStatement, unknownResolvedByUpload, movedOutOfUnknown, outsideScopeSentence, seededChangedCount } from '../lib/coverage';
+import { assuranceMeasurement, levelDefinition } from '../lib/assurance';
+import DemotionChecks from '../components/DemotionChecks';
 import { dashboardView } from '../lib/derive';
 import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
 import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
@@ -205,7 +206,7 @@ export default function Dashboard() {
       {!uploaded && (
         <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
           <span>
-            Pre-upload state — testimony only. Run the collector bundle on the{' '}
+            Pre-upload state — testimony and documents only. Run the collector bundle on the{' '}
             <Link to="/intake" className="font-semibold underline">
               Intake
             </Link>{' '}
@@ -266,7 +267,7 @@ export default function Dashboard() {
               animateFrom={uploaded ? { lower: TOTALS.before.interval[0], upper: TOTALS.before.interval[1] } : undefined}
               subline={
                 uploaded
-                  ? `Interval narrowed after the Windows/AD collector bundle resolved ${unknownResolvedByUpload().resolved} of the ${unknownResolvedByUpload().from} Unknown controls in the authored scope.`
+                  ? `Interval narrowed after the Windows/AD collector bundle resolved ${unknownResolvedByUpload().resolved} of the ${unknownResolvedByUpload().from} Unknown controls in the authored scope. ${outsideScopeSentence()}`
                   : 'Width is the cost of missing evidence. '
               }
             />
@@ -275,7 +276,7 @@ export default function Dashboard() {
                 <Link to="/remediation" className="underline hover:text-slate-600">
                   See what evidence would narrow this
                 </Link>{' '}
-                — at best to {fmt1(bandFloorPts(cs.applicable, cs.unauthored + cs.uncollectable))} points: the other{' '}
+                — by the evidence the plan asks for, at best to {fmt1(bandFloorPts(cs.applicable, cs.unauthored + cs.uncollectable))} points: the other{' '}
                 {cs.unauthored} controls have no evidence requirement authored.
               </p>
             )}
@@ -332,7 +333,7 @@ export default function Dashboard() {
                     </span>
                     <span className={`text-xs font-semibold ${active ? 'text-slate-900' : 'text-slate-500'}`}>{l.name}</span>
                   </div>
-                  {active && <p className="mt-1 text-[11px] leading-snug text-slate-600">{l.definition}</p>}
+                  {active && <p data-testid="level-definition" className="mt-1 text-[11px] leading-snug text-slate-600">{levelDefinition(l.id)}</p>}
                 </li>
               );
             })}
@@ -340,14 +341,15 @@ export default function Dashboard() {
           {uploaded && assurance.next && (
             <div data-testid="assurance-measurement" className="mt-3 rounded-lg bg-slate-50 p-3 text-[11px] leading-snug text-slate-600">
               <span className="font-semibold text-slate-800">The collection succeeded; the level did not rise.</span>{' '}
-              {unknownResolvedByUpload().resolved} controls moved out of Unknown, and the assessment still did not raise its
-              own confidence: the share of verdicts that are {assurance.qualifies} is below the threshold {assurance.next} requires.
+              {movedOutOfUnknown().total} controls moved out of Unknown ({movedOutOfUnknown().inside} in the authored scope,{' '}
+              {movedOutOfUnknown().outside} outside it), and the assessment still did not raise its own confidence: the share of verdicts that are {assurance.qualifies} is below the threshold {assurance.next} requires.
               <div className="mt-1.5 text-slate-700" data-testid="assurance-numbers">
                 Measured <strong className="tnum">{assurance.count} of {assurance.total} ({assurance.measuredPct}%)</strong> · threshold{' '}
                 <strong className="tnum">{assurance.thresholdPct}%</strong> · reported <strong>{assurance.level}</strong>
               </div>
             </div>
           )}
+          {uploaded && <DemotionChecks />}
         </Card></Provenance>
       </div>
 

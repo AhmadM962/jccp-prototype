@@ -3,11 +3,11 @@ import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Dashboard from '../screens/04_Dashboard';
 import { useAssessment, type OverrideRecord } from '../store/useAssessment';
-import { MINISTRY, WEIGHT_BASIS_COUNTS, type StateFigures, type ViewId } from '../data/ministry';
+import { MINISTRY, VERDICT_OUTSIDE_AUTHORED_SCOPE, WEIGHT_BASIS_COUNTS, type StateFigures, type ViewId } from '../data/ministry';
 import { APPLICABLE_CONTROLS, EXCLUDED_COUNT, TOTAL_CONTROLS } from '../data/figures';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { GAP_REASON_BREAKDOWN, controls } from '../data/controls';
-import { add, eq, fmtPct, frac, sub, sum, toPct } from '../lib/frac';
+import { add, eq, fmtPct, frac, mul, sub, sum, toPct } from '../lib/frac';
 import { dashboardView } from '../lib/derive';
 import { IntervalConsistencyError } from '../lib/scoring';
 import { VIEW_ORDER, assertWidthSums, unevidencedRows, widthOf } from '../lib/views';
@@ -36,9 +36,9 @@ describe('Task 2: the per-state counts, derived from per-control data (see docs/
     expect([a.green, a.yellow, a.red, a.unknown]).toEqual([21, 25, 6, 505]);
     expect(a.green + a.yellow + a.red + a.unknown).toBe(APPLICABLE_CONTROLS);
   });
-  it('pre-upload state (engine data under rule R): 0 / 14 / 2 / 541 = 557', () => {
+  it('pre-upload state (engine data under rule R): 0 / 14 / 1 / 542 = 557', () => {
     const b = MINISTRY.before;
-    expect([b.green, b.yellow, b.red, b.unknown]).toEqual([0, 14, 2, 541]);
+    expect([b.green, b.yellow, b.red, b.unknown]).toEqual([0, 14, 1, 542]);
     expect(b.green + b.yellow + b.red + b.unknown).toBe(APPLICABLE_CONTROLS);
   });
   it('52 carry a verdict unweighted and 51 over the authored scope of 65: both are right, they differ by one control outside the scope', () => {
@@ -120,18 +120,37 @@ describe('Task 2: the width decomposition', () => {
   });
 });
 
-describe('Task 2: unauthored controls are unaffected by the evidence upload', () => {
-  it('491 before and after, and the same width fraction in every view', () => {
-    expect(MINISTRY.before.unknownUnauthored).toBe(491);
+describe('Task 2: the upload moves a control outside the authored scope only by observation', () => {
+  // JNCSF-139 has no authored path, yet carries a Gap observed from an artifact. An artifact arrives with the
+  // bundle, so it is Unknown before and a Gap after. The attribution of the upload's effect to the authored scope
+  // is therefore NOT clean, and that is correct: observation can reach any control.
+  it('492 unauthored controls are Unknown before and 491 after: exactly the controls observed from the bundle', () => {
+    expect(MINISTRY.before.unknownUnauthored).toBe(492);
     expect(MINISTRY.after.unknownUnauthored).toBe(491);
-    for (const id of VIEW_ORDER) {
-      expect(eq(MINISTRY.before.views[id].width.unauthored, MINISTRY.after.views[id].width.unauthored), id).toBe(true);
-    }
+    expect(MINISTRY.before.unknownUnauthored - MINISTRY.after.unknownUnauthored).toBe(VERDICT_OUTSIDE_AUTHORED_SCOPE.length);
+    expect(VERDICT_OUTSIDE_AUTHORED_SCOPE).toEqual([{ id: 'JNCSF-139', state: 'red', gapBasis: 'observed' }]);
   });
-  it('nothing outside the authored scope moves: Unknown outside it is 491 in both states', () => {
+  it('the tool\u2019s share of the width falls by exactly that one control, in every view', () => {
+    for (const id of VIEW_ORDER.filter((v) => v !== 'authored_scope')) {
+      const b = toPct(MINISTRY.before.views[id].width.unauthored);
+      const a = toPct(MINISTRY.after.views[id].width.unauthored);
+      expect(b, id).toBeGreaterThan(a);
+    }
+    // the authored-scope view holds no unauthored control, so the observation cannot touch it
+    expect(MINISTRY.before.views.authored_scope.width.unauthored).toEqual(MINISTRY.after.views.authored_scope.width.unauthored);
+    const u = (s: typeof MINISTRY.before) => s.views.unweighted.width.unauthored;
+    expect(u(MINISTRY.before)).toEqual([492, APPLICABLE_CONTROLS]);
+    expect(u(MINISTRY.after)).toEqual([491, APPLICABLE_CONTROLS]);
+  });
+  it('inside the authored scope the rest is as before; outside it, Unknown falls by that one control and no more', () => {
+    const outsideUnknown = (s: typeof MINISTRY.before) => s.views.unweighted.unknown - s.views.authored_scope.unknown;
+    expect(outsideUnknown(MINISTRY.before)).toBe(492);
+    expect(outsideUnknown(MINISTRY.after)).toBe(491);
+    // the one that moved is a Gap, so it adds no credit: outside the authored scope the credit is zero in both states
     for (const when of ['before', 'after'] as const) {
-      const s = STATES[when];
-      expect(s.views.unweighted.unknown - s.views.authored_scope.unknown, when).toBe(491);
+      const s = MINISTRY[when];
+      const inScope = mul(s.views.authored_scope.lower, [s.views.authored_scope.applicable, 1]);
+      expect(eq(sub(s.creditNumerator, inScope), [0, 1]), when).toBe(true);
     }
   });
   it('only the organisation\'s share of the width moves, and it narrows', () => {

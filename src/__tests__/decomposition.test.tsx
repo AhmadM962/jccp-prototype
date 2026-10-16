@@ -57,7 +57,7 @@ describe('Task 3: the width decomposition under the interval', () => {
     expect(after.getByTestId('width-sum-note').textContent).toContain('88.15 + 2.51 + 0.00 = 90.66 points');
     after.unmount();
     const before = dashboard(false);
-    expect(before.getByTestId('width-sum-note').textContent).toContain('88.15 + 8.98 + 0.00 = 97.13 points');
+    expect(before.getByTestId('width-sum-note').textContent).toContain('88.33 + 8.98 + 0.00 = 97.31 points');
   });
 
   it('labels whose limitation each cause is, attached to the right one', () => {

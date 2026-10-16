@@ -5,7 +5,7 @@ import { Card, Pill } from '../components/ui';
 import { Provenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
 import { dashboardView } from '../lib/derive';
-import { assuranceMeasurement, assuranceReason, atOrAbove, settledVerdicts } from '../lib/assurance';
+import { assuranceMeasurement, assuranceReason, atOrAbove, levelDefinition, settledVerdicts } from '../lib/assurance';
 
 interface Citation {
   label: string;
@@ -58,7 +58,7 @@ function buildCanned(fig: ReturnType<typeof liveFigures>): QA[] {
     grounded: true,
     a: `The level is not set by the best evidence collected: it is the highest level at which a disclosed share of the verdicts, ${assuranceMeasurement().thresholdPct}%, rest on evidence of at least that strength. After the evidence bundle the assessment is reported at ${assuranceMeasurement().level}: ${assuranceReason()} L3 would need ${assuranceMeasurement().thresholdPct}% of the verdicts analyst-signed; here that is ${atOrAbove('L3')} of ${settledVerdicts()}.`,
     citations: [
-      { label: 'Assurance ladder', to: '/dashboard', passage: 'L3 — Analyst-signed: an accredited assessor has reviewed and signed the evidence set.' },
+      { label: 'Assurance ladder', to: '/dashboard', passage: `L3 — Analyst-signed: ${levelDefinition('L3')}` },
     ],
   },
   {

@@ -87,7 +87,7 @@ export default function Sidebar() {
               uploaded ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'
             }`}
           >
-            {uploaded ? `Evidence bundle loaded · ${assurance.level}` : 'Testimony only · L1'}
+            {uploaded ? `Evidence bundle loaded · ${assurance.level}` : 'Testimony and documents · L1'}
             {uploaded && assurance.next && (
               <div data-testid="sidebar-assurance-measurement" className="mt-0.5 text-[10px] font-normal opacity-80">
                 {assurance.measuredPct}% {assurance.qualifies} · {assurance.next} needs {assurance.thresholdPct}%

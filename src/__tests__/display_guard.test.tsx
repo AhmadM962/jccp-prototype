@@ -54,7 +54,7 @@ describe('Remediation reaches the screen only through the guard', () => {
       expect(container.querySelector('span.text-3xl')).toBeNull(); // no headline number
       expect(container.textContent).not.toMatch(/Band width falls to/); // and no subline built on it
       expect(getByText('Projected interval')).toBeTruthy(); // the card around it is still there
-      expect(container.textContent).toContain('The band cannot fall below'); // as are its neighbours
+      expect(container.textContent).toContain('the band cannot fall below'); // as are its neighbours
       expect(logged.some((l) => l.includes('figure withheld by guard "ScoreInterval"'))).toBe(true);
     } finally {
       console.error = quiet;
