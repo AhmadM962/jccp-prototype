@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ChevronDown, Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Card, Pill } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import StateBadge from '../components/StateBadge';
 import ControlRow from '../components/ControlRow';
 import { useAssessment } from '../store/useAssessment';
@@ -124,7 +125,7 @@ export default function GapMatrix() {
         </div>
       </Card>
 
-      {capabilities.map((cap) => {
+      <Provenance tier="illustrative" className="space-y-5">{capabilities.map((cap) => {
         if (!cap.organisationallyAssessable) {
           return (
             <div key={cap.id} className="rounded-xl border border-slate-200 bg-white px-5 py-4 opacity-70">
@@ -193,7 +194,7 @@ export default function GapMatrix() {
             </AnimatePresence>
           </div>
         );
-      })}
+      })}</Provenance>
     </div>
   );
 }

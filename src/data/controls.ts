@@ -17,11 +17,18 @@ export type GapReason =
   | 'uncollectable_by_design'
   | 'not_requested';
 
+/** How a control's deployment share was obtained. `measured`: counted from collected data.
+ *  `claimed`: asserted by a person — an artifact may prove the control exists while the share
+ *  is still only a claim. A claimed share earns at most second-quartile partial credit. */
+export type ShareBasis = 'measured' | 'claimed';
+
 export interface ControlSnapshot {
   state: ControlState;
   evidenceClass: EvidenceClass;
   gapReason?: GapReason;
   providedSignals: string[];
+  /** basis of `Control.deploymentSharePct` in this snapshot; set exactly where a share exists */
+  deploymentShareBasis?: ShareBasis;
 }
 
 // Why a signal is (or isn't) negative-capable — the reason a control can be a Gap
@@ -84,6 +91,8 @@ interface Seed {
   changed?: boolean;
   attackKey?: string;
   share?: number;
+  /** basis of `share` before / after the upload; required wherever `share` is set */
+  shareBasis?: { before: ShareBasis; after: ShareBasis };
   exception?: string;
   population?: string;
   showcase?: boolean;
@@ -97,6 +106,10 @@ const S = (state: ControlState, ev: EvidenceClass, prov: string[] = [], gap?: Ga
   providedSignals: prov,
 });
 
+// shareBasis (JNCSF-102, -394, -459 are the only seeds with a share): seeded from the evidence class
+// that applied before this field existed — testimonial before the upload → claimed, artifact after →
+// measured. The underlying records are in evidence.ts (102: 410/512 reconciled; 459: 484/620;
+// 394 only states "Coverage ~80%").
 const seeds: Seed[] = [
   { n: 1, d: 'Develop and document control policies', cap: 'arch', iso: ['5.1.1', '9.1.1'], nist: ['AC-1', 'AT-1', 'AU-1', 'CA-1', 'CM-1'], req: ['policy_document', 'approval_record', 'review_date'], before: ['green', 'artifact'], after: ['green', 'artifact'] },
   { n: 3, d: 'Address information security requirements and risks in all project management', cap: 'arch', iso: ['6.1.5', '14.1.1'], nist: [], req: ['project_gate_checklist', 'risk_register_entries'], before: ['yellow', 'testimonial'], after: ['yellow', 'testimonial'] },
@@ -117,7 +130,7 @@ const seeds: Seed[] = [
 
   { n: 96, d: 'Assign access rights to all user accounts, consistent with control policies', cap: 'del', iso: ['9.1.2', '9.2.2', '9.2.3'], nist: ['AC-2'], req: ['joiners_process', 'rbac_matrix'], before: ['green', 'artifact'], after: ['green', 'artifact'] },
   { n: 100, d: 'Formally separate sensitive duties among multiple individuals to prevent access rights abuses or conflicts of interest', cap: 'del', iso: ['6.1.2'], nist: ['AC-5'], req: ['sod_matrix', 'conflict_review'], before: ['yellow', 'testimonial'], after: ['yellow', 'testimonial'] },
-  { n: 102, d: 'Manage access rights to be consistent with the principle of least privilege', cap: 'del', iso: ['9.4.4', '9.2.3'], nist: ['AC-6'], req: ['privileged_group_membership', 'mfa_enrolment_state', 'last_recertification'], before: ['yellow', 'testimonial'], after: ['red', 'artifact'], changed: true, attackKey: 'JNCSF-102', share: 80, exception: '43 of 512 privileged accounts have no MFA enforcement', population: '410 of 512 endpoints (denominator: AD computer objects). Sample ratio sufficient for estate-level claim.', showcase: true },
+  { n: 102, d: 'Manage access rights to be consistent with the principle of least privilege', cap: 'del', iso: ['9.4.4', '9.2.3'], nist: ['AC-6'], req: ['privileged_group_membership', 'mfa_enrolment_state', 'last_recertification'], before: ['yellow', 'testimonial'], after: ['red', 'artifact'], changed: true, attackKey: 'JNCSF-102', share: 80, shareBasis: { before: 'claimed', after: 'measured' }, exception: '43 of 512 privileged accounts have no MFA enforcement', population: '410 of 512 endpoints (denominator: AD computer objects). Sample ratio sufficient for estate-level claim.', showcase: true },
   { n: 105, d: 'Prevent unauthorized access to mobile devices by using physical protection against theft, cryptographic techniques, and secret authentication information', cap: 'del', iso: ['6.2.1'], nist: ['AC-19'], req: ['mdm_policy_export', 'encryption_state'], before: ['unknown', 'none', 'not_provided'], after: ['unknown', 'none', 'not_provided'] },
   { n: 107, d: 'Assign different user IDs to be used only for privileged access rights, separate from regular business activities', cap: 'del', iso: ['9.2.3'], nist: [], req: ['admin_account_naming', 'separation_report'], before: ['green', 'artifact'], after: ['green', 'artifact'] },
   { n: 116, d: 'Configure information systems to identify and authenticate organizational users', cap: 'del', iso: ['9.4.1'], nist: ['IA-2'], req: ['auth_provider_config', 'directory_binding'], before: ['green', 'artifact'], after: ['green', 'artifact'] },
@@ -136,14 +149,14 @@ const seeds: Seed[] = [
   { n: 257, d: 'Require users to report suspected security incidents to the incident response capability within a specified time period', cap: 'ops', iso: ['16.1.2', '16.1.1'], nist: ['IR-6'], req: ['reporting_procedure', 'sla_definition', 'awareness_material'], before: ['yellow', 'testimonial'], after: ['green', 'artifact'], changed: true },
   { n: 307, d: 'Scan for vulnerabilities in information systems and hosted applications', cap: 'ops', iso: ['12.6.1'], nist: ['RA-5'], req: ['scanner_config', 'scan_coverage', 'remediation_sla'], before: ['unknown', 'none', 'not_provided'], after: ['red', 'artifact'], changed: true, attackKey: 'JNCSF-307' },
   { n: 382, d: 'Configure information systems to protect the confidentiality and integrity of information at rest', cap: 'ops', iso: [], nist: ['SC-28'], req: ['bitlocker_state', 'server_encryption_state', 'key_escrow'], before: ['unknown', 'none', 'not_provided'], after: ['yellow', 'artifact'], changed: true },
-  { n: 394, d: 'Install and regularly update malware detection and repair software to scan computers and media', cap: 'ops', iso: ['12.2.1'], nist: [], req: ['defender_status', 'signature_age', 'coverage_by_host'], before: ['yellow', 'testimonial'], after: ['green', 'artifact'], changed: true, attackKey: 'JNCSF-394', share: 80, exception: 'Contractor-managed workstations excluded from managed AV' },
+  { n: 394, d: 'Install and regularly update malware detection and repair software to scan computers and media', cap: 'ops', iso: ['12.2.1'], nist: [], req: ['defender_status', 'signature_age', 'coverage_by_host'], before: ['yellow', 'testimonial'], after: ['green', 'artifact'], changed: true, attackKey: 'JNCSF-394', share: 80, shareBasis: { before: 'claimed', after: 'measured' }, exception: 'Contractor-managed workstations excluded from managed AV' },
   { n: 407, d: 'Identify, report, and correct information system flaws', cap: 'ops', iso: [], nist: ['SI-2'], req: ['patch_compliance_report', 'sla_adherence', 'exception_register'], before: ['unknown', 'none', 'not_provided'], after: ['red', 'artifact'], changed: true },
   { n: 435, d: 'Establish multifactor authentication for local and network access to privileged accounts and for network access to non-privileged accounts', cap: 'ops', iso: [], nist: [], req: ['mfa_policy', 'privileged_enrolment', 'nonprivileged_enrolment'], before: ['yellow', 'testimonial'], after: ['red', 'artifact'], changed: true, attackKey: 'JNCSF-435', exception: '43 of 512 privileged accounts without MFA' },
   { n: 437, d: 'Establish minimum password complexity, password change, and reuse restriction protocols', cap: 'ops', iso: [], nist: [], req: ['password_policy_export', 'history_setting', 'min_length'], before: ['unknown', 'none', 'not_provided'], after: ['green', 'artifact'], changed: true },
 
   { n: 438, d: 'Establish cadence to review and update control policies', cap: 'found', iso: ['5.1.2'], nist: ['AC-1', 'AT-1', 'AU-1'], req: ['review_schedule', 'last_review_date', 'change_log'], before: ['green', 'artifact'], after: ['green', 'artifact'] },
   { n: 440, d: 'Ensure all information systems enforce access rights restrictions consistent with control policies', cap: 'found', iso: ['9.4.1'], nist: ['AC-3'], req: ['acl_export', 'enforcement_test', 'deny_by_default_flag'], before: ['yellow', 'testimonial'], after: ['green', 'artifact'], changed: true, attackKey: 'JNCSF-440' },
-  { n: 459, d: 'Provide ongoing security awareness training to employees and contractors upon hiring with continued training at regularly defined intervals', cap: 'found', iso: ['7.2.2'], nist: ['AT-2'], req: ['lms_completion_export', 'curriculum', 'cadence'], before: ['yellow', 'testimonial'], after: ['yellow', 'artifact'], changed: true, share: 78, maxAge: 365 },
+  { n: 459, d: 'Provide ongoing security awareness training to employees and contractors upon hiring with continued training at regularly defined intervals', cap: 'found', iso: ['7.2.2'], nist: ['AT-2'], req: ['lms_completion_export', 'curriculum', 'cadence'], before: ['yellow', 'testimonial'], after: ['yellow', 'artifact'], changed: true, share: 78, shareBasis: { before: 'claimed', after: 'measured' }, maxAge: 365 },
   { n: 465, d: 'Document, monitor, and retain individual information system security training activities and records', cap: 'found', iso: [], nist: ['AT-4'], req: ['training_records_export', 'retention_period'], before: ['unknown', 'none', 'not_provided'], after: ['green', 'artifact'], changed: true },
   { n: 479, d: 'Sanitize media prior to disposal in accordance with organizational policies', cap: 'found', iso: ['8.3.2', '11.2.7'], nist: ['MP-6'], req: ['sanitisation_procedure', 'destruction_certificates'], before: ['unknown', 'none', 'uncollectable_by_design'], after: ['unknown', 'none', 'uncollectable_by_design'] },
   { n: 512, d: 'Establish a process to screen all individuals filling organizational positions', cap: 'found', iso: ['7.1.1'], nist: ['PS-2'], req: ['screening_policy', 'completion_records'], before: ['unknown', 'none', 'declined'], after: ['unknown', 'none', 'declined'] },
@@ -179,8 +192,8 @@ function evidenceBasisFor(n: number, evidenceClass: EvidenceClass): EvidenceBasi
 }
 
 export const controls: Control[] = seeds.map((s) => {
-  const before = S(s.before[0], s.before[1], [], s.before[2]);
-  const after = S(s.after[0], s.after[1], [], s.after[2]);
+  const before = { ...S(s.before[0], s.before[1], [], s.before[2]), deploymentShareBasis: s.shareBasis?.before };
+  const after = { ...S(s.after[0], s.after[1], [], s.after[2]), deploymentShareBasis: s.shareBasis?.after };
   return {
     id: `JNCSF-${s.n}`,
     num: s.n,
@@ -221,12 +234,18 @@ export interface GapReasonRow {
   invariant?: boolean;
 }
 
+// ILLUSTRATIVE, not derived from any source. The `module_failed` count (0 before, 2 after) is
+// chosen to be consistent with the seeded controls — JNCSF-173 and JNCSF-179 are not_provided
+// before the upload and module_failed after — and nothing in the data fixes how many of the 59
+// Unknowns after the upload are module_failed across the whole framework. The 2 is taken from
+// not_provided (7 → 5) so the totals still reconcile: 207 before, 59 after.
 export const GAP_REASON_BREAKDOWN: GapReasonRow[] = [
-  { reason: 'not_provided', before: 117, after: 7 },
+  { reason: 'not_provided', before: 117, after: 5 },
   { reason: 'uncollectable_by_design', before: 39, after: 39 },
   { reason: 'insufficient_signal', before: 23, after: 3 },
   { reason: 'declined', before: 15, after: 5 },
   { reason: 'insufficient_permission', before: 8, after: 3 },
+  { reason: 'module_failed', before: 0, after: 2 },
   { reason: 'stale', before: 5, after: 2 },
   { reason: 'not_requested', before: 0, after: 0, invariant: true },
 ];

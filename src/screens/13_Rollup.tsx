@@ -1,5 +1,6 @@
 import { Check, X, Landmark } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import { nationalRollup as r } from '../data/remediation';
 
 const bandTotal = (b: (typeof r.distribution)[number]) => b.L1 + b.L2 + b.L3;
@@ -7,7 +8,7 @@ const bandTotal = (b: (typeof r.distribution)[number]) => b.L1 + b.L2 + b.L3;
 export default function Rollup() {
   const maxRow = Math.max(...r.distribution.map(bandTotal));
   return (
-    <div className="space-y-5">
+    <Provenance tier="illustrative" className="space-y-5">
       <Card>
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 text-accent">
@@ -117,6 +118,6 @@ export default function Rollup() {
           </table>
         </Card>
       </div>
-    </div>
+    </Provenance>
   );
 }

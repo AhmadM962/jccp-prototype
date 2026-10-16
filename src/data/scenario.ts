@@ -206,6 +206,7 @@ export const bundleStages = [
   { label: 'Parsing endpoint.json', result: 'warn' as const, detail: 'partial — insufficient permission (12 of 400 hosts)' },
   { label: 'Parsing logging.json', result: 'error' as const, detail: 'failed — wineventlog_access_denied' },
   { label: "Module 'cloud'", result: 'error' as const, detail: 'declined by client' },
+  // The 90 is a claim count for this simulated run, unrelated to the dashboard's 148-of-207 / 25-of-48 figures; do not derive it from them.
   { label: 'Corroborating 90 claims', result: 'ok' as const, detail: 'testimony cross-checked against artifacts' },
 ];
 

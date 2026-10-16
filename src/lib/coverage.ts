@@ -1,7 +1,7 @@
 // Coverage + gap-taxonomy helpers.
 
 import { TOTALS } from '../data/capabilities';
-import { UNCOLLECTABLE_COUNT } from '../data/controls';
+import { UNCOLLECTABLE_COUNT, controls } from '../data/controls';
 
 export interface CoverageBreakdown {
   evidenced: number; // artifact-backed (green + red)
@@ -24,6 +24,20 @@ export const coverageBreakdown = (uploaded: boolean): CoverageBreakdown => {
     applicable: TOTALS.applicable,
   };
 };
+
+/** Unknown controls the evidence bundle resolves, across all applicable controls:
+ *  TOTALS.before.unknown − TOTALS.after.unknown. */
+export const unknownResolvedByUpload = () => ({
+  resolved: TOTALS.before.unknown - TOTALS.after.unknown,
+  from: TOTALS.before.unknown,
+  to: TOTALS.after.unknown,
+});
+
+/** Seeded controls (the clickable sample) whose snapshot the upload changes: `changed: true`. */
+export const seededChangedCount = () => ({
+  changed: controls.filter((c) => c.changed).length,
+  seeded: controls.length,
+});
 
 export const completenessStatement = (uploaded: boolean) => {
   const t = uploaded ? TOTALS.after : TOTALS.before;

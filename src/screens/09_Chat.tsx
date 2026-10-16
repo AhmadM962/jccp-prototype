@@ -2,6 +2,9 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Send, Lock, Ban, FileText } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
+import { Provenance } from '../components/Provenance';
+import { useAssessment } from '../store/useAssessment';
+import { dashboardView } from '../lib/derive';
 
 interface Citation {
   label: string;
@@ -14,10 +17,19 @@ interface QA {
   a: string;
   refusal?: boolean;
   grounded?: boolean;
+  /** quotes a figure that has no live source in this prototype (it is written into the answer) */
+  illustrative?: boolean;
   citations: Citation[];
 }
 
-const CANNED: QA[] = [
+/** The interval the Dashboard shows, formatted for quoting. Same function, same inputs. */
+function liveFigures(uploaded: boolean, overrides: Parameters<typeof dashboardView>[1]) {
+  const e = dashboardView(uploaded, overrides).effective;
+  return { lower: e.lowerPct.toFixed(1), upper: e.upperPct.toFixed(1), coverage: e.coveragePct.toFixed(1) };
+}
+
+function buildCanned(fig: ReturnType<typeof liveFigures>): QA[] {
+  return [
   {
     q: 'What does JNCSF-102 require?',
     a: 'JNCSF-102 requires that access rights are managed consistent with the principle of least privilege — users and services hold only the permissions their role needs, privileged access is separated and regularly re-certified, and use of privileged utility programs is restricted and logged.',
@@ -30,6 +42,7 @@ const CANNED: QA[] = [
   {
     q: 'Why is JNCSF-102 a gap for us?',
     grounded: true,
+    illustrative: true,
     a: 'The Active Directory privileged-group export shows 43 of 512 privileged accounts with no MFA enforcement, and 102 of 512 endpoints have no reconciled EDR agent (71 contractor-managed). Machine evidence, not testimony, so the control is a Gap. This exposes you to T1078 Valid Accounts, T1548 Abuse Elevation Control Mechanism and T1021 Remote Services.',
     citations: [
       { label: 'JNCSF-102', to: '/control/JNCSF-102' },
@@ -51,6 +64,7 @@ const CANNED: QA[] = [
   {
     q: 'Which gaps would an attacker exploit first?',
     grounded: true,
+    illustrative: true,
     a: 'JNCSF-307 (vulnerability scanning) is a Gap and maps to T1190 Exploit Public-Facing Application — the scan export shows 22 servers with overdue patches and 14 internet-facing services. That is the shortest path from outside. JNCSF-435 (MFA) is next: T1110 Brute Force against the 43 unprotected privileged accounts.',
     citations: [
       { label: 'JNCSF-307', to: '/control/JNCSF-307' },
@@ -70,7 +84,7 @@ const CANNED: QA[] = [
   },
   {
     q: 'What is our compliance score?',
-    a: 'Your interval is 70.8–81.4% at 89.4% coverage — read from the assessment, not computed by me. The scoring engine is deterministic; I only retrieve. Open the dashboard for the breakdown.',
+    a: `Your interval is ${fig.lower}–${fig.upper}% at ${fig.coverage}% coverage — read from the assessment, not computed by me. The scoring engine is deterministic; I only retrieve. Open the dashboard for the breakdown.`,
     citations: [{ label: 'Dashboard · Compliance interval', to: '/dashboard' }],
   },
   {
@@ -88,7 +102,8 @@ const CANNED: QA[] = [
     a: 'No such control exists in the pinned catalogue (JNCSF-1 to JNCSF-576).',
     citations: [{ label: 'Pinned catalogue: JNCSF-1 … JNCSF-576' }],
   },
-];
+  ];
+}
 
 function Chip({ c }: { c: Citation }) {
   const [open, setOpen] = useState(false);
@@ -113,46 +128,72 @@ function Chip({ c }: { c: Citation }) {
 }
 
 export default function Chat() {
-  const [thread, setThread] = useState<{ role: 'user' | 'bot'; qa?: QA; text?: string }[]>([]);
+  const uploaded = useAssessment((s) => s.evidenceUploaded);
+  const overrides = useAssessment((s) => s.overriddenControls);
+  // Answers are resolved at render time from the current state, so they move with it.
+  const CANNED = buildCanned(liveFigures(uploaded, overrides));
+  const [thread, setThread] = useState<{ role: 'user' | 'bot'; q?: string; text?: string }[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const ask = (qa: QA) => {
-    setThread((t) => [...t, { role: 'user', text: qa.q }, { role: 'bot', qa }]);
+    setThread((t) => [...t, { role: 'user', text: qa.q }, { role: 'bot', q: qa.q }]);
     setTimeout(() => scrollRef.current?.scrollTo({ top: 9e9, behavior: 'smooth' }), 50);
   };
   const asked = new Set(thread.filter((m) => m.role === 'user').map((m) => m.text));
 
   return (
-    <div className="flex h-[calc(100vh-140px)] flex-col">
+    <Provenance tier="planned" className="flex h-[calc(100vh-140px)] flex-col">
       <Card className="flex min-h-0 flex-1 flex-col" title="Compliance chat" subtitle="Grounded Q&A over the pinned catalogue and this assessment — every answer carries citations">
         <div ref={scrollRef} className="scroll-slim min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           {thread.length === 0 && <p className="text-sm text-slate-400">Pick a question below to start.</p>}
-          {thread.map((m, i) =>
-            m.role === 'user' ? (
+          {thread.map((m, i) => {
+            const qa = m.role === 'bot' ? CANNED.find((c) => c.q === m.q) : undefined;
+            return m.role === 'user' ? (
               <div key={i} className="flex justify-end">
                 <div className="max-w-[80%] rounded-2xl bg-accent px-3.5 py-2 text-sm text-white">{m.text}</div>
               </div>
-            ) : (
+            ) : qa ? (
               <div key={i} className="flex justify-start">
-                <div className="max-w-[85%] rounded-2xl bg-slate-100 px-3.5 py-2.5 text-sm text-slate-800">
-                  {m.qa?.refusal && (
+                {qa.illustrative ? (
+                  <Provenance tier="illustrative" className="max-w-[85%]">
+                <div className={`${qa.illustrative ? '' : 'max-w-[85%] '}rounded-2xl bg-slate-100 px-3.5 py-2.5 text-sm text-slate-800`}>
+                  {qa.refusal && (
                     <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-red-600">
                       <Ban size={12} /> Won't answer — outside what the assessment establishes
                     </div>
                   )}
-                  {m.qa?.grounded && (
+                  {qa.grounded && (
                     <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
                       Grounded in your evidence
                     </div>
                   )}
-                  <p>{m.qa?.a}</p>
+                  <p>{qa.a}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {m.qa?.citations.map((c) => <Chip key={c.label} c={c} />)}
+                    {qa.citations.map((c) => <Chip key={c.label} c={c} />)}
                   </div>
                 </div>
+                  </Provenance>
+                ) : (
+                <div className={`${qa.illustrative ? '' : 'max-w-[85%] '}rounded-2xl bg-slate-100 px-3.5 py-2.5 text-sm text-slate-800`}>
+                  {qa.refusal && (
+                    <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-red-600">
+                      <Ban size={12} /> Won't answer — outside what the assessment establishes
+                    </div>
+                  )}
+                  {qa.grounded && (
+                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                      Grounded in your evidence
+                    </div>
+                  )}
+                  <p>{qa.a}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {qa.citations.map((c) => <Chip key={c.label} c={c} />)}
+                  </div>
+                </div>
+                )}
               </div>
-            ),
-          )}
+            ) : null;
+          })}
         </div>
 
         <div className="mt-3 border-t border-slate-100 pt-3">
@@ -182,6 +223,6 @@ export default function Chat() {
         <span className="text-slate-500">cannot access the internet</span>
         <span className="text-slate-500">cannot see other organisations' data</span>
       </div>
-    </div>
+    </Provenance>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Users, Clock, X, ShieldCheck, ShieldQuestion } from 'lucide-react';
 import { Card, Pill, Button, SectionLabel } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import StateBadge, { STATE_META } from '../components/StateBadge';
 import EvidenceTrail from '../components/EvidenceTrail';
 import AttackExposure from '../components/AttackExposure';
@@ -19,6 +20,7 @@ import {
   type ControlState,
 } from '../data/controls';
 import { capabilityById } from '../data/capabilities';
+import { YELLOW_QUARTILE_NAME, yellowQuartileForShare, yellowWeightForShare } from '../lib/scoring';
 import { attackBridge } from '../data/attack';
 import { evidenceFor, ageDays, ASSESSMENT_DATE } from '../data/evidence';
 import { requestPlan } from '../data/scenario';
@@ -105,6 +107,26 @@ export default function ControlDetail() {
   const oldest = evItems.reduce((m, it) => Math.max(m, ageDays(it.timestamp)), 0);
   const stale = oldest > control.maxAgeDays;
 
+  // Partial credit this control's deployment share earns (src/lib/scoring.ts). A share whose basis
+  // is `claimed` is capped at the second quartile; the basis is a fact in the data
+  // (deploymentShareBasis on the snapshot in effect), not something derived here. A missing basis is
+  // treated as claimed. The aggregate on the dashboard does not use this (flat 0.5).
+  let shareCreditText: string | undefined;
+  if (control.deploymentSharePct !== undefined) {
+    const share = control.deploymentSharePct / 100;
+    const basis = base.deploymentShareBasis ?? 'claimed';
+    const credit = yellowWeightForShare(share, basis);
+    const capped = credit < yellowWeightForShare(share);
+    const quartile = capped
+      ? `${YELLOW_QUARTILE_NAME[2]}; capped because the share is claimed, not measured`
+      : YELLOW_QUARTILE_NAME[yellowQuartileForShare(share)];
+    const shown = `Deployment share ${control.deploymentSharePct}% (${basis})`;
+    shareCreditText =
+      effectiveState === 'yellow'
+        ? `${shown} — partial credit ${credit} (${quartile}) for this control.`
+        : `${shown} — would earn partial credit ${credit} (${quartile}) if Partial; this control is currently ${STATE_META[effectiveState].label}, so none applies.`;
+  }
+
   const related = controls
     .filter((c) => c.id !== control.id && c.capability === control.capability)
     .slice(0, 4);
@@ -115,7 +137,7 @@ export default function ControlDetail() {
   };
 
   return (
-    <div className="space-y-5">
+    <Provenance tier="illustrative" className="space-y-5">
       <Link to="/gap-matrix" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
         <ArrowLeft size={15} /> Gap Matrix
       </Link>
@@ -247,12 +269,7 @@ export default function ControlDetail() {
                 <span>{control.populationNote}</span>
               </div>
             )}
-            {control.deploymentSharePct !== undefined && (
-              <div className="tnum">
-                Deployment share: <strong>{control.deploymentSharePct}%</strong> — partial-credit quartile
-                applied to the Yellow weighting.
-              </div>
-            )}
+            {shareCreditText && <div className="tnum">{shareCreditText}</div>}
             {control.exceptionPopulation && (
               <div className="rounded-md bg-red-50 px-3 py-2 text-[13px] text-red-700">
                 Named exception retained: {control.exceptionPopulation}
@@ -353,6 +370,6 @@ export default function ControlDetail() {
           }}
         />
       )}
-    </div>
+    </Provenance>
   );
 }

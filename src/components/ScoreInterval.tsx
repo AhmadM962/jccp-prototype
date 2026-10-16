@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { assertDisplayedInterval } from '../lib/scoring';
 
 // ⭐ The signature component. Compliance is ALWAYS an interval, never a single number.
 // The band's width is the visible cost of missing evidence.
@@ -30,6 +31,10 @@ export default function ScoreInterval({
   animateFrom,
   ghost,
 }: Props) {
+  // Every band drawn anywhere passes through here, so this is where a wrong number is stopped.
+  assertDisplayedInterval(lower, upper, widthPts, 'ScoreInterval');
+  if (ghost) assertDisplayedInterval(ghost.lower, ghost.upper, undefined, 'ScoreInterval ghost');
+  if (animateFrom) assertDisplayedInterval(animateFrom.lower, animateFrom.upper, undefined, 'ScoreInterval animateFrom');
   const width = widthPts ?? upper - lower;
   const hero = variant === 'hero';
   const bandInitial = animateFrom

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { NAV } from './nav';
 import { useAssessment, ROLE_LABEL, type Role } from '../../store/useAssessment';
 import { sectorById, regulatorDisplay } from '../../data/sectors';
+import { TierLegend } from '../Provenance';
 
 const ROLE_NOTE: Record<Role, string> = {
   owner: 'full access + collection progress',
@@ -81,6 +82,7 @@ export default function TopBar() {
         >
           <Compass size={12} /> <span className="hidden sm:inline">Guided tour</span>
         </button>
+        <TierLegend />
         <span className="hidden items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 lg:inline-flex">
           <Lock size={12} /> On-premise · read-only
         </span>

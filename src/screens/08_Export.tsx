@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileJson, ShieldCheck, X, Download, BadgeCheck, Eye } from 'lucide-react';
+import { FileJson, ShieldCheck, X, Download, Info, Eye } from 'lucide-react';
 import { Card, Pill, Button } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
 import { TOTALS } from '../data/capabilities';
 
@@ -140,7 +141,7 @@ export default function ExportScreen() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Provenance tier="planned"><Card>
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 text-accent">
             <FileJson size={22} />
@@ -151,8 +152,8 @@ export default function ExportScreen() {
               Five OSCAL models. Coverage metadata and the assurance level travel inside the package, so the
               regulator sees the interval — not a bare number.
             </p>
-            <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-emerald-700">
-              <BadgeCheck size={14} /> Validates against OSCAL 1.1.2 · 5 models · 557 control implementations · 0 errors
+            <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-slate-500">
+              <Info size={14} /> OSCAL 1.1.2 · 5 models · 557 control implementations. Validation runs in the assessment engine, not in this preview.
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
@@ -166,22 +167,22 @@ export default function ExportScreen() {
             )}
           </div>
         </div>
-      </Card>
+      </Card></Provenance>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {MODELS.map((m) => (
-          <Card key={m.name}>
+          <Provenance key={m.name} tier="illustrative"><Card>
             <h3 className="text-sm font-bold text-slate-900">{m.name}</h3>
             <p className="mt-1 text-[12px] leading-snug text-slate-500">{m.desc}</p>
             <div className="mt-3 flex items-center gap-3 text-xs font-semibold text-accent">
               <button onClick={() => setOpen(m.name)} className="hover:underline">Preview JSON</button>
-              <button onClick={() => setPrepared({ redacted: true })} className="inline-flex items-center gap-1 hover:underline">
+              <Provenance tier="planned" as="span" className="inline-block"><button onClick={() => setPrepared({ redacted: true })} className="inline-flex items-center gap-1 hover:underline">
                 <Download size={12} /> .json
-              </button>
+              </button></Provenance>
             </div>
-          </Card>
+          </Card></Provenance>
         ))}
-        <Card>
+        <Provenance tier="planned"><Card>
           <div className="flex items-center gap-2">
             <ShieldCheck size={16} className="text-emerald-600" />
             <h3 className="text-sm font-bold text-slate-900">Signed package</h3>
@@ -198,10 +199,10 @@ export default function ExportScreen() {
           <button onClick={() => setPrepared((p) => p ?? { redacted: true })} className="mt-2 text-[11px] font-semibold text-accent hover:underline">
             Verify signature
           </button>
-        </Card>
+        </Card></Provenance>
       </div>
 
-      <Card title="JNCSF Catalog — a national reference" subtitle="not just an export">
+      <Provenance tier="illustrative"><Card title="JNCSF Catalog — a national reference" subtitle="not just an export">
         <p className="text-sm text-slate-600">
           The Catalog model is the first machine-readable representation of the JNCSF: 576 controls with their
           ISO 27002 and NIST 800-53 mappings, ATT&amp;CK bridges and evidence signal requirements. It can be
@@ -211,7 +212,7 @@ export default function ExportScreen() {
         <button onClick={() => setOpen('Catalog')} className="mt-2 text-xs font-semibold text-accent hover:underline">
           Preview the Catalog model
         </button>
-      </Card>
+      </Card></Provenance>
 
       <div className="flex justify-end">
         <Link to="/rollup" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">

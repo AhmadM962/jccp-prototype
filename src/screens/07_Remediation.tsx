@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Wrench, ArrowRight, Check, FileSearch, ShieldCheck } from 'lucide-react';
 import { Card, Button, Pill, CodeBlock } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import ScoreInterval from '../components/ScoreInterval';
 import { useAssessment } from '../store/useAssessment';
 import { remediationPlan, evidenceRequests } from '../data/remediation';
 import { requestPlan } from '../data/scenario';
 import { TOTALS } from '../data/capabilities';
 import { UNCOLLECTABLE_COUNT } from '../data/controls';
-import { projectProvision } from '../lib/scoring';
+import { bandFloorPts, projectProvision } from '../lib/scoring';
 
 const fmt1 = (n: number) => n.toFixed(1);
 const pctRange = (lo: number, hi: number) => `${fmt1(lo * 100)} – ${fmt1(hi * 100)}%`;
@@ -72,9 +73,17 @@ function RequestsTab() {
     const providedUnlock = evidenceRequests
       .filter((r) => provided.includes(r.id))
       .reduce((s, r) => s + r.controlsUnlocked, 0);
-    return projectProvision(base.applicable, base.green, base.yellow, base.unknown, providedUnlock);
+    return projectProvision(base.applicable, base.green, base.yellow, base.unknown, providedUnlock, UNCOLLECTABLE_COUNT);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provided]);
+
+  // One computation feeds the hero numbers, the hero width and the subline: the band after the
+  // provided artifacts, if every resolved control passes (the dashed ghost band is the worst case).
+  const hero = {
+    lower: cumulative.bestCase.lower * 100,
+    upper: cumulative.bestCase.upper * 100,
+    width: cumulative.resultingWidthPts,
+  };
 
   return (
     <div className="space-y-5">
@@ -84,20 +93,20 @@ function RequestsTab() {
       >
         <div className="py-3">
           <ScoreInterval
-            lower={cumulative.bestCase.lower * 100}
-            upper={cumulative.worstCase.upper * 100}
-            widthPts={(cumulative.worstCase.upper - cumulative.bestCase.lower) * 100}
-            caption="Where the band could land"
+            lower={hero.lower}
+            upper={hero.upper}
+            widthPts={hero.width}
+            caption={cumulative.resolved === 0 ? undefined : 'Best case — all resolved controls pass'}
             ghost={{ lower: cumulative.worstCase.lower * 100, upper: cumulative.worstCase.upper * 100, label: 'worst case — all resolved controls fail' }}
             subline={
               cumulative.resolved === 0
                 ? 'Provide artifacts below to project the outcome.'
-                : `${cumulative.resolved} controls become known. Band width falls to ${fmt1(cumulative.resultingWidthPts)} pts. Best case ${pctRange(cumulative.bestCase.lower, cumulative.bestCase.upper)} · worst case ${pctRange(cumulative.worstCase.lower, cumulative.worstCase.upper)}.`
+                : `${cumulative.resolved} controls become known. Band width falls to ${fmt1(hero.width)} pts. Best case ${pctRange(cumulative.bestCase.lower, cumulative.bestCase.upper)} · worst case ${pctRange(cumulative.worstCase.lower, cumulative.worstCase.upper)}.`
             }
           />
         </div>
         <p className="mt-2 text-[11px] text-slate-400">
-          The band cannot fall below <span className="tnum">{fmt1((UNCOLLECTABLE_COUNT / base.applicable) * 100)} pts</span> of
+          The band cannot fall below <span className="tnum">{fmt1(bandFloorPts(base.applicable, UNCOLLECTABLE_COUNT))} pts</span> of
           width — the {UNCOLLECTABLE_COUNT} structurally uncollectable controls stay Unknown regardless of what is provided.
         </p>
       </Card>
@@ -105,7 +114,7 @@ function RequestsTab() {
       <div className="space-y-3">
         {[...evidenceRequests].sort((a, b) => b.controlsUnlocked - a.controlsUnlocked).map((r) => {
           const done = provided.includes(r.id);
-          const p = projectProvision(base.applicable, base.green, base.yellow, base.unknown, r.controlsUnlocked);
+          const p = projectProvision(base.applicable, base.green, base.yellow, base.unknown, r.controlsUnlocked, UNCOLLECTABLE_COUNT);
           return (
             <Card key={r.id}>
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -279,7 +288,9 @@ export default function Remediation() {
         ))}
       </div>
 
-      {tab === 'all' ? <AllActionsTab /> : tab === 'plan' ? <RemediationTab /> : <RequestsTab />}
+      <Provenance tier="illustrative">
+        {tab === 'all' ? <AllActionsTab /> : tab === 'plan' ? <RemediationTab /> : <RequestsTab />}
+      </Provenance>
 
       <div className="flex justify-end">
         <Link to="/export" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
