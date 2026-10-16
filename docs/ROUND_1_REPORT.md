@@ -240,7 +240,7 @@ Other on-screen uses of "seeded" that I did **not** change (they pre-date Round 
 - Which is wrong: neither number alone. The *sum* is not meaningful: 49 > 20, so the five artifacts' sets must overlap (18 + 14 = 32 already exceeds 20). The 20 reconciles to `TOTALS` and is asserted throughout; the five counts are free-standing hand-entered numbers, so they are the unreliable side, though the data does not say which artifact is overstated.
 - How it feeds the floor: the floor (39/557 = 7.0 pts) does not use 49. It holds because `projectProvision` caps the pool at 20. Uncapped, providing all five would resolve 49 and leave 59 − 49 = 10 Unknowns, a width of 1.8 pts, below the 7.0 floor: that was the impossible projection fixed in 3.4. Computed: `node -e 'const A=557,U=59,F=39;console.log(U-F, 8+18+14+5+4, U-49, (U-49)/A*100, F/A*100)'` → `20 49 10 1.7953321364452424 7.001795332136446`.
 - Committed as tests (`consistency.test.tsx`, "fixture: the five Remediation artifacts claim more than the Unknown pool…"): both numbers, and that providing all five resolves exactly the pool with the band stopping at the floor.
-- Whether it dissolves in Round 3: I expect so if the per-artifact counts are computed from a control set rather than typed, but I do not know the Round 3 design, so I leave it as a known fixture flaw.
+- Whether it dissolves in Round 3: owner ruling in the Round 2 brief: yes. Controls-unlocked becomes a computed intersection of what each requested signal serves with the applicable set, instead of five hand-entered integers. Both committed tests stay and become the regression check when the computation lands.
 
 ### 9.5 Which claims are guarded, and which were established once
 Every figure in §1 that previously rested on a deleted probe is now covered by a committed test:
@@ -259,9 +259,13 @@ Every figure in §1 that previously rested on a deleted probe is now covered by 
 - The disk re-read check ("N files with markers present"): a scratchpad script, not committed.
 - Lockfile: see 9.6.
 
-### 9.6 Correction: the lockfile was not purely additive
-I reported "no existing package changed" and "all additions from the 104 new packages". Reproduce with `node docs/evidence/lockdiff.js 685315c feba4ba`: `{"added":104,"removed":0,"changedEntries":14,"changedVersionResolvedOrIntegrity":0}`.
-So 104 packages added, none removed, and **no existing package changed version, `resolved` or `integrity`** — but 14 existing optional platform packages (13 `@rollup/rollup-linux-*`, plus `@napi-rs/lzma-linux-x64-gnu`) lost their `libc` field when npm 10.9.4 rewrote the file. That is lockfile churn from a different npm version than wrote the original, not an upgrade. It only affects which libc variant of those optional binaries npm will install. I did not hand-edit the lockfile to put it back; say if you want it restored.
+### 9.6 Lockfile — stated precisely
+Reproduce with `node docs/evidence/lockdiff.js 685315c feba4ba`: `{"added":104,"removed":0,"changedEntries":14,"changedVersionResolvedOrIntegrity":0}`.
+- 104 packages were added and none removed.
+- **No existing package changed `version`, `resolved` or `integrity`.**
+- 14 existing optional platform packages (13 `@rollup/rollup-linux-*` and `@napi-rs/lzma-linux-x64-gnu`) no longer carry a `libc` metadata field: npm 10.9.4 normalised its own file format when it rewrote the lockfile. That is the package manager's formatting, not a package change.
+- Deliberately **not** reverted (owner ruling): putting the field back would be undone by the next `npm ci`/`npm install`.
+(Earlier text in this report that called the lockfile "purely additive" or "no existing package changed" was imprecise; this section is the correct statement.)
 
 ### 9.7 Verification
 `npx tsc --noEmit` exit 0; `npm run build` exit 0; `npm test` 8 files, 84 tests (72 + 2 `boundary_app` + 6 `followup` + 4 `consistency`). Re-render: 13 routes, 0 console errors or React warnings beyond the React Router future-flag notices, on the committed code. Disk re-read: see the reply for the count.

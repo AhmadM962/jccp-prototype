@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
-import { WITHHELD_MESSAGE } from '../components/FigureBoundary';
+import { WITHHELD_MESSAGE, WITHHELD_SCREEN_MESSAGE } from '../components/FigureBoundary';
 import { useAssessment } from '../store/useAssessment';
 
 // A guard that fires while a screen's numbers are being derived — above any single figure — must
@@ -35,6 +35,7 @@ describe('the app keeps its chrome when a derivation guard fires', () => {
   it('renders the Dashboard normally when nothing is wrong', () => {
     broken = false;
     const { queryByTestId, container } = at('/dashboard');
+    expect(queryByTestId('screen-withheld')).toBeNull();
     expect(queryByTestId('figure-withheld')).toBeNull();
     expect(container.textContent).toContain('Compliance Dashboard');
   });
@@ -45,8 +46,9 @@ describe('the app keeps its chrome when a derivation guard fires', () => {
     console.error = (...a: unknown[]) => logged.push(a.map(String).join(' '));
     try {
       const { getByTestId, container } = at('/dashboard');
-      expect(getByTestId('figure-withheld').textContent).toBe(WITHHELD_MESSAGE);
-      expect(getByTestId('figure-withheld').getAttribute('data-where')).toBe('boundedScore');
+      expect(getByTestId('screen-withheld').textContent).toBe(WITHHELD_SCREEN_MESSAGE);
+      expect(getByTestId('screen-withheld').textContent).not.toBe(WITHHELD_MESSAGE); // not the figure wording
+      expect(getByTestId('screen-withheld').getAttribute('data-where')).toBe('boundedScore');
       expect(container.textContent).toContain('Demonstration prototype'); // banner / chrome still rendered
       expect(container.querySelector('nav')).not.toBeNull(); // sidebar
       expect(logged.some((l) => l.includes('figure withheld by guard "boundedScore"'))).toBe(true);

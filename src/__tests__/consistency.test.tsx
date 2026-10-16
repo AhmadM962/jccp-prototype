@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Dashboard from '../screens/04_Dashboard';
 import GapMatrix from '../screens/05_GapMatrix';
 import Intake from '../screens/03_Intake';
+import Exclusions from '../screens/10_Exclusions';
 import { useAssessment } from '../store/useAssessment';
 import { TOTALS } from '../data/capabilities';
 import { GAP_REASON_BREAKDOWN, UNCOLLECTABLE_COUNT, controls } from '../data/controls';
@@ -69,7 +70,7 @@ describe('4.1 90 vs 148 vs 25 — each figure computed from its own source and n
   it('the Gap Matrix filter the link opens shows exactly the 25 changed seeds', () => {
     useAssessment.setState({ evidenceUploaded: true });
     const { container } = renderAt('/gap-matrix?changed=1', <GapMatrix />, '/gap-matrix');
-    const shown = Array.from((container.textContent ?? '').matchAll(/(\d+) of \d+ seeded shown/g)).reduce(
+    const shown = Array.from((container.textContent ?? '').matchAll(/(\d+) of \d+ in this sample shown/g)).reduce(
       (n, m) => n + Number(m[1]),
       0,
     );
@@ -174,5 +175,30 @@ describe('fixture: the five Remediation artifacts claim more than the Unknown po
     const p = projectProvision(TOTALS.applicable, t.green, t.yellow, t.unknown, claimed, UNCOLLECTABLE_COUNT);
     expect(p.resolved).toBe(pool);
     expect(p.resultingWidthPts).toBeCloseTo(bandFloorPts(TOTALS.applicable, UNCOLLECTABLE_COUNT), 10);
+  });
+});
+
+// 'seeded' is a developer's word. What the screen means is "in this sample" (or, for the
+// exclusions register, which is complete, just the count).
+describe('on-screen vocabulary: no "seeded"', () => {
+  it.each([
+    ['/dashboard', <Dashboard key="d" />, '/dashboard'],
+    ['/gap-matrix', <GapMatrix key="g" />, '/gap-matrix'],
+    ['/exclusions', <Exclusions key="e" />, '/exclusions'],
+  ] as const)('%s renders no "seeded"', (path, el, pattern) => {
+    for (const uploaded of [false, true]) {
+      useAssessment.setState({ evidenceUploaded: uploaded });
+      const { container, unmount } = renderAt(path, el, pattern);
+      expect(container.textContent).not.toMatch(/seeded/i);
+      unmount();
+    }
+  });
+  it('Gap Matrix counts are phrased "in this sample"', () => {
+    const { container } = renderAt('/gap-matrix', <GapMatrix />, '/gap-matrix');
+    expect(container.textContent).toMatch(/\d+ of \d+ in this sample shown/);
+  });
+  it('the exclusions register lists all 19 and says so plainly', () => {
+    const { container } = renderAt('/exclusions', <Exclusions />, '/exclusions');
+    expect(container.textContent).toContain('Exclusions — 19 shown of 19');
   });
 });

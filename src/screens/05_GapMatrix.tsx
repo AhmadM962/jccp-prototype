@@ -148,7 +148,7 @@ export default function GapMatrix() {
                 <ChevronDown size={16} className={`text-slate-400 transition ${isOpen ? '' : '-rotate-90'}`} />
                 <span className="text-sm font-semibold text-slate-800">{cap.name}</span>
                 <span className="tnum text-[11px] text-slate-400">
-                  {stat.applicable} applicable · {capRows.length} of {controls.filter((c) => c.capability === cap.id).length} seeded shown
+                  {stat.applicable} applicable · {capRows.length} of {controls.filter((c) => c.capability === cap.id).length} in this sample shown
                 </span>
               </div>
               <div
@@ -174,7 +174,7 @@ export default function GapMatrix() {
                 <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                   {capRows.length === 0 ? (
                     <div className="border-t border-slate-100 px-5 py-4 text-sm text-slate-400">
-                      No seeded controls match the current filters.
+                      No controls in this sample match the current filters.
                     </div>
                   ) : (
                     <div className="border-t border-slate-100">

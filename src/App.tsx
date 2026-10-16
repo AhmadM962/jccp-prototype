@@ -37,14 +37,19 @@ function RoleGate({ children }: { children: ReactNode }) {
 }
 
 /** Last line of defence for a guard that throws above any single figure (e.g. while a screen's
- *  numbers are being derived). The sidebar and top bar stay; the screen shows the same honest
- *  message. Retries when the route or the data behind it changes. */
+ *  numbers are being derived). The sidebar and top bar stay; the screen shows its own message
+ *  (not the figure wording) and the same guard is logged. Retries when the route or the data
+ *  behind it changes. */
 function ScreenBoundary({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const dataKey = useAssessment(
     (s) => `${s.evidenceUploaded}|${s.providedRequests.join()}|${Object.keys(s.overriddenControls).join()}`,
   );
-  return <FigureBoundary resetKey={`${pathname}|${dataKey}`}>{children}</FigureBoundary>;
+  return (
+    <FigureBoundary scope="screen" resetKey={`${pathname}|${dataKey}`}>
+      {children}
+    </FigureBoundary>
+  );
 }
 
 export default function App() {
