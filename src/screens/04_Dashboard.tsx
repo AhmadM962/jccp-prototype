@@ -16,10 +16,11 @@ import { AlertTriangle, Info, ArrowUpRight, ShieldAlert, TrendingUp, Scale } fro
 import { Card, Pill } from '../components/ui';
 import { Provenance } from '../components/Provenance';
 import ScoreInterval from '../components/ScoreInterval';
+import WidthDecomposition from '../components/WidthDecomposition';
 import { useAssessment } from '../store/useAssessment';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { ASSURANCE_LEVELS, bandFloorPts } from '../lib/scoring';
-import { stateFor } from '../lib/views';
+import { stateFor, unevidencedRows } from '../lib/views';
 import { coverageBreakdown, completenessStatement, unknownResolvedByUpload, seededChangedCount } from '../lib/coverage';
 import { dashboardView } from '../lib/derive';
 import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
@@ -30,6 +31,21 @@ import { RISK_WEIGHT_TABLE, RISK_WEIGHTED_TOTALS, weightedWidthPts, UNDERIVED_SH
 import { Term } from '../tour/Term';
 
 const fmt1 = (n: number) => n.toFixed(1);
+
+/** The width decomposition under the interval: whose limitation each part of the width is. */
+function WidthBreakdown({ uploaded, eff, overridesActive }: { uploaded: boolean; eff: ReturnType<typeof dashboardView>['effective']; overridesActive: number }) {
+  const s = stateFor(uploaded);
+  return (
+    <WidthDecomposition
+      parts={eff.widthExact.parts}
+      width={eff.widthExact.total}
+      controls={eff.widthControls}
+      reasons={unevidencedRows(s)}
+      reasonsTotal={s.views.unweighted.width.unevidenced}
+      reasonsNote={overridesActive > 0 ? 'Analyst overrides are not itemised by reason: this table is the engine verdict.' : undefined}
+    />
+  );
+}
 
 /** What the aggregate does with Partial controls: the engine credits each one individually. */
 function PartialCreditNote({ uploaded }: { uploaded: boolean }) {
@@ -73,6 +89,7 @@ function ExecutiveDashboard() {
               subline={`Assurance ${uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented'}. ${cs.unauthored} controls have no evidence requirement authored; ${cs.unevidenced} are not yet evidenced.`}
             />
           </div>
+          <WidthBreakdown uploaded={uploaded} eff={eff} overridesActive={view.overridesActive} />
           <PartialCreditNote uploaded={uploaded} />
         </Card></Provenance>
         <Provenance tier="illustrative"><Card title="Trend" subtitle="last four collection cycles">
@@ -263,6 +280,7 @@ export default function Dashboard() {
               </p>
             )}
           </div>
+          <WidthBreakdown uploaded={uploaded} eff={eff} overridesActive={view.overridesActive} />
           <PartialCreditNote uploaded={uploaded} />
         </Card></Provenance>
 

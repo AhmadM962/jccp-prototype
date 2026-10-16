@@ -64,12 +64,14 @@ export const widthParts = (w: WidthParts): WidthPart[] =>
   (['unauthored', 'unevidenced', 'uncollectable'] as const).map((cause) => ({ cause, frac: w[cause], pts: toPct(w[cause]) }));
 
 /** The three causes sum EXACTLY to the width. Asserted, in exact arithmetic, wherever they are shown. */
-export function assertWidthSums(v: ViewFigures, where: string): void {
-  const parts = add(add(v.width.unauthored, v.width.unevidenced), v.width.uncollectable);
-  if (!eq(parts, widthOf(v))) {
-    throw new IntervalConsistencyError(where, `Width parts do not sum to the width in ${where}: ${parts[0]}/${parts[1]} != ${widthOf(v)[0]}/${widthOf(v)[1]}`);
+export function assertWidthPartsSum(parts: WidthParts, width: Frac, where: string): void {
+  const total = add(add(parts.unauthored, parts.unevidenced), parts.uncollectable);
+  if (!eq(total, width)) {
+    throw new IntervalConsistencyError(where, `Width parts do not sum to the width in ${where}: ${total[0]}/${total[1]} != ${width[0]}/${width[1]}`);
   }
 }
+
+export const assertWidthSums = (v: ViewFigures, where: string): void => assertWidthPartsSum(v.width, widthOf(v), where);
 
 export interface ReasonRow {
   reason: GapReason;

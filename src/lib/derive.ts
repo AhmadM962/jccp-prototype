@@ -12,9 +12,9 @@
 // per-control weights and scope that the buckets do not carry, so those show the engine verdict.
 
 import { controls, snapshotFor, type ControlState } from '../data/controls';
-import type { Frac, StateFigures } from '../data/ministry';
+import type { Frac, StateFigures, WidthParts } from '../data/ministry';
 import type { OverrideRecord } from '../store/useAssessment';
-import { add, div, toPct } from './frac';
+import { add, div, frac, toPct } from './frac';
 import { IntervalConsistencyError } from './scoring';
 import { stateFor, type WidthCause } from './views';
 
@@ -42,6 +42,10 @@ export interface DashboardFigures {
   widthPts: number;
   /** points of width by cause; they sum to widthPts */
   widthByCause: Record<WidthCause, number>;
+  /** the same, as exact fractions of the applicable controls: the parts and their total */
+  widthExact: { parts: WidthParts; total: Frac };
+  /** controls behind each part */
+  widthControls: Record<WidthCause, number>;
 }
 
 export function engineBuckets(uploaded: boolean): BucketCounts {
@@ -74,6 +78,11 @@ function figures(b: BucketCounts, s: StateFigures): DashboardFigures {
     coveragePct: ((n - b.unknown) * 100) / n,
     widthPts: pts(b.unknown),
     widthByCause: { unauthored: pts(b.unknownUnauthored), unevidenced: pts(unevidenced), uncollectable: 0 },
+    widthExact: {
+      parts: { unauthored: frac(b.unknownUnauthored, n), unevidenced: frac(unevidenced, n), uncollectable: [0, 1] },
+      total: frac(b.unknown, n),
+    },
+    widthControls: { unauthored: b.unknownUnauthored, unevidenced, uncollectable: 0 },
   };
 }
 
