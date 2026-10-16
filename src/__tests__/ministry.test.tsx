@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Dashboard from '../screens/04_Dashboard';
 import { useAssessment, type OverrideRecord } from '../store/useAssessment';
-import { MINISTRY, VERDICT_OUTSIDE_AUTHORED_SCOPE, WEIGHT_BASIS_COUNTS, type StateFigures, type ViewId } from '../data/ministry';
+import { CURRENT, type StateFigures, type ViewId } from '../data/current';
 import { APPLICABLE_CONTROLS, EXCLUDED_COUNT, TOTAL_CONTROLS } from '../data/figures';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { GAP_REASON_BREAKDOWN, controls } from '../data/controls';
@@ -17,7 +17,7 @@ beforeEach(() => {
   useAssessment.getState().resetDemo();
 });
 
-const STATES = { before: MINISTRY.before, after: MINISTRY.after } as const;
+const STATES = { before: CURRENT.before, after: CURRENT.after } as const;
 
 describe('exact fractions', () => {
   it('add, sub and compare without rounding', () => {
@@ -30,33 +30,33 @@ describe('exact fractions', () => {
   });
 });
 
-describe('Task 2: the per-state counts, derived from per-control data (see docs/evidence/derive_ministry_figures.py)', () => {
+describe('Task 2: the per-state counts, derived from per-control data (see docs/evidence/derive_profiles.py)', () => {
   it('assessed state: 21 Compliant, 25 Partial, 6 Gap, 505 Unknown = 557', () => {
-    const a = MINISTRY.after;
+    const a = CURRENT.after;
     expect([a.green, a.yellow, a.red, a.unknown]).toEqual([21, 25, 6, 505]);
     expect(a.green + a.yellow + a.red + a.unknown).toBe(APPLICABLE_CONTROLS);
   });
   it('pre-upload state (engine data under rule R): 0 / 14 / 1 / 542 = 557', () => {
-    const b = MINISTRY.before;
+    const b = CURRENT.before;
     expect([b.green, b.yellow, b.red, b.unknown]).toEqual([0, 14, 1, 542]);
     expect(b.green + b.yellow + b.red + b.unknown).toBe(APPLICABLE_CONTROLS);
   });
   it('52 carry a verdict unweighted and 51 over the authored scope of 65: both are right, they differ by one control outside the scope', () => {
-    const u = MINISTRY.after.views.unweighted;
-    const s = MINISTRY.after.views.authored_scope;
+    const u = CURRENT.after.views.unweighted;
+    const s = CURRENT.after.views.authored_scope;
     expect(u.known).toBe(52);
     expect(s.applicable).toBe(65);
     expect(s.known).toBe(51);
     // the controls outside the scope: 492 = 557 − 65. 491 are Unknown for want of a requirement; one has a verdict.
     expect(APPLICABLE_CONTROLS - s.applicable).toBe(492);
-    expect(MINISTRY.after.unknownUnauthored).toBe(491);
-    expect(u.known - s.known).toBe(APPLICABLE_CONTROLS - s.applicable - MINISTRY.after.unknownUnauthored);
+    expect(CURRENT.after.unknownUnauthored).toBe(491);
+    expect(u.known - s.known).toBe(APPLICABLE_CONTROLS - s.applicable - CURRENT.after.unknownUnauthored);
     expect(u.known - s.known).toBe(1);
   });
 });
 
 describe('Task 2: every published view matches the engine table', () => {
-  const A = MINISTRY.after.views;
+  const A = CURRENT.after.views;
   const pct = (f: readonly [number, number]) => fmtPct(f, 2);
   it('unweighted: 4.87% – 95.54% over 557, coverage 9.34% (52 of 557), 505 Unknown, width 90.66', () => {
     expect([pct(A.unweighted.lower), pct(A.unweighted.upper)]).toEqual(['4.87', '95.54']);
@@ -87,7 +87,7 @@ describe('Task 2: every published view matches the engine table', () => {
 });
 
 describe('Task 2: the width decomposition', () => {
-  const U = MINISTRY.after.views.unweighted;
+  const U = CURRENT.after.views.unweighted;
   it('unauthored 88.15 points (491 controls), unevidenced 2.51 (14), uncollectable 0.00', () => {
     expect(fmtPct(U.width.unauthored)).toBe('88.15');
     expect(U.width.unauthored).toEqual([491, APPLICABLE_CONTROLS]);
@@ -107,15 +107,15 @@ describe('Task 2: the width decomposition', () => {
     expect(() => assertWidthSums(bad, 'test')).toThrow(IntervalConsistencyError);
   });
   it('unevidenced reasons: not_provided 5, declined 3, insufficient_permission 3, module_failed 2, stale 1 = 14', () => {
-    expect(MINISTRY.after.unevidencedByReason).toEqual({ not_provided: 5, declined: 3, insufficient_permission: 3, module_failed: 2, stale: 1 });
-    const rows = unevidencedRows(MINISTRY.after);
+    expect(CURRENT.after.unevidencedByReason).toEqual({ not_provided: 5, declined: 3, insufficient_permission: 3, module_failed: 2, stale: 1 });
+    const rows = unevidencedRows(CURRENT.after);
     expect(rows.reduce((n, r) => n + r.count, 0)).toBe(14);
     // and they add up, as fractions of the 557, to the unevidenced width
     expect(eq(sum(rows.map((r) => frac(r.count, APPLICABLE_CONTROLS))), U.width.unevidenced)).toBe(true);
   });
   it('before the upload every unevidenced authored control is not_provided: 50, so the upload resolves 36', () => {
-    expect(MINISTRY.before.unevidencedByReason).toEqual({ not_provided: 50 });
-    expect(MINISTRY.before.unknown - MINISTRY.before.unknownUnauthored).toBe(50);
+    expect(CURRENT.before.unevidencedByReason).toEqual({ not_provided: 50 });
+    expect(CURRENT.before.unknown - CURRENT.before.unknownUnauthored).toBe(50);
     expect(50 - 14).toBe(36);
   });
 });
@@ -125,37 +125,37 @@ describe('Task 2: the upload moves a control outside the authored scope only by 
   // bundle, so it is Unknown before and a Gap after. The attribution of the upload's effect to the authored scope
   // is therefore NOT clean, and that is correct: observation can reach any control.
   it('492 unauthored controls are Unknown before and 491 after: exactly the controls observed from the bundle', () => {
-    expect(MINISTRY.before.unknownUnauthored).toBe(492);
-    expect(MINISTRY.after.unknownUnauthored).toBe(491);
-    expect(MINISTRY.before.unknownUnauthored - MINISTRY.after.unknownUnauthored).toBe(VERDICT_OUTSIDE_AUTHORED_SCOPE.length);
-    expect(VERDICT_OUTSIDE_AUTHORED_SCOPE).toEqual([{ id: 'JNCSF-139', state: 'red', gapBasis: 'observed' }]);
+    expect(CURRENT.before.unknownUnauthored).toBe(492);
+    expect(CURRENT.after.unknownUnauthored).toBe(491);
+    expect(CURRENT.before.unknownUnauthored - CURRENT.after.unknownUnauthored).toBe(CURRENT.ruleR.verdictsOutsideAuthoredScope.length);
+    expect(CURRENT.ruleR.verdictsOutsideAuthoredScope).toEqual([{ id: 'JNCSF-139', state: 'red', gapBasis: 'observed' }]);
   });
   it('the tool\u2019s share of the width falls by exactly that one control, in every view', () => {
     for (const id of VIEW_ORDER.filter((v) => v !== 'authored_scope')) {
-      const b = toPct(MINISTRY.before.views[id].width.unauthored);
-      const a = toPct(MINISTRY.after.views[id].width.unauthored);
+      const b = toPct(CURRENT.before.views[id].width.unauthored);
+      const a = toPct(CURRENT.after.views[id].width.unauthored);
       expect(b, id).toBeGreaterThan(a);
     }
     // the authored-scope view holds no unauthored control, so the observation cannot touch it
-    expect(MINISTRY.before.views.authored_scope.width.unauthored).toEqual(MINISTRY.after.views.authored_scope.width.unauthored);
-    const u = (s: typeof MINISTRY.before) => s.views.unweighted.width.unauthored;
-    expect(u(MINISTRY.before)).toEqual([492, APPLICABLE_CONTROLS]);
-    expect(u(MINISTRY.after)).toEqual([491, APPLICABLE_CONTROLS]);
+    expect(CURRENT.before.views.authored_scope.width.unauthored).toEqual(CURRENT.after.views.authored_scope.width.unauthored);
+    const u = (s: typeof CURRENT.before) => s.views.unweighted.width.unauthored;
+    expect(u(CURRENT.before)).toEqual([492, APPLICABLE_CONTROLS]);
+    expect(u(CURRENT.after)).toEqual([491, APPLICABLE_CONTROLS]);
   });
   it('inside the authored scope the rest is as before; outside it, Unknown falls by that one control and no more', () => {
-    const outsideUnknown = (s: typeof MINISTRY.before) => s.views.unweighted.unknown - s.views.authored_scope.unknown;
-    expect(outsideUnknown(MINISTRY.before)).toBe(492);
-    expect(outsideUnknown(MINISTRY.after)).toBe(491);
+    const outsideUnknown = (s: typeof CURRENT.before) => s.views.unweighted.unknown - s.views.authored_scope.unknown;
+    expect(outsideUnknown(CURRENT.before)).toBe(492);
+    expect(outsideUnknown(CURRENT.after)).toBe(491);
     // the one that moved is a Gap, so it adds no credit: outside the authored scope the credit is zero in both states
     for (const when of ['before', 'after'] as const) {
-      const s = MINISTRY[when];
+      const s = CURRENT[when];
       const inScope = mul(s.views.authored_scope.lower, [s.views.authored_scope.applicable, 1]);
       expect(eq(sub(s.creditNumerator, inScope), [0, 1]), when).toBe(true);
     }
   });
   it('only the organisation\'s share of the width moves, and it narrows', () => {
-    const b = MINISTRY.before.views.unweighted.width.unevidenced;
-    const a = MINISTRY.after.views.unweighted.width.unevidenced;
+    const b = CURRENT.before.views.unweighted.width.unevidenced;
+    const a = CURRENT.after.views.unweighted.width.unevidenced;
     expect(toPct(b)).toBeGreaterThan(toPct(a));
   });
   it('the sample: unauthored controls are Unknown for that reason in both states', () => {
@@ -167,7 +167,7 @@ describe('Task 2: the upload moves a control outside the authored scope only by 
 });
 
 describe('Task 2: weights (the brief\'s "mismatch" is two populations, not an error)', () => {
-  const A = WEIGHT_BASIS_COUNTS.applicable;
+  const A = CURRENT.weightBasisCounts.applicable;
   const sumOf = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
   const weight = (o: Record<string, number>) =>
     o.nist_baseline_low * 1 + o.nist_baseline_moderate * 0.7 + o.nist_baseline_high * 0.5 + o.nist_no_baseline * 0.5 + o.underived * 1;
@@ -177,19 +177,19 @@ describe('Task 2: weights (the brief\'s "mismatch" is two populations, not an er
     expect(sumOf(A) - A.underived).toBe(390);
     expect(weight(A) - A.underived).toBeCloseTo(331.4, 10);
     expect(weight(A)).toBeCloseTo(498.4, 10);
-    expect(MINISTRY.after.views.weighted_derived_only.totalWeight).toEqual([1657, 5]);
-    expect(MINISTRY.after.views.weighted_including_underived.totalWeight).toEqual([2492, 5]);
+    expect(CURRENT.after.views.weighted_derived_only.totalWeight).toEqual([1657, 5]);
+    expect(CURRENT.after.views.weighted_including_underived.totalWeight).toEqual([2492, 5]);
   });
   it('over all 576 controls the same table sums to 341.4 / 514.4 with 173 underived — the other population', () => {
-    const F = WEIGHT_BASIS_COUNTS.framework;
+    const F = CURRENT.weightBasisCounts.framework;
     expect(sumOf(F)).toBe(576);
     expect(F.underived).toBe(173);
     expect(weight(F) - F.underived).toBeCloseTo(341.4, 10);
     expect(weight(F)).toBeCloseTo(514.4, 10);
   });
   it('the two populations reconcile through the 19 excluded controls', () => {
-    const E = WEIGHT_BASIS_COUNTS.excluded;
-    const F = WEIGHT_BASIS_COUNTS.framework;
+    const E = CURRENT.weightBasisCounts.excluded;
+    const F = CURRENT.weightBasisCounts.framework;
     expect(sumOf(E)).toBe(EXCLUDED_COUNT);
     for (const k of Object.keys(F) as (keyof typeof F)[]) expect(F[k], k).toBe(A[k] + E[k]);
     expect(E.underived).toBe(6);
@@ -224,8 +224,8 @@ describe('Task 2: the portfolio and the capability rows reconcile exactly', () =
     expect(del.after!.applicable).toBe(44);
   });
   it('the gap-reason rows reconcile to the Unknown count and put unauthored first', () => {
-    expect(GAP_REASON_BREAKDOWN.reduce((n, r) => n + r.before, 0)).toBe(MINISTRY.before.unknown);
-    expect(GAP_REASON_BREAKDOWN.reduce((n, r) => n + r.after, 0)).toBe(MINISTRY.after.unknown);
+    expect(GAP_REASON_BREAKDOWN.reduce((n, r) => n + r.before, 0)).toBe(CURRENT.before.unknown);
+    expect(GAP_REASON_BREAKDOWN.reduce((n, r) => n + r.after, 0)).toBe(CURRENT.after.unknown);
     expect(GAP_REASON_BREAKDOWN[0].reason).toBe('unauthored');
   });
 });
@@ -234,7 +234,7 @@ describe('Task 2: the dashboard figures are the published figures, and overrides
   const ov = (state: OverrideRecord['state']): OverrideRecord => ({ state, previousState: 'unknown', justification: 'x', analystId: 't', timestamp: 't' });
   it.each([false, true])('with no override the engine and effective figures are the published unweighted view (uploaded=%s)', (uploaded) => {
     const v = dashboardView(uploaded, {});
-    const pub = (uploaded ? MINISTRY.after : MINISTRY.before).views.unweighted;
+    const pub = (uploaded ? CURRENT.after : CURRENT.before).views.unweighted;
     for (const f of [v.engine, v.effective]) {
       expect(f.lowerPct).toBeCloseTo(toPct(pub.lower), 10);
       expect(f.upperPct).toBeCloseTo(toPct(pub.upper), 10);

@@ -1,7 +1,7 @@
 // Exact fractions [numerator, denominator]. The engine's figures are rationals, so sums can be asserted
 // exactly (no rounding drift) and a value is only turned into a decimal when it is displayed.
 
-import type { Frac } from '../data/ministry';
+import { CURRENT, type Frac } from '../data/current';
 
 const gcd = (a: number, b: number): number => (b === 0 ? Math.abs(a) : gcd(b, a % b));
 

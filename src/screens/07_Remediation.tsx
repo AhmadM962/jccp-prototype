@@ -8,7 +8,7 @@ import ScoreInterval from '../components/ScoreInterval';
 import { useAssessment } from '../store/useAssessment';
 import { remediationPlan, evidenceRequests } from '../data/remediation';
 import { requestPlan } from '../data/scenario';
-import { MINISTRY } from '../data/ministry';
+import { CURRENT } from '../data/current';
 import { bandFloorPts, projectFromNumerator } from '../lib/scoring';
 
 const fmt1 = (n: number) => n.toFixed(1);
@@ -67,7 +67,7 @@ function RequestsTab() {
 
   // Base = the post-upload engine verdict. Only the Unknowns that have an authored evidence requirement
   // (and are collectable) can be resolved by providing artifacts; the rest stay Unknown unless an artifact collected for another control shows one unmet.
-  const after = MINISTRY.after;
+  const after = CURRENT.after;
   const u = after.views.unweighted;
   const base = {
     applicable: u.applicable,

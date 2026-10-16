@@ -3,15 +3,15 @@
 // explaining what it does. Aim: a first-time policy/legal/executive reader understands the
 // whole assessment journey in ~3 minutes.
 
-import { MINISTRY } from '../data/ministry';
+import { CURRENT } from '../data/current';
 import { toPct } from '../lib/frac';
 import { assuranceMeasurement, assuranceReason } from '../lib/assurance';
 import { unknownResolvedByUpload } from '../lib/coverage';
 
 // Figures quoted in the narration come from the same numbers the screens use.
 const fmt1 = (n: number) => n.toFixed(1);
-const BEFORE = MINISTRY.before.views.unweighted;
-const AFTER = MINISTRY.after.views.unweighted;
+const BEFORE = CURRENT.before.views.unweighted;
+const AFTER = CURRENT.after.views.unweighted;
 const WIDTH_BEFORE = toPct([BEFORE.unknown, BEFORE.applicable]);
 const WIDTH_AFTER = toPct([AFTER.unknown, AFTER.applicable]);
 const UNAUTHORED_PTS = toPct(AFTER.width.unauthored);

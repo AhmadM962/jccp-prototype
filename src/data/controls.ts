@@ -3,7 +3,7 @@
 // aggregate counts in capabilities.ts.
 
 import { isoNamesFor, nistNamesFor } from './standards';
-import { MINISTRY, type StateFigures } from './ministry';
+import { CURRENT, type StateFigures } from './current';
 import { AUTHORED_CONTROLS, AUTHORING, SIGNALS_TOTAL } from './authoring';
 
 export type ControlState = 'green' | 'yellow' | 'red' | 'grey' | 'unknown';
@@ -242,7 +242,7 @@ export function snapshotFor(c: Control, uploaded: boolean): ControlSnapshot {
   return uploaded ? c.after : c.before;
 }
 
-// Gap-reason breakdown of the Unknowns, from the engine's shape for this profile (src/data/ministry.ts).
+// Gap-reason breakdown of the Unknowns, from the engine's shape for this profile (src/data/profiles (read through src/data/current.ts)).
 // `unauthored` is the tool's limitation and is by far the largest; the rest are the organisation's and
 // are itemised by reason. `not_requested` is a design invariant — a non-zero value indicates a defect.
 // Rows reconcile exactly to the Unknown count in each state (asserted in tests).
@@ -270,7 +270,7 @@ const REASON_ORDER: GapReason[] = [
 
 export const GAP_REASON_BREAKDOWN: GapReasonRow[] = [
   ...REASON_ORDER
-    .map((reason) => ({ reason, before: reasonCount(MINISTRY.before, reason), after: reasonCount(MINISTRY.after, reason) }))
+    .map((reason) => ({ reason, before: reasonCount(CURRENT.before, reason), after: reasonCount(CURRENT.after, reason) }))
     .filter((row) => row.before > 0 || row.after > 0),
   { reason: 'not_requested', before: 0, after: 0, invariant: true },
 ];

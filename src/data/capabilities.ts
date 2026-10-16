@@ -1,10 +1,10 @@
 // The six JNCSF capabilities plus before/after per-capability and portfolio stats. Since Round 2
-// every figure here is computed from the exact fractions in ministry.ts (the engine's shape for
+// every figure here is computed from the exact fractions in the active profile (src/data/profiles) (the engine's shape for
 // this profile); none is typed in. Every per-capability row reconciles exactly to the portfolio
 // TOTALS at the bottom of this file (asserted in tests).
 
 import { APPLICABLE_CONTROLS, EXCLUDED_COUNT, TOTAL_CONTROLS } from './figures';
-import { ASSURANCE, MINISTRY, type CapabilityFigures, type StateFigures } from './ministry';
+import { CURRENT, type CapabilityFigures, type StateFigures } from './current';
 
 export interface CapabilityStat {
   applicable: number;
@@ -69,8 +69,8 @@ export const capabilities: Capability[] = [
     id,
     ...NAMES[id],
     organisationallyAssessable: true,
-    before: capStat(MINISTRY.before.capabilities[id]),
-    after: capStat(MINISTRY.after.capabilities[id]),
+    before: capStat(CURRENT.before.capabilities[id]),
+    after: capStat(CURRENT.after.capabilities[id]),
   })),
   {
     id: 'natl',
@@ -106,6 +106,6 @@ export const TOTALS = {
   totalControls: TOTAL_CONTROLS,
   notApplicable: EXCLUDED_COUNT,
   applicable: APPLICABLE_CONTROLS,
-  before: { ...stateTotals(MINISTRY.before), assurance: 'L1' as const },
-  after: { ...stateTotals(MINISTRY.after), assurance: ASSURANCE.reported },
+  before: { ...stateTotals(CURRENT.before), assurance: 'L1' as const },
+  after: { ...stateTotals(CURRENT.after), assurance: CURRENT.assurance.reported },
 };

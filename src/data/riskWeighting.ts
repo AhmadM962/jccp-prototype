@@ -1,12 +1,12 @@
 // Risk weighting — derived from NIST SP 800-53B baselines. An additive disclosure: the unweighted view
 // remains the default presentation, and the interval never collapses to a single percentage.
 //
-// Since Round 2 every figure here is computed from src/data/ministry.ts. The table counts the controls
+// Since Round 2 every figure here is computed from src/data/profiles (read through src/data/current.ts). The table counts the controls
 // this assessment applies to (the 557 applicable), because that is the population the weighted totals
 // are computed over; the earlier table counted all 576 controls in the framework next to totals over 557,
 // which is why they did not agree.
 
-import { MINISTRY, WEIGHT_BASIS_COUNTS } from './ministry';
+import { CURRENT } from './current';
 import { toNumber } from '../lib/frac';
 
 export interface RiskWeightRow {
@@ -17,7 +17,7 @@ export interface RiskWeightRow {
   underived?: boolean;
 }
 
-const C = WEIGHT_BASIS_COUNTS;
+const C = CURRENT.weightBasisCounts;
 
 /** Applicable controls by risk-weight basis. Weights are the engine's published values. */
 export const RISK_WEIGHT_TABLE: RiskWeightRow[] = [
@@ -40,8 +40,8 @@ export const UNDERIVED_SHARE_PCT = Math.round((C.applicable.underived * 100) / s
 // the other; the gap between them is the weight of the underived controls, real uncertainty about
 // weight and not noise to be averaged away. Total weights, from the published views.
 export const RISK_WEIGHTED_TOTALS = {
-  derivedOnly: toNumber(MINISTRY.after.views.weighted_derived_only.totalWeight),
-  includingUnderived: toNumber(MINISTRY.after.views.weighted_including_underived.totalWeight),
+  derivedOnly: toNumber(CURRENT.after.views.weighted_derived_only.totalWeight),
+  includingUnderived: toNumber(CURRENT.after.views.weighted_including_underived.totalWeight),
   get gap() {
     return +(this.includingUnderived - this.derivedOnly).toFixed(1);
   },

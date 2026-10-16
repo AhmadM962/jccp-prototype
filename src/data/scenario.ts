@@ -1,7 +1,7 @@
 // The demo organisation, evidence request plan, and module execution ledger (brief §6, §7.2, §7.3).
 
 import { DEFAULT_SECTOR_ID } from './sectors';
-import { MINISTRY } from './ministry';
+import { CURRENT } from './current';
 
 /** Architecture toggles are tri-state. Ambiguity must never shrink the denominator:
  *  'unknown' is treated exactly like 'yes' for scoping, and the affected controls are
@@ -166,7 +166,7 @@ export const requestPlan: RequestArtifact[] = [
 
 // What the plan can and cannot establish. The plan asks for evidence for controls that have an authored
 // evidence requirement; the rest cannot be asked about, so they bound what providing everything achieves.
-const planAfter = MINISTRY.after;
+const planAfter = CURRENT.after;
 export const REQUEST_PLAN_SUMMARY = {
   artifactCount: requestPlan.length, // 22
   systemCount: new Set(requestPlan.map((r) => r.source)).size, // 8

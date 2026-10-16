@@ -1,7 +1,7 @@
 // The four published views and the width decomposition, from the exact-fraction figures in
-// src/data/ministry.ts. Everything here is arithmetic on those fractions; nothing is typed in.
+// src/data/profiles (read through src/data/current.ts). Everything here is arithmetic on those fractions; nothing is typed in.
 
-import { MINISTRY, type Frac, type StateFigures, type ViewFigures, type ViewId, type WidthParts } from '../data/ministry';
+import { CURRENT, type Frac, type StateFigures, type ViewFigures, type ViewId, type WidthParts } from '../data/current';
 import type { GapReason } from '../data/controls';
 import { APPLICABLE_CONTROLS } from '../data/figures';
 import { add, eq, sub, toPct } from './frac';
@@ -19,7 +19,7 @@ export const VIEW_LABEL: Record<ViewId, string> = {
 /** The label `authored_scope` always carries. It is the flattering view, so it announces itself. */
 export const AUTHORED_SCOPE_LABEL = 'Covers only applicable controls with at least one authored evidence path.';
 
-export const stateFor = (uploaded: boolean): StateFigures => (uploaded ? MINISTRY.after : MINISTRY.before);
+export const stateFor = (uploaded: boolean): StateFigures => (uploaded ? CURRENT.after : CURRENT.before);
 
 export interface ViewPercents {
   lowerPct: number;

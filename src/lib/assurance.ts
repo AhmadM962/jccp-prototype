@@ -1,5 +1,5 @@
 // The assurance level of the assessment, and the measurement behind it, from the engine's distribution in
-// src/data/ministry.ts. Nothing here is typed in: every count, total and threshold a screen shows is
+// src/data/profiles (read through src/data/current.ts). Nothing here is typed in: every count, total and threshold a screen shows is
 // read from that block, and the headline is recomputed with the engine's rule so a test can hold the two
 // together.
 //
@@ -8,7 +8,7 @@
 // evidence collected": collecting machine evidence moves verdicts out of Unknown, and the level rises only
 // if enough of the verdicts then rest on it.
 
-import { ASSURANCE, ASSURANCE_BEFORE, type Frac } from '../data/ministry';
+import { CURRENT, type Frac } from '../data/current';
 import { ASSURANCE_LEVELS } from './scoring';
 
 export type AssuranceId = (typeof ASSURANCE_LEVELS)[number]['id'];
@@ -17,7 +17,7 @@ const HIGHEST_FIRST: readonly AssuranceId[] = ['L3', 'L2', 'L1', 'L0'];
 
 /** The state a distribution describes: `after` is the engine's assessed state; `before` is rule R's projection of it. */
 export type When = 'before' | 'after';
-const distributionFor = (when: When) => (when === 'before' ? ASSURANCE_BEFORE.distribution : ASSURANCE.distribution);
+const distributionFor = (when: When) => (when === 'before' ? CURRENT.assuranceBefore.distribution : CURRENT.assurance.distribution);
 
 /** Verdicts at `level` or above. */
 export const atOrAbove = (level: AssuranceId, when: When = 'after'): number => {
@@ -38,7 +38,7 @@ export const meetsThreshold = (count: number, total: number, threshold: Frac): b
 /** The engine's rule, recomputed from the distribution. */
 export const headlineLevel = (when: When = 'after'): AssuranceId => {
   const total = settledVerdicts(when);
-  return HIGHEST_FIRST.find((l) => meetsThreshold(atOrAbove(l, when), total, ASSURANCE.proportionThreshold)) ?? 'L0';
+  return HIGHEST_FIRST.find((l) => meetsThreshold(atOrAbove(l, when), total, CURRENT.assurance.proportionThreshold)) ?? 'L0';
 };
 
 /** How close the REPORTED level is to losing its place: the share of verdicts at that level or above, against the
@@ -48,7 +48,7 @@ export const heldLevelReading = (when: When) => {
   const level = headlineLevel(when);
   const count = atOrAbove(level, when);
   const total = settledVerdicts(when);
-  const [n, d] = ASSURANCE.proportionThreshold;
+  const [n, d] = CURRENT.assurance.proportionThreshold;
   return { level, count, total, measuredPct: pctDown(count, total), thresholdPct: thresholdPct(), atBoundary: count * d === total * n };
 };
 
@@ -72,7 +72,7 @@ const RULE: Record<AssuranceId, { holds: 'L1' | 'L2' | 'L3' | null; fails: 'L1' 
   L3: { holds: 'L3', fails: null },
 };
 
-const thresholdPct = (): number => Math.round((ASSURANCE.proportionThreshold[0] * 100) / ASSURANCE.proportionThreshold[1]);
+const thresholdPct = (): number => Math.round((CURRENT.assurance.proportionThreshold[0] * 100) / CURRENT.assurance.proportionThreshold[1]);
 
 /** The sentence a reader sees for a level. The threshold is read from the data. */
 export const levelDefinition = (id: AssuranceId): string => {
@@ -87,7 +87,7 @@ export const levelDefinition = (id: AssuranceId): string => {
 export const levelHolds = (id: AssuranceId): boolean => {
   const { holds, fails } = RULE[id];
   const total = settledVerdicts();
-  const meets = (l: 'L1' | 'L2' | 'L3') => meetsThreshold(atOrAbove(l), total, ASSURANCE.proportionThreshold);
+  const meets = (l: 'L1' | 'L2' | 'L3') => meetsThreshold(atOrAbove(l), total, CURRENT.assurance.proportionThreshold);
   return (holds === null || meets(holds)) && (fails === null || !meets(fails));
 };
 
@@ -107,7 +107,7 @@ export interface AssuranceMeasurement {
 }
 
 export const assuranceMeasurement = (): AssuranceMeasurement => {
-  const level = ASSURANCE.reported as AssuranceId;
+  const level = CURRENT.assurance.reported as AssuranceId;
   const total = settledVerdicts();
   const next = level === 'L1' ? 'L2' : level === 'L2' ? 'L3' : undefined;
   const count = next ? atOrAbove(next) : atOrAbove(level);

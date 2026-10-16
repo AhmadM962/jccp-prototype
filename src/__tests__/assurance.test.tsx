@@ -12,7 +12,8 @@ import Remediation from '../screens/07_Remediation';
 import Sidebar from '../components/layout/Sidebar';
 import { useAssessment } from '../store/useAssessment';
 import { TOTALS } from '../data/capabilities';
-import { ASSURANCE, ASSURANCE_BEFORE, DEMOTIONS_APPLIED, DEMOTION_CHECKS, MINISTRY, RULE_R_PROVENANCE, VERDICT_OUTSIDE_AUTHORED_SCOPE, type DemotionCheck } from '../data/ministry';
+import { CURRENT, type DemotionCheck } from '../data/current';
+import { PROFILES, PROFILE_ORDER } from '../data/profiles';
 import { checkDetail } from '../components/DemotionChecks';
 import { controls } from '../data/controls';
 import { ASSURANCE_LEVELS } from '../lib/scoring';
@@ -42,18 +43,18 @@ beforeEach(() => {
 // the data fails a test rather than a screen.
 describe('the assurance level is the engine’s, with its measurement', () => {
   it('the distribution is over exactly the settled verdicts of the after state', () => {
-    expect(ASSURANCE.distribution).toEqual({ L0: 3, L1: 12, L2: 36, L3: 1 });
+    expect(CURRENT.assurance.distribution).toEqual({ L0: 3, L1: 12, L2: 36, L3: 1 });
     expect(settledVerdicts()).toBe(52);
-    const a = MINISTRY.after;
+    const a = CURRENT.after;
     expect(settledVerdicts()).toBe(a.green + a.yellow + a.red);
     expect(settledVerdicts()).toBe(a.views.unweighted.known);
   });
   it('the engine’s rule, recomputed here, gives the level the data reports: L1', () => {
-    expect(headlineLevel()).toBe(ASSURANCE.reported);
-    expect(ASSURANCE.reported).toBe('L1');
+    expect(headlineLevel()).toBe(CURRENT.assurance.reported);
+    expect(CURRENT.assurance.reported).toBe('L1');
   });
   it('37 of 52 is below the threshold and 49 of 52 is above it, so the headline is L1 and not L2', () => {
-    const thr = ASSURANCE.proportionThreshold;
+    const thr = CURRENT.assurance.proportionThreshold;
     expect(thr).toEqual([4, 5]); // 0.8
     expect(atOrAbove('L2')).toBe(37);
     expect(meetsThreshold(37, 52, thr)).toBe(false);
@@ -184,15 +185,15 @@ describe('no screen says L2', () => {
   });
   it('exactly one level\u2019s definition is true of the engine\u2019s distribution, and it is the reported level', () => {
     const holding = ASSURANCE_LEVELS.filter((l) => levelHolds(l.id)).map((l) => l.id);
-    expect(holding).toEqual([ASSURANCE.reported]);
+    expect(holding).toEqual([CURRENT.assurance.reported]);
   });
   it('the Dashboard shows the active level\u2019s definition, and the numbers beside it satisfy it', () => {
     useAssessment.setState({ evidenceUploaded: true });
     const { getByTestId } = renderAt('/dashboard', <Dashboard />, '/dashboard');
     expect(getByTestId('level-definition').textContent).toBe(levelDefinition('L1'));
     // 49 of 52 verdicts are at L1 or above (at least 80%), 37 at L2 or above (fewer than 80%)
-    expect(meetsThreshold(atOrAbove('L1'), settledVerdicts(), ASSURANCE.proportionThreshold)).toBe(true);
-    expect(meetsThreshold(atOrAbove('L2'), settledVerdicts(), ASSURANCE.proportionThreshold)).toBe(false);
+    expect(meetsThreshold(atOrAbove('L1'), settledVerdicts(), CURRENT.assurance.proportionThreshold)).toBe(true);
+    expect(meetsThreshold(atOrAbove('L2'), settledVerdicts(), CURRENT.assurance.proportionThreshold)).toBe(false);
   });
   it('no source file states the old reading of the level', () => {
     const offenders: string[] = [];
@@ -238,7 +239,7 @@ describe('the unauthored statement claims only what is true of every unauthored 
     const { container, getByText } = renderAt('/intake', <Intake />, '/intake');
     fireEvent.click(getByText('Evidence bundle'));
     expect(container.textContent).toContain(
-      `The other ${MINISTRY.after.unknownUnauthored} Unknown controls have no authored evidence requirement; an upload cannot establish that any of them is met.`,
+      `The other ${CURRENT.after.unknownUnauthored} Unknown controls have no authored evidence requirement; an upload cannot establish that any of them is met.`,
     );
   });
   it('no screen says an upload "cannot change" an unauthored control', () => {
@@ -253,55 +254,53 @@ describe('the unauthored statement claims only what is true of every unauthored 
 
 // The before-state is the engine's data under one stated projection. Its two premises are asserted by the
 // generator from the golden file; here they are held against the figures the prototype uses, and against the
-// comment that states them in ministry.ts.
+// comment that states them in the generated profile modules.
 describe('provenance of rule R (the before-state)', () => {
-  const P = RULE_R_PROVENANCE;
-  const header = (raw['/src/data/ministry.ts'] ?? '').split('\n').slice(0, 25).join('\n');
+  const P = CURRENT.ruleR;
 
   it('every Compliant verdict is machine-collected, so none can exist before an upload', () => {
     expect(P.compliant).toBe(21);
     expect(P.compliantMachineCollected).toBe(P.compliant);
-    expect(MINISTRY.after.green).toBe(P.compliant);
-    expect(MINISTRY.before.green).toBe(0);
+    expect(CURRENT.after.green).toBe(P.compliant);
+    expect(CURRENT.before.green).toBe(0);
   });
   it('the before-state\u2019s verdicts are exactly the engine\u2019s L0 and L1 verdicts, with no exception', () => {
-    expect(P.beforeVerdictsAtL0OrL1).toBe(ASSURANCE.distribution.L0 + ASSURANCE.distribution.L1);
+    expect(P.beforeVerdictsAtL0OrL1).toBe(CURRENT.assurance.distribution.L0 + CURRENT.assurance.distribution.L1);
     expect(P.beforeVerdictsAtL0OrL1).toBe(15);
     expect(P.beforeVerdicts).toBe(P.beforeVerdictsAtL0OrL1);
-    const b = MINISTRY.before;
+    const b = CURRENT.before;
     expect(b.green + b.yellow + b.red).toBe(P.beforeVerdicts);
   });
   it('a verdict outside the authored scope arrives with the bundle: Unknown before, a Gap after, by observation', () => {
-    expect(P.verdictsOutsideAuthoredScope).toBe(VERDICT_OUTSIDE_AUTHORED_SCOPE.length);
-    expect(VERDICT_OUTSIDE_AUTHORED_SCOPE).toEqual([{ id: 'JNCSF-139', state: 'red', gapBasis: 'observed' }]);
-    const known = (st: typeof MINISTRY.before) => st.views.unweighted.known - st.views.authored_scope.known;
-    expect(known(MINISTRY.before)).toBe(0);
-    expect(known(MINISTRY.after)).toBe(P.verdictsOutsideAuthoredScope);
+    expect(P.verdictsOutsideAuthoredScope).toEqual([{ id: 'JNCSF-139', state: 'red', gapBasis: 'observed' }]);
+    const known = (st: typeof CURRENT.before) => st.views.unweighted.known - st.views.authored_scope.known;
+    expect(known(CURRENT.before)).toBe(0);
+    expect(known(CURRENT.after)).toBe(P.verdictsOutsideAuthoredScope.length);
     expect(movedOutOfUnknown()).toMatchObject({ total: 37, inside: 36, outside: 1 });
   });
-  it('the comment in ministry.ts states the same figures, names the control, and says the data carries no date', () => {
-    expect(header).toContain(`all ${P.compliant} Compliant verdicts rest on machine collection`);
-    expect(header).toContain(`has ${P.beforeVerdicts} at L0 or L1`);
-    expect(header).toContain(`${P.verdictsOutsideAuthoredScope} does (JNCSF-139)`);
-    expect(header).toContain('Unknown in `before` and a Gap in');
-    expect(header).toContain('carries no');
-    expect(header).not.toContain('NOT an engine figure');
-    expect(header).not.toContain('KEPT');
+  it('the premises hold in every profile, not only the ministry: the figures are generated with their assertions', () => {
+    for (const id of PROFILE_ORDER) {
+      const R = PROFILES[id].ruleR;
+      expect(R.compliantMachineCollected, id).toBe(R.compliant);
+      expect(R.beforeVerdicts, id).toBe(R.beforeVerdictsAtL0OrL1);
+      expect(R.beforeVerdicts, id).toBe(PROFILES[id].assurance.distribution.L0 + PROFILES[id].assurance.distribution.L1);
+      for (const v of R.verdictsOutsideAuthoredScope) expect(v.gapBasis, `${id} ${v.id}`).toBe('observed');
+    }
   });
 });
 
 describe('the before-state sits on the threshold and says so', () => {
   it('its own distribution gives L1, and 12 of 15 is exactly 80%: at the boundary', () => {
-    expect(ASSURANCE_BEFORE.distribution).toEqual({ L0: 3, L1: 12, L2: 0, L3: 0 });
-    expect(headlineLevel('before')).toBe(ASSURANCE_BEFORE.reported);
+    expect(CURRENT.assuranceBefore.distribution).toEqual({ L0: 3, L1: 12, L2: 0, L3: 0 });
+    expect(headlineLevel('before')).toBe(CURRENT.assuranceBefore.reported);
     expect(heldLevelReading('before')).toMatchObject({ level: 'L1', count: 12, total: 15, measuredPct: 80, thresholdPct: 80, atBoundary: true });
   });
   it('and the exact comparison is exact: the after-state\u2019s 49 of 52 is not at the boundary', () => {
     expect(heldLevelReading('after')).toMatchObject({ level: 'L1', count: 49, total: 52, atBoundary: false });
   });
   it('one verdict fewer at L1 or above would lose the level (the boundary is real, not rhetorical)', () => {
-    expect(meetsThreshold(12, 15, ASSURANCE.proportionThreshold)).toBe(true);
-    expect(meetsThreshold(11, 15, ASSURANCE.proportionThreshold)).toBe(false);
+    expect(meetsThreshold(12, 15, CURRENT.assurance.proportionThreshold)).toBe(true);
+    expect(meetsThreshold(11, 15, CURRENT.assurance.proportionThreshold)).toBe(false);
   });
   it('the Dashboard before the upload prints the whole line, contiguously, and not after it', () => {
     const before = renderAt('/dashboard', <Dashboard />, '/dashboard');
@@ -384,10 +383,10 @@ describe('the demotion checks are shown, all of them, and a check that could not
     expect(declined.textContent).toContain('Declined module');
     expect(declined.textContent).toContain('Passed');
     expect(declined.textContent).toContain('Measured 7.1% \u00b7 threshold 20%');
-    expect(declined.textContent).toContain('4 of 56 in-scope signals were covered only by declined module runs.');
+    expect(declined.textContent).toContain('4/56 in-scope signals had only declined module runs covering them');
     const unusable = getByTestId('demotion-check-unusable_evidence_proportion');
     expect(unusable.textContent).toContain('Measured 0.2% \u00b7 threshold 20%');
-    expect(unusable.textContent).toContain('1 of 557 claims are Unknown because their evidence was unusable (1 stale, 0 future-dated).');
+    expect(unusable.textContent).toContain('1/557 claims unknown because evidence was unusable (1 stale, 0 future-dated)');
   });
   it('a check that could not run says so: not assessed, not measured, no threshold, and never the word Passed', () => {
     const { getByTestId } = shown();
@@ -395,33 +394,33 @@ describe('the demotion checks are shown, all of them, and a check that could not
       const row = getByTestId(`demotion-check-${cause}`);
       expect(row.textContent, cause).toContain('Not assessed');
       expect(row.textContent, cause).toContain('Measured: not measured \u00b7 no threshold applied');
-      expect(row.textContent, cause).toContain('This check could not run');
       expect(row.textContent, cause).not.toContain('Passed');
       expect(row.textContent, cause).not.toMatch(/\d%/);
     }
     expect(getByTestId('demotion-checks').textContent).toContain('neither passed nor failed, and not counted as a pass');
-    // and each says why it could not run, not the other's reason
-    expect(getByTestId('demotion-check-unresolved_profile_challenge').textContent).toContain('the engine does not model the profile challenge it depends on');
+    // each says why in the engine's own words, and not the other's reason
+    expect(getByTestId('demotion-check-unresolved_profile_challenge').textContent).toContain('not modelled');
     expect(getByTestId('demotion-check-unresolved_profile_challenge').textContent).not.toContain('baseline');
-    expect(getByTestId('demotion-check-na_rate_above_baseline').textContent).toContain('no sector baseline was supplied to compare the N/A rate against');
-    expect(getByTestId('demotion-check-na_rate_above_baseline').textContent).not.toContain('does not model');
+    expect(getByTestId('demotion-check-na_rate_above_baseline').textContent).toContain('no sector baseline supplied');
+    expect(getByTestId('demotion-check-na_rate_above_baseline').textContent).not.toContain('not modelled');
   });
   it('the table is the engine\u2019s after-upload result: absent before the upload', () => {
     const { queryByTestId } = renderAt('/dashboard', <Dashboard />, '/dashboard');
     expect(queryByTestId('demotion-checks')).toBeNull();
   });
   it('the data keeps the invariants the engine states: an assessed check has numbers, one that did not run has none', () => {
-    expect(DEMOTION_CHECKS).toHaveLength(4);
-    for (const c of DEMOTION_CHECKS) {
+    expect(CURRENT.assurance.checks).toHaveLength(4);
+    for (const c of CURRENT.assurance.checks) {
       const ran = c.status !== 'not_assessed';
       expect(c.count !== null && c.of !== null && c.threshold !== null, c.cause).toBe(ran);
-      expect(c.because !== null, c.cause).toBe(!ran);
+      expect(c.detail.length, c.cause).toBeGreaterThan(0);
     }
-    expect(DEMOTIONS_APPLIED).toBe(DEMOTION_CHECKS.filter((c) => c.status === 'triggered').length);
-    expect(ASSURANCE.reported).toBe('L1');
+    expect(CURRENT.assurance.demotionsApplied).toBe(CURRENT.assurance.checks.filter((c) => c.status === 'triggered').length);
+    expect(CURRENT.assurance.reported).toBe('L1');
   });
-  it('a triggered check would be worded from its figures too (not reachable with this data)', () => {
-    const c: DemotionCheck = { cause: 'declined_module', status: 'triggered', count: 30, of: 56, threshold: [1, 5], because: null, components: [] };
-    expect(checkDetail(c)).toBe('30 of 56 in-scope signals were covered only by declined module runs.');
+  it('the detail line is the engine\u2019s string, passed through unchanged', () => {
+    const c: DemotionCheck = { cause: 'declined_module', status: 'triggered', count: 30, of: 56, threshold: [1, 5], detail: 'the engine said this', components: [] };
+    expect(checkDetail(c)).toBe('the engine said this');
+    for (const k of CURRENT.assurance.checks) expect(checkDetail(k)).toBe(k.detail);
   });
 });

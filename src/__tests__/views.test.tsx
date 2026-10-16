@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Dashboard from '../screens/04_Dashboard';
 import { useAssessment } from '../store/useAssessment';
-import { MINISTRY } from '../data/ministry';
+import { CURRENT } from '../data/current';
 import { controls } from '../data/controls';
 import { fmtPct } from '../lib/frac';
 import { AUTHORED_SCOPE_LABEL, VIEW_ORDER } from '../lib/views';
@@ -52,7 +52,7 @@ describe('Task 4: the four views, all visible on first render', () => {
     const { container } = dashboard(true);
     expect(cell(container, 'unweighted', 'width')).toBe('90.66');
     for (const id of VIEW_ORDER) {
-      const v = MINISTRY.after.views[id];
+      const v = CURRENT.after.views[id];
       const w = (parseFloat(fmtPct(v.upper, 6)) - parseFloat(fmtPct(v.lower, 6))).toFixed(2);
       expect(cell(container, id, 'width'), id).toBe(w);
     }
@@ -61,7 +61,7 @@ describe('Task 4: the four views, all visible on first render', () => {
   it('also renders all four before the upload (the weighted views are derived under the same model)', () => {
     const { container } = dashboard(false);
     for (const id of VIEW_ORDER) {
-      const v = MINISTRY.before.views[id];
+      const v = CURRENT.before.views[id];
       expect(cell(container, id, 'low'), id).toBe(`${fmtPct(v.lower, 2)}%`);
       expect(cell(container, id, 'high'), id).toBe(`${fmtPct(v.upper, 2)}%`);
     }
@@ -85,7 +85,7 @@ describe('Task 4: authored_scope never appears without its label', () => {
   it('its numbers appear nowhere else on the page: every occurrence is inside the labelled row', () => {
     for (const uploaded of [false, true]) {
       const { container, unmount } = dashboard(uploaded);
-      const s = (uploaded ? MINISTRY.after : MINISTRY.before).views.authored_scope;
+      const s = (uploaded ? CURRENT.after : CURRENT.before).views.authored_scope;
       const numbers = [`${fmtPct(s.lower, 2)}%`, `${fmtPct(s.upper, 2)}%`];
       const row = container.querySelector('[data-view="authored_scope"]')!;
       for (const n of numbers) {

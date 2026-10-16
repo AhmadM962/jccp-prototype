@@ -4,7 +4,7 @@ import { Card, Pill } from '../components/ui';
 import { useAssessment } from '../store/useAssessment';
 import { stateFor } from '../lib/views';
 import { Provenance } from '../components/Provenance';
-import { MINISTRY } from '../data/ministry';
+import { CURRENT } from '../data/current';
 import { EXCLUDED_COUNT, TOTAL_CONTROLS } from '../data/figures';
 import {
   AUTHORED_CONTROLS,
@@ -36,14 +36,14 @@ export default function Authoring() {
   // Delivery's Unknown controls in the state being viewed: before the evidence upload there are many more,
   // but none of them is Unknown for want of a requirement.
   const delNow = stateFor(uploaded).capabilities.del;
-  const scope = MINISTRY.after.views.authored_scope;
+  const scope = CURRENT.after.views.authored_scope;
 
   // Unauthored controls that apply to this organisation: the framework's unauthored controls less the
   // unauthored ones among the excluded. One authored control is excluded, so 18 of the 19 exclusions are unauthored.
   const authoredExcluded = AUTHORED_CONTROLS - scope.applicable;
   const unauthoredExcluded = EXCLUDED_COUNT - authoredExcluded;
   const unauthoredApplicable = UNAUTHORED_CONTROLS - unauthoredExcluded;
-  const withVerdict = unauthoredApplicable - MINISTRY.after.unknownUnauthored;
+  const withVerdict = unauthoredApplicable - CURRENT.after.unknownUnauthored;
 
   return (
     <Provenance tier="illustrative" className="space-y-6">
@@ -83,7 +83,7 @@ export default function Authoring() {
         </Stat>
         <Stat label="Unauthored" value={UNAUTHORED_CONTROLS} testid="stat-unauthored">
           Across the framework. In this assessment <span className="tnum font-semibold">{unauthoredApplicable}</span> of them apply
-          ({EXCLUDED_COUNT} controls are excluded as not applicable); <span className="tnum font-semibold">{MINISTRY.after.unknownUnauthored}</span> are Unknown
+          ({EXCLUDED_COUNT} controls are excluded as not applicable); <span className="tnum font-semibold">{CURRENT.after.unknownUnauthored}</span> are Unknown
           and {withVerdict} carries a verdict. That share of the width is the tool's limitation —{' '}
           <Link to="/dashboard" className="font-semibold text-accent hover:underline">see the Dashboard</Link>.
         </Stat>

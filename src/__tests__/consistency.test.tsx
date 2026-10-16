@@ -10,7 +10,7 @@ import { useAssessment } from '../store/useAssessment';
 import { TOTALS } from '../data/capabilities';
 import { GAP_REASON_BREAKDOWN, controls } from '../data/controls';
 import { APPLICABLE_CONTROLS } from '../data/figures';
-import { MINISTRY } from '../data/ministry';
+import { CURRENT } from '../data/current';
 import { movedOutOfUnknown } from '../lib/coverage';
 import { evidenceRequests } from '../data/remediation';
 import { bandFloorPts, projectFromNumerator } from '../lib/scoring';
@@ -38,17 +38,17 @@ describe('4.1 each "resolved" figure is computed from its own source and named p
   // Round 2: "resolved" is stated inside the authored scope, where the upload meets a requirement. The
   // framework-wide Unknown count (542 before, 505 after) moves by 37: those 36, and one control outside the scope
   // that an artifact in the bundle shows unmet (observation, not a requirement). The sample is a different population again.
-  const scope = { b: MINISTRY.before.views.authored_scope, a: MINISTRY.after.views.authored_scope };
+  const scope = { b: CURRENT.before.views.authored_scope, a: CURRENT.after.views.authored_scope };
   const resolved = scope.b.unknown - scope.a.unknown;
   const changed = controls.filter((c) => c.changed).length;
 
   it('the sources: 542 → 505 Unknown overall (37 moved: 36 inside the 65-control authored scope, 1 outside it by observation)', () => {
-    expect(MINISTRY.before.unknown).toBe(542);
-    expect(MINISTRY.after.unknown).toBe(505);
+    expect(CURRENT.before.unknown).toBe(542);
+    expect(CURRENT.after.unknown).toBe(505);
     expect(scope.b.applicable).toBe(65);
     expect([scope.b.unknown, scope.a.unknown]).toEqual([50, 14]);
     expect(resolved).toBe(36);
-    expect(MINISTRY.before.unknown - MINISTRY.after.unknown).toBe(resolved + 1);
+    expect(CURRENT.before.unknown - CURRENT.after.unknown).toBe(resolved + 1);
     expect(movedOutOfUnknown()).toMatchObject({ total: 37, inside: 36, outside: 1 });
     expect(controls.length).toBe(48);
     // the sample's own count: seeds whose snapshot the upload changes
@@ -76,7 +76,7 @@ describe('4.1 each "resolved" figure is computed from its own source and named p
     expect(container.textContent).toContain(
       `${resolved} of the ${scope.b.unknown} Unknown controls in the authored scope resolved (${scope.b.unknown} → ${scope.a.unknown})`,
     );
-    expect(container.textContent).toContain(`The other ${MINISTRY.after.unknownUnauthored} Unknown controls have no authored evidence requirement; an upload cannot establish that any of them is met.`);
+    expect(container.textContent).toContain(`The other ${CURRENT.after.unknownUnauthored} Unknown controls have no authored evidence requirement; an upload cannot establish that any of them is met.`);
   });
   it('the Gap Matrix filter the link opens shows exactly the changed seeds', () => {
     useAssessment.setState({ evidenceUploaded: true });
@@ -180,7 +180,7 @@ describe('fixture: the five Remediation artifacts claim more than the Unknown po
   // from 7.0 to 88.15 points. The per-artifact counts overlap or are overstated; they cannot be added. The
   // cap in projectFromNumerator keeps the projection honest; the fixture itself is replaced in Round 3.
   const claimed = evidenceRequests.reduce((s, r) => s + r.controlsUnlocked, 0);
-  const after = MINISTRY.after;
+  const after = CURRENT.after;
   const unresolvable = after.unknownUnauthored + after.views.unweighted.width.uncollectable[0];
   const pool = after.unknown - unresolvable;
   it('names both numbers', () => {

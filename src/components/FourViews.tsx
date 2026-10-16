@@ -1,6 +1,6 @@
 import { Card, Pill } from './ui';
 import ScoreInterval from './ScoreInterval';
-import { WEIGHT_BASIS_COUNTS } from '../data/ministry';
+import { CURRENT } from '../data/current';
 import {
   FRAMEWORK_WEIGHTED_TOTALS,
   RISK_WEIGHT_TABLE,
@@ -60,7 +60,7 @@ export default function FourViews({
         : viewPercents(v);
     return { id, pct };
   });
-  const A = WEIGHT_BASIS_COUNTS;
+  const A = CURRENT.weightBasisCounts;
   const sumOf = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
 
   return (

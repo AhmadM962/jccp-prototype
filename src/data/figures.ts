@@ -4,7 +4,7 @@
 //
 // Every value below was copied from an existing literal in this repository — none is new.
 // (Round 2 removed UNCOLLECTABLE_COUNT: the engine reports 0 uncollectable controls for this
-// profile; the old 39 is gone with the fixture it belonged to. See src/data/ministry.ts.)
+// profile; the old 39 is gone with the fixture it belonged to. See src/data/profiles (read through src/data/current.ts).)
 
 /** All JNCSF controls. Source: `TOTAL_CONTROLS` / `BASELINE_APPLICABLE` (src/data/scenario.ts) and the
  *  framework total the engine reports. */

@@ -10,7 +10,7 @@ import Chat from '../screens/09_Chat';
 import { useAssessment } from '../store/useAssessment';
 import { controls } from '../data/controls';
 import { APPLICABLE_CONTROLS } from '../data/figures';
-import { MINISTRY } from '../data/ministry';
+import { CURRENT } from '../data/current';
 import { dashboardView } from '../lib/derive';
 import { bandFloorPts, boundedScore, projectFromNumerator, yellowWeightForShare } from '../lib/scoring';
 
@@ -89,7 +89,7 @@ describe('3.2 partial-credit quartile', () => {
   it('the dashboard says Partials are credited one by one, with the published totals (no flat weight)', () => {
     for (const uploaded of [false, true]) {
       useAssessment.setState({ evidenceUploaded: uploaded });
-      const s = uploaded ? MINISTRY.after : MINISTRY.before;
+      const s = uploaded ? CURRENT.after : CURRENT.before;
       const credit = (s.partialCredit[0] / s.partialCredit[1]).toFixed(2);
       const { container, getByTestId, unmount } = renderAt('/dashboard', <Dashboard />);
       expect(getByTestId('partial-credit-note').textContent).toContain(
@@ -99,8 +99,8 @@ describe('3.2 partial-credit quartile', () => {
       unmount();
     }
     // the figures the sentence quotes: 25 Partials earning 6.15 after the upload (published), 14 earning 1.80 before
-    expect([MINISTRY.after.yellow, MINISTRY.after.partialCredit]).toEqual([25, [123, 20]]);
-    expect([MINISTRY.before.yellow, MINISTRY.before.partialCredit]).toEqual([14, [9, 5]]);
+    expect([CURRENT.after.yellow, CURRENT.after.partialCredit]).toEqual([25, [123, 20]]);
+    expect([CURRENT.before.yellow, CURRENT.before.partialCredit]).toEqual([14, [9, 5]]);
   });
 });
 
@@ -124,7 +124,7 @@ describe('3.3 the OSCAL validation claim', () => {
 });
 
 describe('3.4 projection floor, pool and invariant', () => {
-  const after = MINISTRY.after;
+  const after = CURRENT.after;
   const unresolvable = after.unknownUnauthored + after.views.unweighted.width.uncollectable[0];
   const FLOOR = bandFloorPts(APPLICABLE_CONTROLS, unresolvable);
   const numerator = after.creditNumerator[0] / after.creditNumerator[1];
@@ -145,7 +145,7 @@ describe('3.4 projection floor, pool and invariant', () => {
     expect(p.bestCase.lower).toBeLessThanOrEqual(p.bestCase.upper);
   });
   it('the dashboard (before the upload) and the projection card (from the post-upload verdict) each quote their own floor, and they differ by exactly the control observed from the bundle', () => {
-    const before = MINISTRY.before;
+    const before = CURRENT.before;
     const FLOOR_BEFORE = bandFloorPts(APPLICABLE_CONTROLS, before.unknownUnauthored + before.views.unweighted.width.uncollectable[0]);
     expect(FLOOR_BEFORE).toBeCloseTo((492 / 557) * 100, 10);
     expect(FLOOR_BEFORE.toFixed(1)).toBe('88.3');
