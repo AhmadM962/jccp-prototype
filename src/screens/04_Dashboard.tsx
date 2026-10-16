@@ -19,7 +19,7 @@ import ScoreInterval from '../components/ScoreInterval';
 import { useAssessment } from '../store/useAssessment';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { ASSURANCE_LEVELS, bandFloorPts } from '../lib/scoring';
-import { coverageBreakdown, completenessStatement } from '../lib/coverage';
+import { coverageBreakdown, completenessStatement, unknownResolvedByUpload, seededChangedCount } from '../lib/coverage';
 import { dashboardView } from '../lib/derive';
 import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS, UNCOLLECTABLE_COUNT } from '../data/controls';
 import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
@@ -235,7 +235,7 @@ export default function Dashboard() {
               animateFrom={uploaded ? { lower: TOTALS.before.interval[0], upper: TOTALS.before.interval[1] } : undefined}
               subline={
                 uploaded
-                  ? 'Interval narrowed after the Windows/AD collector bundle closed 90 evidence gaps.'
+                  ? `Interval narrowed after the Windows/AD collector bundle resolved ${unknownResolvedByUpload().resolved} of ${unknownResolvedByUpload().from} Unknown controls.`
                   : 'Width is the cost of missing evidence. '
               }
             />
@@ -534,7 +534,7 @@ export default function Dashboard() {
       {uploaded && (
         <div className="flex justify-end">
           <Link to="/gap-matrix?changed=1" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
-            See the 90 promoted controls in the Gap Matrix <ArrowUpRight size={15} />
+            See the {seededChangedCount().changed} of {seededChangedCount().seeded} seeded controls changed by the upload in the Gap Matrix <ArrowUpRight size={15} />
           </Link>
         </div>
       )}

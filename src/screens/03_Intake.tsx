@@ -20,6 +20,7 @@ import { useAssessment } from '../store/useAssessment';
 import { interviews, type InterviewRole } from '../data/interviews';
 import { bundleStages, moduleLedger, BUNDLE_MANIFEST, requestPlan, type ModuleStatus } from '../data/scenario';
 import { reviewQueue, CONFLICT_FLAG, scopedLinkFor, type ScopedLink } from '../data/collaboration';
+import { unknownResolvedByUpload } from '../lib/coverage';
 
 /* ─── Tab A: Interviews ─────────────────────────────────────────────────────── */
 
@@ -324,7 +325,9 @@ function BundlePanel() {
 
           <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4">
             <div>
-              <div className="text-sm font-bold text-emerald-900">148 evidence gaps closed</div>
+              <div className="text-sm font-bold text-emerald-900">
+                {unknownResolvedByUpload().resolved} Unknown controls resolved ({unknownResolvedByUpload().from} → {unknownResolvedByUpload().to})
+              </div>
               <div className="text-xs text-emerald-700">
                 Interval collapses 49.9–87.1% → 70.8–81.4% · coverage 62.8% → 89.4% · assurance L1 → L2
               </div>

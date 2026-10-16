@@ -221,12 +221,16 @@ export interface GapReasonRow {
   invariant?: boolean;
 }
 
+// module_failed: nothing has been collected before the upload, so 0; after it, 2 — the two seeded
+// controls that carry it (JNCSF-173, JNCSF-179), taken from not_provided (7 → 5) because both were
+// not_provided before the upload. Row totals still reconcile: 207 before, 59 after.
 export const GAP_REASON_BREAKDOWN: GapReasonRow[] = [
-  { reason: 'not_provided', before: 117, after: 7 },
+  { reason: 'not_provided', before: 117, after: 5 },
   { reason: 'uncollectable_by_design', before: 39, after: 39 },
   { reason: 'insufficient_signal', before: 23, after: 3 },
   { reason: 'declined', before: 15, after: 5 },
   { reason: 'insufficient_permission', before: 8, after: 3 },
+  { reason: 'module_failed', before: 0, after: 2 },
   { reason: 'stale', before: 5, after: 2 },
   { reason: 'not_requested', before: 0, after: 0, invariant: true },
 ];

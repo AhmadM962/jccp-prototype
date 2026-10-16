@@ -107,9 +107,15 @@ export const useAssessment = create<AssessmentState>()(
       setPhase: (p) => set({ phase: p }),
       setRole: (r) => set({ role: r }),
       setNavOpen: (v) => set({ navOpen: v }),
-      // A guided tour walks the whole assessment from the beginning, so it starts from the
-      // documented pre-upload state (same as the "Reset demo" action).
-      startTour: () => set({ ...initial, tourActive: true, tourStep: 0 }),
+      // Starting the tour must not destroy the user's work, so it keeps all assessment state.
+      // The tour only works on screens that the owner and analyst roles can open, so any other
+      // role is switched to owner; nothing else is touched. ("Reset demo" is the explicit reset.)
+      startTour: () =>
+        set((s) => ({
+          tourActive: true,
+          tourStep: 0,
+          role: s.role === 'owner' || s.role === 'analyst' ? s.role : 'owner',
+        })),
       endTour: () => set({ tourActive: false }),
       tourGoto: (n) => set({ tourStep: Math.max(0, n) }),
       setProfile: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
