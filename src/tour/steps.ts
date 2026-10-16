@@ -3,6 +3,17 @@
 // explaining what it does. Aim: a first-time policy/legal/executive reader understands the
 // whole assessment journey in ~3 minutes.
 
+import { MINISTRY } from '../data/ministry';
+import { toPct } from '../lib/frac';
+
+// Figures quoted in the narration come from the same numbers the screens use.
+const fmt1 = (n: number) => n.toFixed(1);
+const BEFORE = MINISTRY.before.views.unweighted;
+const AFTER = MINISTRY.after.views.unweighted;
+const WIDTH_BEFORE = toPct([BEFORE.unknown, BEFORE.applicable]);
+const WIDTH_AFTER = toPct([AFTER.unknown, AFTER.applicable]);
+const UNAUTHORED_PTS = toPct(AFTER.width.unauthored);
+
 export type TourAction =
   | { type: 'click'; target: string; wait?: number }
   | { type: 'clickSeq'; targets: string[]; wait?: number }
@@ -199,7 +210,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/dashboard',
     target: 'dash-interval',
     title: 'Never one number',
-    body: 'Compliance is reported as a range, never a single percentage. The lower figure assumes every unestablished control fails. The upper assumes they all pass. The truth is somewhere between. The width of this band is exactly how much the assessment did not establish — before the evidence arrived it was 37.2 points wide; now it is 10.6.',
+    body: `Compliance is reported as a range, never a single percentage. The lower figure assumes every unestablished control fails. The upper assumes they all pass. The truth is somewhere between. The width of this band is exactly how much the assessment did not establish — before the evidence arrived it was ${fmt1(WIDTH_BEFORE)} points wide; now it is ${fmt1(WIDTH_AFTER)}. Most of what remains is the tool's own limitation: ${fmt1(UNAUTHORED_PTS)} of those points are controls it has no evidence requirement for yet.`,
   },
   {
     id: 'coverage',
@@ -207,7 +218,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/dashboard',
     target: 'dash-coverage',
     title: 'Coverage',
-    body: 'How much was actually examined. 498 of 557 controls now have evidence. The remainder splits into controls that could still be evidenced, and controls no supported method can ever reach — shown separately, because one is a to-do list and the other is a permanent limit.',
+    body: `How much was actually examined. ${AFTER.known} of ${AFTER.applicable} controls now have a verdict. The rest are Unknown, and the dashboard says whose limitation each part is: controls the tool has no evidence requirement for yet are the tool's; controls where evidence was not provided are the organisation's.`,
   },
   {
     id: 'assurance',

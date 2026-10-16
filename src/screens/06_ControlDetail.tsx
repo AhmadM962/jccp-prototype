@@ -110,7 +110,7 @@ export default function ControlDetail() {
   // Partial credit this control's deployment share earns (src/lib/scoring.ts). A share whose basis
   // is `claimed` is capped at the second quartile; the basis is a fact in the data
   // (deploymentShareBasis on the snapshot in effect), not something derived here. A missing basis is
-  // treated as claimed. The aggregate on the dashboard does not use this (flat 0.5).
+  // treated as claimed. The dashboard's aggregate uses the engine's published credits, not this display.
   let shareCreditText: string | undefined;
   if (control.deploymentSharePct !== undefined) {
     const share = control.deploymentSharePct / 100;

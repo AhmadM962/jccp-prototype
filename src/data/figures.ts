@@ -3,18 +3,16 @@
 // Later rounds replace those literals with imports from here.
 //
 // Every value below was copied from an existing literal in this repository — none is new.
+// (Round 2 removed UNCOLLECTABLE_COUNT: the engine reports 0 uncollectable controls for this
+// profile; the old 39 is gone with the fixture it belonged to. See src/data/ministry.ts.)
 
-/** All JNCSF controls. Source: `TOTALS.totalControls` (src/data/capabilities.ts:91) and
- *  `TOTAL_CONTROLS` / `BASELINE_APPLICABLE` (src/data/scenario.ts:70-71). */
+/** All JNCSF controls. Source: `TOTAL_CONTROLS` / `BASELINE_APPLICABLE` (src/data/scenario.ts) and the
+ *  framework total the engine reports. */
 export const TOTAL_CONTROLS = 576;
 
 /** Controls in scope for the demo organisation (576 − 19). Source: `TOTALS.applicable`
  *  (src/data/capabilities.ts:93) and `REQUEST_PLAN_SUMMARY.applicable` (src/data/scenario.ts:174). */
 export const APPLICABLE_CONTROLS = 557;
-
-/** Controls no supported collection method can reach. Source: `UNCOLLECTABLE_COUNT`
- *  (src/data/controls.ts:236) and `REQUEST_PLAN_SUMMARY.uncollectable` (src/data/scenario.ts:175). */
-export const UNCOLLECTABLE_COUNT = 39;
 
 /** Controls marked Not Applicable for the demo organisation. Source: `TOTALS.notApplicable`
  *  (src/data/capabilities.ts:92) and the 19 rows of `EXCLUSIONS` (src/data/exclusions.ts:27-45). */

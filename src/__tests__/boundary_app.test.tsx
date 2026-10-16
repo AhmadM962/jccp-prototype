@@ -8,13 +8,14 @@ import { useAssessment } from '../store/useAssessment';
 // A guard that fires while a screen's numbers are being derived — above any single figure — must
 // not blank the app either: the sidebar and top bar stay, the screen shows the honest message.
 let broken = false;
-vi.mock('../lib/scoring', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/scoring')>();
+vi.mock('../lib/derive', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/derive')>();
+  const { IntervalConsistencyError } = await import('../lib/scoring');
   return {
     ...actual,
-    boundedScore: (...args: Parameters<typeof actual.boundedScore>) => {
-      if (broken) throw new actual.IntervalConsistencyError('boundedScore', 'forced for the test');
-      return actual.boundedScore(...args);
+    dashboardView: (...args: Parameters<typeof actual.dashboardView>) => {
+      if (broken) throw new IntervalConsistencyError('dashboardView', 'forced for the test');
+      return actual.dashboardView(...args);
     },
   };
 });
@@ -48,10 +49,10 @@ describe('the app keeps its chrome when a derivation guard fires', () => {
       const { getByTestId, container } = at('/dashboard');
       expect(getByTestId('screen-withheld').textContent).toBe(WITHHELD_SCREEN_MESSAGE);
       expect(getByTestId('screen-withheld').textContent).not.toBe(WITHHELD_MESSAGE); // not the figure wording
-      expect(getByTestId('screen-withheld').getAttribute('data-where')).toBe('boundedScore');
+      expect(getByTestId('screen-withheld').getAttribute('data-where')).toBe('dashboardView');
       expect(container.textContent).toContain('Demonstration prototype'); // banner / chrome still rendered
       expect(container.querySelector('nav')).not.toBeNull(); // sidebar
-      expect(logged.some((l) => l.includes('figure withheld by guard "boundedScore"'))).toBe(true);
+      expect(logged.some((l) => l.includes('figure withheld by guard "dashboardView"'))).toBe(true);
     } finally {
       console.error = quiet;
       broken = false;

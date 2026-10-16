@@ -1,51 +1,61 @@
-// Coverage + gap-taxonomy helpers.
+// Coverage + gap-taxonomy helpers, from the exact figures in src/data/ministry.ts.
 
-import { TOTALS } from '../data/capabilities';
-import { UNCOLLECTABLE_COUNT, controls } from '../data/controls';
+import { controls } from '../data/controls';
+import { MINISTRY } from '../data/ministry';
+import { stateFor } from './views';
 
 export interface CoverageBreakdown {
-  evidenced: number; // artifact-backed (green + red)
+  /** artifact-backed verdicts: Compliant + Gap */
+  evidenced: number;
+  /** Partial controls (testimony or documents cap them below Compliant) */
   testimonyOnly: number;
+  /** Unknown because evidence was not provided or could not be collected — the organisation's */
   unevidenced: number;
+  /** Unknown because no evidence requirement has been authored — the tool's limitation */
+  unauthored: number;
+  /** structurally unreachable — none for this profile */
   uncollectable: number;
   applicable: number;
 }
 
-// Before/after coverage donut segments (brief §7.5 Card 2). "Evidenced" here is the
-// artifact-backed, definitive slice (green + red); yellow (testimony-capped) is shown
-// separately, and the unknown pool splits into collectable vs structurally uncollectable.
 export const coverageBreakdown = (uploaded: boolean): CoverageBreakdown => {
-  const t = uploaded ? TOTALS.after : TOTALS.before;
+  const s = stateFor(uploaded);
+  const uncollectable = s.views.unweighted.width.uncollectable[0];
   return {
-    evidenced: t.green + t.red,
-    testimonyOnly: t.yellow,
-    unevidenced: t.unknown - UNCOLLECTABLE_COUNT,
-    uncollectable: UNCOLLECTABLE_COUNT,
-    applicable: TOTALS.applicable,
+    evidenced: s.green + s.red,
+    testimonyOnly: s.yellow,
+    unevidenced: s.unknown - s.unknownUnauthored - uncollectable,
+    unauthored: s.unknownUnauthored,
+    uncollectable,
+    applicable: s.views.unweighted.applicable,
   };
 };
 
-/** Unknown controls the evidence bundle resolves, across all applicable controls:
- *  TOTALS.before.unknown − TOTALS.after.unknown. */
-export const unknownResolvedByUpload = () => ({
-  resolved: TOTALS.before.unknown - TOTALS.after.unknown,
-  from: TOTALS.before.unknown,
-  to: TOTALS.after.unknown,
-});
+/** Unknown controls the evidence bundle resolves. An upload can only move controls that have an
+ *  authored evidence requirement, so the story is told inside the authored scope: the rest cannot move. */
+export const unknownResolvedByUpload = () => {
+  const b = MINISTRY.before.views.authored_scope;
+  const a = MINISTRY.after.views.authored_scope;
+  return { resolved: b.unknown - a.unknown, from: b.unknown, to: a.unknown, scope: a.applicable };
+};
 
-/** Seeded controls (the clickable sample) whose snapshot the upload changes: `changed: true`. */
+/** Sample controls whose snapshot the upload changes: `changed: true`. */
 export const seededChangedCount = () => ({
   changed: controls.filter((c) => c.changed).length,
   seeded: controls.length,
 });
 
 export const completenessStatement = (uploaded: boolean) => {
-  const t = uploaded ? TOTALS.after : TOTALS.before;
+  const s = stateFor(uploaded);
+  const u = s.views.unweighted;
+  const uncollectable = u.width.uncollectable[0];
   return {
-    covered: t.evidenced,
-    applicable: TOTALS.applicable,
-    unevidenced: t.unknown,
-    uncollectable: UNCOLLECTABLE_COUNT,
+    covered: u.known,
+    applicable: u.applicable,
+    unknown: s.unknown,
+    unauthored: s.unknownUnauthored,
+    unevidenced: s.unknown - s.unknownUnauthored - uncollectable,
+    uncollectable,
     assurance: uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented',
   };
 };

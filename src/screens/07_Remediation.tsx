@@ -8,9 +8,8 @@ import ScoreInterval from '../components/ScoreInterval';
 import { useAssessment } from '../store/useAssessment';
 import { remediationPlan, evidenceRequests } from '../data/remediation';
 import { requestPlan } from '../data/scenario';
-import { TOTALS } from '../data/capabilities';
-import { UNCOLLECTABLE_COUNT } from '../data/controls';
-import { bandFloorPts, projectProvision } from '../lib/scoring';
+import { MINISTRY } from '../data/ministry';
+import { bandFloorPts, projectFromNumerator } from '../lib/scoring';
 
 const fmt1 = (n: number) => n.toFixed(1);
 const pctRange = (lo: number, hi: number) => `${fmt1(lo * 100)} – ${fmt1(hi * 100)}%`;
@@ -66,14 +65,22 @@ function RequestsTab() {
   const provided = useAssessment((s) => s.providedRequests);
   const provideRequest = useAssessment((s) => s.provideRequest);
 
-  // Base = the post-upload engine verdict.
-  const base = { applicable: TOTALS.applicable, green: TOTALS.after.green, yellow: TOTALS.after.yellow, unknown: TOTALS.after.unknown };
+  // Base = the post-upload engine verdict. Only the Unknowns that have an authored evidence requirement
+  // (and are collectable) can be resolved by providing artifacts; the rest stay Unknown whatever is provided.
+  const after = MINISTRY.after;
+  const u = after.views.unweighted;
+  const base = {
+    applicable: u.applicable,
+    numerator: after.creditNumerator[0] / after.creditNumerator[1],
+    unknown: after.unknown,
+    unresolvable: after.unknownUnauthored + u.width.uncollectable[0],
+  };
 
   const cumulative = useMemo(() => {
     const providedUnlock = evidenceRequests
       .filter((r) => provided.includes(r.id))
       .reduce((s, r) => s + r.controlsUnlocked, 0);
-    return projectProvision(base.applicable, base.green, base.yellow, base.unknown, providedUnlock, UNCOLLECTABLE_COUNT);
+    return projectFromNumerator(base.applicable, base.numerator, base.unknown, base.unresolvable, providedUnlock);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provided]);
 
@@ -106,15 +113,15 @@ function RequestsTab() {
           />
         </div>
         <p className="mt-2 text-[11px] text-slate-400">
-          The band cannot fall below <span className="tnum">{fmt1(bandFloorPts(base.applicable, UNCOLLECTABLE_COUNT))} pts</span> of
-          width — the {UNCOLLECTABLE_COUNT} structurally uncollectable controls stay Unknown regardless of what is provided.
+          The band cannot fall below <span className="tnum">{fmt1(bandFloorPts(base.applicable, base.unresolvable))} pts</span> of
+          width — the {base.unresolvable} controls with no authored evidence requirement stay Unknown regardless of what is provided.
         </p>
       </Card>
 
       <div className="space-y-3">
         {[...evidenceRequests].sort((a, b) => b.controlsUnlocked - a.controlsUnlocked).map((r) => {
           const done = provided.includes(r.id);
-          const p = projectProvision(base.applicable, base.green, base.yellow, base.unknown, r.controlsUnlocked, UNCOLLECTABLE_COUNT);
+          const p = projectFromNumerator(base.applicable, base.numerator, base.unknown, base.unresolvable, r.controlsUnlocked);
           return (
             <Card key={r.id}>
               <div className="flex flex-wrap items-start justify-between gap-4">

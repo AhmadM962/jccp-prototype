@@ -1,6 +1,7 @@
 // The demo organisation, evidence request plan, and module execution ledger (brief §6, §7.2, §7.3).
 
 import { DEFAULT_SECTOR_ID } from './sectors';
+import { MINISTRY } from './ministry';
 
 /** Architecture toggles are tri-state. Ambiguity must never shrink the denominator:
  *  'unknown' is treated exactly like 'yes' for scoping, and the affected controls are
@@ -163,17 +164,21 @@ export const requestPlan: RequestArtifact[] = [
   { artifact: 'Media sanitisation records', source: 'HR & LMS', controlsUnlocked: 2, effort: '10 min', method: 'manual', owner: 'Facilities', formatHint: 'PDF — certificates of destruction for the period', command: 'Provide destruction certificates from the asset disposal vendor', declineCost: 2 },
 ];
 
+// What the plan can and cannot establish. The plan asks for evidence for controls that have an authored
+// evidence requirement; the rest cannot be asked about, so they bound what providing everything achieves.
+const planAfter = MINISTRY.after;
 export const REQUEST_PLAN_SUMMARY = {
   artifactCount: requestPlan.length, // 22
   systemCount: new Set(requestPlan.map((r) => r.source)).size, // 8
   automatedCount: requestPlan.filter((r) => r.method === 'automated').length, // 14
   manualCount: requestPlan.filter((r) => r.method === 'manual').length, // 8
-  automatedControls: requestPlan
-    .filter((r) => r.method === 'automated')
-    .reduce((s, r) => s + r.controlsUnlocked, 0),
-  applicable: 557,
-  uncollectable: 39,
-  projectedCoveragePct: 93,
+  applicable: planAfter.views.unweighted.applicable,
+  /** applicable controls with at least one authored evidence path: what the plan can ask about */
+  authoredScope: planAfter.views.authored_scope.applicable,
+  /** Unknown because no evidence requirement is authored: stay Unknown whatever is provided */
+  unauthored: planAfter.unknownUnauthored,
+  /** coverage if every artifact were provided: every control except the unauthored Unknowns */
+  projectedCoveragePct: +(((planAfter.views.unweighted.applicable - planAfter.unknownUnauthored) * 100) / planAfter.views.unweighted.applicable).toFixed(1),
 };
 
 // ─── Module execution ledger (brief §7.3) ─────────────────────────────────────
@@ -206,7 +211,7 @@ export const bundleStages = [
   { label: 'Parsing endpoint.json', result: 'warn' as const, detail: 'partial — insufficient permission (12 of 400 hosts)' },
   { label: 'Parsing logging.json', result: 'error' as const, detail: 'failed — wineventlog_access_denied' },
   { label: "Module 'cloud'", result: 'error' as const, detail: 'declined by client' },
-  // The 90 is a claim count for this simulated run, unrelated to the dashboard's 148-of-207 / 25-of-48 figures; do not derive it from them.
+  // The 90 is a claim count for this simulated run, unrelated to the dashboard's resolved-controls figures; do not derive it from them.
   { label: 'Corroborating 90 claims', result: 'ok' as const, detail: 'testimony cross-checked against artifacts' },
 ];
 

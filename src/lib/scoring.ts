@@ -120,11 +120,25 @@ export function projectProvision(
   uncollectable = 0,
   yellowWeight = 0.5,
 ) {
-  // Only collectable Unknowns can be resolved by providing artifacts; the uncollectable ones
-  // stay Unknown whatever is provided.
-  const collectable = Math.max(0, unknown - uncollectable);
+  return projectFromNumerator(applicable, green * WEIGHTS.green + yellow * yellowWeight, unknown, uncollectable, controlsUnlocked);
+}
+
+/**
+ * The same projection from a credit numerator (what the bounds are built from) instead of bucket counts
+ * and a flat Partial weight. `unresolvable` is how many of the Unknowns no evidence can ever resolve: the
+ * structurally uncollectable ones and, since Round 2, those with no authored evidence requirement. Only
+ * the rest — the collectable pool — can be resolved by providing artifacts.
+ */
+export function projectFromNumerator(
+  applicable: number,
+  numerator: number,
+  unknown: number,
+  unresolvable: number,
+  controlsUnlocked: number,
+) {
+  const collectable = Math.max(0, unknown - unresolvable);
   const n = Math.min(controlsUnlocked, collectable);
-  const num = green * WEIGHTS.green + yellow * yellowWeight;
+  const num = numerator;
   const remainingUnknown = unknown - n;
   assertInterval((num + n) / applicable, (num + n + remainingUnknown) / applicable, 'projectProvision best case');
   assertInterval(num / applicable, (num + remainingUnknown) / applicable, 'projectProvision worst case');
@@ -143,10 +157,10 @@ export function projectProvision(
   };
 }
 
-/** The narrowest the band can ever get: the uncollectable controls stay Unknown, so the band
- *  keeps at least `uncollectable / applicable` of width. In percentage points. */
-export const bandFloorPts = (applicable: number, uncollectable: number) =>
-  (uncollectable / applicable) * 100;
+/** The narrowest the band can ever get: the controls no evidence can resolve stay Unknown, so the band
+ *  keeps at least `unresolvable / applicable` of width. In percentage points. */
+export const bandFloorPts = (applicable: number, unresolvable: number) =>
+  (unresolvable / applicable) * 100;
 
 /**
  * Apply a set of analyst overrides to a bucket of aggregate counts and return the

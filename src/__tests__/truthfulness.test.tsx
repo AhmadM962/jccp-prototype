@@ -9,10 +9,10 @@ import Remediation from '../screens/07_Remediation';
 import Chat from '../screens/09_Chat';
 import { useAssessment } from '../store/useAssessment';
 import { controls } from '../data/controls';
-import { TOTALS } from '../data/capabilities';
-import { UNCOLLECTABLE_COUNT } from '../data/controls';
+import { APPLICABLE_CONTROLS } from '../data/figures';
+import { MINISTRY } from '../data/ministry';
 import { dashboardView } from '../lib/derive';
-import { bandFloorPts, boundedScore, projectProvision, yellowWeightForShare } from '../lib/scoring';
+import { bandFloorPts, boundedScore, projectFromNumerator, yellowWeightForShare } from '../lib/scoring';
 
 // Source text of every non-test file, to assert strings that must not come back.
 const raw = import.meta.glob('/src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
@@ -86,13 +86,21 @@ describe('3.2 partial-credit quartile', () => {
     const { container } = renderAt('/control/JNCSF-102', <ControlDetail />, '/control/:id');
     expect(container.textContent).toContain('this control is currently Gap, so none applies.');
   });
-  it('the dashboard says the aggregate applies a flat 0.5', () => {
-    const { container } = renderAt('/dashboard', <Dashboard />);
-    expect(container.textContent).toContain(
-      "The aggregate here applies a flat 0.5 to every Partial. Per-control quartile credit is shown on each control's page.",
-    );
-    // and that sentence is true: the engine calls boundedScore with the default yellow weight
-    expect(boundedScore(10, 4, 4, 0, 2).lower).toBe((4 + 4 * 0.5) / 10);
+  it('the dashboard says Partials are credited one by one, with the published totals (no flat weight)', () => {
+    for (const uploaded of [false, true]) {
+      useAssessment.setState({ evidenceUploaded: uploaded });
+      const s = uploaded ? MINISTRY.after : MINISTRY.before;
+      const credit = (s.partialCredit[0] / s.partialCredit[1]).toFixed(2);
+      const { container, getByTestId, unmount } = renderAt('/dashboard', <Dashboard />);
+      expect(getByTestId('partial-credit-note').textContent).toContain(
+        `The ${s.yellow} Partial controls here earn ${credit} in total, credited one by one by the engine rather than at a flat weight.`,
+      );
+      expect(container.textContent).not.toContain('flat 0.5');
+      unmount();
+    }
+    // the figures the sentence quotes: 25 Partials earning 6.15 after the upload (published), 14 earning 1.80 before
+    expect([MINISTRY.after.yellow, MINISTRY.after.partialCredit]).toEqual([25, [123, 20]]);
+    expect([MINISTRY.before.yellow, MINISTRY.before.partialCredit]).toEqual([14, [9, 5]]);
   });
 });
 
@@ -116,26 +124,29 @@ describe('3.3 the OSCAL validation claim', () => {
 });
 
 describe('3.4 projection floor, pool and invariant', () => {
-  const FLOOR = bandFloorPts(TOTALS.applicable, UNCOLLECTABLE_COUNT);
-  it('floor is computed from the uncollectable count', () => {
-    expect(FLOOR).toBeCloseTo((39 / 557) * 100, 10);
-    expect(FLOOR.toFixed(1)).toBe('7.0');
+  const after = MINISTRY.after;
+  const unresolvable = after.unknownUnauthored + after.views.unweighted.width.uncollectable[0];
+  const FLOOR = bandFloorPts(APPLICABLE_CONTROLS, unresolvable);
+  const numerator = after.creditNumerator[0] / after.creditNumerator[1];
+  it('the floor is the share of controls no evidence can resolve: 491 of 557, 88.15 points', () => {
+    expect(unresolvable).toBe(491);
+    expect(FLOOR).toBeCloseTo((491 / 557) * 100, 10);
+    expect(FLOOR.toFixed(2)).toBe('88.15');
+    expect(FLOOR.toFixed(1)).toBe('88.2');
   });
   it('boundedScore throws on an impossible interval', () => {
     expect(() => boundedScore(10, 5, 0, 0, -1)).toThrow(/Impossible interval/);
   });
-  it('projectProvision draws only from the collectable Unknowns', () => {
-    const a = TOTALS.applicable;
-    const b = TOTALS.after;
-    const p = projectProvision(a, b.green, b.yellow, b.unknown, 49, UNCOLLECTABLE_COUNT);
-    expect(p.resolved).toBe(b.unknown - UNCOLLECTABLE_COUNT);
+  it('projectFromNumerator draws only from the collectable Unknowns (the 14 with an authored requirement)', () => {
+    const p = projectFromNumerator(APPLICABLE_CONTROLS, numerator, after.unknown, unresolvable, 49);
+    expect(p.resolved).toBe(after.unknown - unresolvable);
+    expect(p.resolved).toBe(14);
     expect(p.resultingWidthPts).toBeCloseTo(FLOOR, 10);
     expect(p.bestCase.lower).toBeLessThanOrEqual(p.bestCase.upper);
   });
   it('the dashboard and the projection card quote the same floor', () => {
     const dash = renderAt('/dashboard', <Dashboard />);
-    expect(dash.container.textContent).toContain(`to narrow this toward ${FLOOR.toFixed(1)} points.`);
-    expect(dash.container.textContent).not.toContain('~10 points');
+    expect(dash.container.textContent).toContain(`at best to ${FLOOR.toFixed(1)} points`);
     dash.unmount();
     const rem = renderAt('/remediation', <Remediation />);
     fireEvent.click(rem.getByText("What you didn't provide"));
@@ -171,12 +182,12 @@ describe('3.5 the chat quotes the live interval', () => {
   it('differs between before and after upload and matches the dashboard each time', () => {
     const before = askScore(renderAt('/chat', <Chat />));
     expect(before).toContain(quoted(false));
-    expect(before).toContain('49.9–87.1% at 62.8% coverage');
+    expect(before).toContain('0.3–97.5% at 2.9% coverage'); // derived pre-upload state (rule R), not an engine figure
     document.body.innerHTML = '';
     useAssessment.setState({ evidenceUploaded: true });
     const after = askScore(renderAt('/chat', <Chat />));
     expect(after).toContain(quoted(true));
-    expect(after).toContain('70.8–81.4% at 89.4% coverage');
+    expect(after).toContain('4.9–95.5% at 9.3% coverage'); // the engine's 4.87%–95.54% and 9.34%
     expect(quoted(false)).not.toBe(quoted(true));
   });
 

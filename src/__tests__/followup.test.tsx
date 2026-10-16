@@ -119,7 +119,7 @@ describe('the cap reads the basis, not the evidence class', () => {
 describe('4.2 the gap-reason chart is tagged illustrative', () => {
   it('its card sits inside an illustrative region', () => {
     const { getByText } = renderAt('/dashboard', <Dashboard />, '/dashboard');
-    expect(getByText('Why controls are unevidenced').closest('[data-tier]')?.getAttribute('data-tier')).toBe('illustrative');
+    expect(getByText('Why controls are Unknown').closest('[data-tier]')?.getAttribute('data-tier')).toBe('illustrative');
   });
 });
 

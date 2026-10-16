@@ -21,6 +21,8 @@ import { interviews, type InterviewRole } from '../data/interviews';
 import { bundleStages, moduleLedger, BUNDLE_MANIFEST, requestPlan, type ModuleStatus } from '../data/scenario';
 import { reviewQueue, CONFLICT_FLAG, scopedLinkFor, type ScopedLink } from '../data/collaboration';
 import { unknownResolvedByUpload } from '../lib/coverage';
+import { MINISTRY } from '../data/ministry';
+import { viewPercents } from '../lib/views';
 
 /* ─── Tab A: Interviews ─────────────────────────────────────────────────────── */
 
@@ -192,9 +194,18 @@ function BundlePanel() {
 
   const slots = requestPlan;
   const filled = slots.filter((s) => uploadedSlots[s.artifact]).length;
-  const controlsEvidenced = slots.filter((s) => uploadedSlots[s.artifact]).reduce((a, s) => a + s.controlsUnlocked, 0);
-  // demo coverage estimate: baseline 62.8% + provided share of the collectable gap
-  const covEstimate = Math.min(93, 62.8 + (controlsEvidenced / 557) * 100 * 0.85).toFixed(1);
+  // The artifacts' unlock counts overlap, so their sum is not a count of controls: it is capped at what can
+  // be resolved at all (the Unknowns that have an authored requirement). Coverage starts from the
+  // pre-upload figure and cannot pass the plan's projection.
+  const before = MINISTRY.before.views;
+  const controlsEvidenced = Math.min(
+    slots.filter((s) => uploadedSlots[s.artifact]).reduce((a, s) => a + s.controlsUnlocked, 0),
+    before.authored_scope.unknown,
+  );
+  const fmt1 = (n: number) => n.toFixed(1);
+  const viewsBefore = viewPercents(MINISTRY.before.views.unweighted);
+  const viewsAfter = viewPercents(MINISTRY.after.views.unweighted);
+  const covEstimate = (((before.unweighted.known + controlsEvidenced) * 100) / before.unweighted.applicable).toFixed(1);
 
   return (
     <div className="space-y-5">
@@ -326,10 +337,11 @@ function BundlePanel() {
           <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4">
             <div>
               <div className="text-sm font-bold text-emerald-900">
-                {unknownResolvedByUpload().resolved} Unknown controls resolved ({unknownResolvedByUpload().from} → {unknownResolvedByUpload().to})
+                {unknownResolvedByUpload().resolved} of the {unknownResolvedByUpload().from} Unknown controls in the authored scope resolved ({unknownResolvedByUpload().from} → {unknownResolvedByUpload().to})
               </div>
               <div className="text-xs text-emerald-700">
-                Interval collapses 49.9–87.1% → 70.8–81.4% · coverage 62.8% → 89.4% · assurance L1 → L2
+                Interval {fmt1(viewsBefore.lowerPct)}–{fmt1(viewsBefore.upperPct)}% → {fmt1(viewsAfter.lowerPct)}–{fmt1(viewsAfter.upperPct)}% · coverage {fmt1(viewsBefore.coveragePct)}% → {fmt1(viewsAfter.coveragePct)}% · assurance L1 → L2.
+                The other {MINISTRY.after.unknownUnauthored} Unknown controls have no authored evidence requirement; an upload cannot change them.
               </div>
             </div>
             <Button dataTour="bundle-reveal" onClick={() => navigate('/dashboard')}>

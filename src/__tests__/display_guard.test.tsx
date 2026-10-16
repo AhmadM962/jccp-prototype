@@ -13,8 +13,8 @@ vi.mock('../lib/scoring', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/scoring')>();
   return {
     ...actual,
-    projectProvision: (...args: Parameters<typeof actual.projectProvision>) => {
-      const r = actual.projectProvision(...args);
+    projectFromNumerator: (...args: Parameters<typeof actual.projectFromNumerator>) => {
+      const r = actual.projectFromNumerator(...args);
       return corrupt ? { ...r, resultingWidthPts: r.resultingWidthPts + 1 } : r;
     },
   };

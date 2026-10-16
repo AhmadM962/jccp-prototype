@@ -1,10 +1,19 @@
-// The six JNCSF capabilities (brief §5.1) plus before/after fixture stats (§6.2, §6.3).
-// Figures below are the measured before/after tables — every per-capability row
-// reconciles exactly to the portfolio TOTALS at the bottom of this file.
+// The six JNCSF capabilities plus before/after per-capability and portfolio stats. Since Round 2
+// every figure here is computed from the exact fractions in ministry.ts (the engine's shape for
+// this profile); none is typed in. Every per-capability row reconciles exactly to the portfolio
+// TOTALS at the bottom of this file (asserted in tests).
+
+import { APPLICABLE_CONTROLS, EXCLUDED_COUNT, TOTAL_CONTROLS } from './figures';
+import { MINISTRY, type CapabilityFigures, type StateFigures } from './ministry';
 
 export interface CapabilityStat {
   applicable: number;
+  /** controls with a verdict (Compliant, Partial or Gap) */
   evidenced: number;
+  /** controls with at least one authored evidence requirement */
+  authored: number;
+  /** of the Unknown: no evidence requirement authored — the tool's limitation */
+  unknownUnauthored: number;
   green: number;
   yellow: number;
   red: number;
@@ -26,52 +35,43 @@ export interface Capability {
   after?: CapabilityStat;
 }
 
+
+const pct = (n: number, d: number) => (n * 100) / d;
+
+/** Unweighted interval and coverage for a capability's controls, from its credit numerator. */
+function capStat(c: CapabilityFigures): CapabilityStat {
+  const num = c.creditNumerator[0] / c.creditNumerator[1];
+  const known = c.applicable - c.unknown;
+  return {
+    applicable: c.applicable,
+    evidenced: known,
+    authored: c.authored,
+    unknownUnauthored: c.unknownUnauthored,
+    green: c.green,
+    yellow: c.yellow,
+    red: c.red,
+    unknown: c.unknown,
+    coveragePct: pct(known, c.applicable),
+    interval: [pct(num, c.applicable), pct(num + c.unknown, c.applicable)],
+  };
+}
+
+const NAMES: Record<Exclude<Capability['id'], 'natl'>, { name: string; shortName: string; totalControls: number }> = {
+  arch: { name: 'Security in Architecture & Portfolio', shortName: 'Architecture & Portfolio', totalControls: 25 },
+  dev: { name: 'Security in Development', shortName: 'Development', totalControls: 69 },
+  del: { name: 'Security in Delivery', shortName: 'Delivery', totalControls: 44 },
+  ops: { name: 'Security in Operations', shortName: 'Operations', totalControls: 299 },
+  found: { name: 'Foundational Capabilities', shortName: 'Foundational', totalControls: 139 },
+};
+
 export const capabilities: Capability[] = [
-  {
-    id: 'arch',
-    name: 'Security in Architecture & Portfolio',
-    shortName: 'Architecture & Portfolio',
-    totalControls: 25,
+  ...(['arch', 'dev', 'del', 'ops', 'found'] as const).map((id) => ({
+    id,
+    ...NAMES[id],
     organisationallyAssessable: true,
-    before: { applicable: 25, evidenced: 15, green: 10, yellow: 3, red: 2, unknown: 10, coveragePct: 60.0, interval: [46.0, 86.0] },
-    after: { applicable: 25, evidenced: 23, green: 15, yellow: 5, red: 3, unknown: 2, coveragePct: 92.0, interval: [70.0, 78.0] },
-  },
-  {
-    id: 'dev',
-    name: 'Security in Development',
-    shortName: 'Development',
-    totalControls: 69,
-    organisationallyAssessable: true,
-    before: { applicable: 50, evidenced: 30, green: 20, yellow: 6, red: 4, unknown: 20, coveragePct: 60.0, interval: [46.0, 86.0] },
-    after: { applicable: 50, evidenced: 45, green: 30, yellow: 9, red: 6, unknown: 5, coveragePct: 90.0, interval: [69.0, 79.0] },
-  },
-  {
-    id: 'del',
-    name: 'Security in Delivery',
-    shortName: 'Delivery',
-    totalControls: 44,
-    organisationallyAssessable: true,
-    before: { applicable: 44, evidenced: 32, green: 22, yellow: 6, red: 4, unknown: 12, coveragePct: 72.7, interval: [56.8, 84.1] },
-    after: { applicable: 44, evidenced: 42, green: 28, yellow: 9, red: 5, unknown: 2, coveragePct: 95.5, interval: [73.9, 78.4] },
-  },
-  {
-    id: 'ops',
-    name: 'Security in Operations',
-    shortName: 'Operations',
-    totalControls: 299,
-    organisationallyAssessable: true,
-    before: { applicable: 299, evidenced: 192, green: 135, yellow: 36, red: 21, unknown: 107, coveragePct: 64.2, interval: [51.2, 87.0] },
-    after: { applicable: 299, evidenced: 272, green: 188, yellow: 54, red: 30, unknown: 27, coveragePct: 91.0, interval: [71.9, 80.9] },
-  },
-  {
-    id: 'found',
-    name: 'Foundational Capabilities',
-    shortName: 'Foundational',
-    totalControls: 139,
-    organisationallyAssessable: true,
-    before: { applicable: 139, evidenced: 81, green: 58, yellow: 15, red: 8, unknown: 58, coveragePct: 58.3, interval: [47.1, 88.8] },
-    after: { applicable: 139, evidenced: 116, green: 84, yellow: 22, red: 10, unknown: 23, coveragePct: 83.5, interval: [68.3, 84.9] },
-  },
+    before: capStat(MINISTRY.before.capabilities[id]),
+    after: capStat(MINISTRY.after.capabilities[id]),
+  })),
   {
     id: 'natl',
     name: 'Security in National Cyber Responsibility',
@@ -83,35 +83,29 @@ export const capabilities: Capability[] = [
 
 export const capabilityById = (id: string) => capabilities.find((c) => c.id === id);
 
-// Portfolio-level fixture totals (brief §6.1–6.3). The framework is 93% universal — only
-// 38 of 576 controls are conditional on the five applicability variables — and this
-// government-ministry demo organisation excludes exactly the 19 in_house_development
-// controls, leaving 557 of 576 applicable.
+function stateTotals(s: StateFigures) {
+  const u = s.views.unweighted;
+  const num = s.creditNumerator[0] / s.creditNumerator[1];
+  return {
+    evidenced: u.known,
+    green: s.green,
+    yellow: s.yellow,
+    red: s.red,
+    unknown: s.unknown,
+    unknownUnauthored: s.unknownUnauthored,
+    coveragePct: pct(u.known, u.applicable),
+    interval: [pct(num, u.applicable), pct(num + s.unknown, u.applicable)] as [number, number],
+    widthPts: pct(s.unknown, u.applicable),
+  };
+}
+
+// Portfolio totals for the demonstration organisation (a government ministry): the framework is 93%
+// universal — only 38 of 576 controls are conditional on the five applicability variables — and this
+// organisation excludes exactly the 19 in_house_development controls, leaving 557 of 576 applicable.
 export const TOTALS = {
-  totalControls: 576,
-  notApplicable: 19,
-  applicable: 557,
-  before: {
-    evidenced: 350,
-    green: 245,
-    yellow: 66,
-    red: 39,
-    unknown: 207,
-    coveragePct: 62.8,
-    interval: [49.9, 87.1] as [number, number],
-    widthPts: 37.2,
-    assurance: 'L1',
-  },
-  after: {
-    evidenced: 498,
-    green: 345,
-    yellow: 99,
-    red: 54,
-    unknown: 59,
-    coveragePct: 89.4,
-    interval: [70.8, 81.4] as [number, number],
-    widthPts: 10.6,
-    assurance: 'L2',
-    gapsClosed: 148,
-  },
+  totalControls: TOTAL_CONTROLS,
+  notApplicable: EXCLUDED_COUNT,
+  applicable: APPLICABLE_CONTROLS,
+  before: { ...stateTotals(MINISTRY.before), assurance: 'L1' },
+  after: { ...stateTotals(MINISTRY.after), assurance: 'L2' },
 };
