@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { assertDisplayedInterval } from '../lib/scoring';
+import FigureBoundary from './FigureBoundary';
 
 // ⭐ The signature component. Compliance is ALWAYS an interval, never a single number.
 // The band's width is the visible cost of missing evidence.
@@ -20,7 +21,17 @@ interface Props {
 
 const fmt = (n: number) => n.toFixed(1);
 
-export default function ScoreInterval({
+export default function ScoreInterval(props: Props) {
+  // A band that fails its consistency check is replaced by a message; the rest of the page stays.
+  const { lower, upper, widthPts, ghost } = props;
+  return (
+    <FigureBoundary resetKey={`${lower}|${upper}|${widthPts}|${ghost?.lower}|${ghost?.upper}`}>
+      <Band {...props} />
+    </FigureBoundary>
+  );
+}
+
+function Band({
   lower,
   upper,
   coveragePct,

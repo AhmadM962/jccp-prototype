@@ -4,6 +4,7 @@ import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
 import { navForRole } from './components/layout/nav';
 import { useAssessment } from './store/useAssessment';
+import FigureBoundary from './components/FigureBoundary';
 import Profile from './screens/01_Profile';
 import RequestPlan from './screens/02_RequestPlan';
 import Intake from './screens/03_Intake';
@@ -17,6 +18,7 @@ import Exclusions from './screens/10_Exclusions';
 import Admin from './screens/11_Admin';
 import Tasks from './screens/12_Tasks';
 import Rollup from './screens/13_Rollup';
+import Authoring from './screens/14_Authoring';
 import Tour from './tour/Tour';
 import WelcomeGate from './tour/WelcomeGate';
 import HelpPanel from './tour/HelpPanel';
@@ -35,6 +37,22 @@ function RoleGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** Last line of defence for a guard that throws above any single figure (e.g. while a screen's
+ *  numbers are being derived). The sidebar and top bar stay; the screen shows its own message
+ *  (not the figure wording) and the same guard is logged. Retries when the route or the data
+ *  behind it changes. */
+function ScreenBoundary({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const dataKey = useAssessment(
+    (s) => `${s.evidenceUploaded}|${s.providedRequests.join()}|${Object.keys(s.overriddenControls).join()}`,
+  );
+  return (
+    <FigureBoundary scope="screen" resetKey={`${pathname}|${dataKey}`}>
+      {children}
+    </FigureBoundary>
+  );
+}
+
 export default function App() {
   return (
     <div className="flex h-screen overflow-hidden">
@@ -47,6 +65,7 @@ export default function App() {
         <main className="scroll-slim flex-1 overflow-y-auto bg-slate-50">
           <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-6">
             <RoleGate>
+              <ScreenBoundary>
               <Routes>
                 <Route path="/" element={<Navigate to="/profile" replace />} />
                 <Route path="/profile" element={<Profile />} />
@@ -62,8 +81,10 @@ export default function App() {
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/rollup" element={<Rollup />} />
+                <Route path="/authoring" element={<Authoring />} />
                 <Route path="*" element={<Navigate to="/profile" replace />} />
               </Routes>
+              </ScreenBoundary>
             </RoleGate>
           </div>
         </main>

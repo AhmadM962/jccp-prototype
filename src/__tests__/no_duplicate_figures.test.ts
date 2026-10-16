@@ -18,17 +18,16 @@ const ALLOW: Record<string, Partial<Record<Lit, number>>> = {
   'src/components/AttackExposure.tsx': { '576': 1 },
   // TODO round 3: use CICSC_CONTROLS / TOTAL_CONTROLS from figures.ts
   'src/data/attack.ts': { '405': 1, '576': 1 },
-  // TODO round 3: TOTALS should be built from figures.ts; '39' and '135' are per-capability counts
-  // (TOTALS.before.red = 39, ops before green = 135) that equal the figures by coincidence only.
-  'src/data/capabilities.ts': { '39': 1, '135': 1, '557': 1, '576': 1 },
-  // TODO round 3: use UNCOLLECTABLE_COUNT; the other '39' is control number 39 in the seed list
-  'src/data/controls.ts': { '39': 4 },
-  // TODO round 3: use APPLICABLE_CONTROLS, TOTAL_CONTROLS, UNCOLLECTABLE_COUNT
-  'src/data/scenario.ts': { '39': 1, '557': 1, '576': 2 },
+  // Round 2 removed every entry for capabilities.ts: TOTALS is now built from figures.ts and ministry.ts.
+  // The generated figures module has two coincidental numbers: an exact-fraction numerator/denominator
+  // pair of 135 (twice) and a denominator of 39 (a coverage of 4/39). They are not the framework figures.
+  'src/data/ministry.ts': { '39': 1, '135': 2 },
+  // The one '39' left is control number 39 in the seed list (the uncollectable 39 is gone with the old fixture).
+  'src/data/controls.ts': { '39': 1 },
+  // TODO round 3: use TOTAL_CONTROLS
+  'src/data/scenario.ts': { '576': 2 },
   // TODO round 3: use CICSC_CONTROLS, CICSC_LEVEL1_CONTROLS, TOTAL_CONTROLS
   'src/screens/01_Profile.tsx': { '135': 1, '405': 2, '576': 1 },
-  // TODO round 3: use APPLICABLE_CONTROLS
-  'src/screens/03_Intake.tsx': { '557': 1 },
   // TODO round 3: use CICSC_CONTROLS
   'src/screens/04_Dashboard.tsx': { '405': 2 },
   // TODO round 3: use APPLICABLE_CONTROLS, TOTAL_CONTROLS, CICSC_CONTROLS
@@ -39,7 +38,7 @@ const ALLOW: Record<string, Partial<Record<Lit, number>>> = {
   'src/tour/glossary.ts': { '576': 2 },
   'src/tour/helpContent.ts': { '576': 1 },
   // TODO round 3: use APPLICABLE_CONTROLS, TOTAL_CONTROLS
-  'src/tour/steps.ts': { '557': 3, '576': 2 },
+  'src/tour/steps.ts': { '557': 2, '576': 2 },
 };
 
 const sources = import.meta.glob('/src/**/*.{ts,tsx}', {

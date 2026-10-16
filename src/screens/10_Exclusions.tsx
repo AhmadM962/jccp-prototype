@@ -92,7 +92,7 @@ export default function Exclusions() {
       </div>
 
       <Provenance tier="illustrative"><Card
-        title={`Exclusions — ${rows.length} shown of ${EXCLUSIONS.length} seeded`}
+        title={`Exclusions — ${rows.length} shown of ${EXCLUSIONS.length}`}
         right={
           <div className="flex flex-wrap items-center gap-2">
             <select value={capF} onChange={(e) => setCapF(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">

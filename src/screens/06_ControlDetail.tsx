@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Users, Clock, X, ShieldCheck, ShieldQuestion } from 'lucide-react';
+import { ArrowLeft, Check, Users, Clock, X, ShieldCheck, ShieldQuestion, FileQuestion } from 'lucide-react';
 import { Card, Pill, Button, SectionLabel } from '../components/ui';
 import { Provenance } from '../components/Provenance';
 import StateBadge, { STATE_META } from '../components/StateBadge';
@@ -110,7 +110,7 @@ export default function ControlDetail() {
   // Partial credit this control's deployment share earns (src/lib/scoring.ts). A share whose basis
   // is `claimed` is capped at the second quartile; the basis is a fact in the data
   // (deploymentShareBasis on the snapshot in effect), not something derived here. A missing basis is
-  // treated as claimed. The aggregate on the dashboard does not use this (flat 0.5).
+  // treated as claimed. The dashboard's aggregate uses the engine's published credits, not this display.
   let shareCreditText: string | undefined;
   if (control.deploymentSharePct !== undefined) {
     const share = control.deploymentSharePct / 100;
@@ -161,7 +161,9 @@ export default function ControlDetail() {
             <Pill tone={effectiveClass === 'artifact' ? 'green' : effectiveClass === 'testimonial' ? 'blue' : effectiveClass === 'analyst_signed' ? 'violet' : 'slate'}>
               {EVIDENCE_CLASS_LABEL[effectiveClass]}
             </Pill>
-            {base.state === 'unknown' && base.gapReason && <Pill tone="violet">{GAP_REASON_LABEL[base.gapReason]}</Pill>}
+            {base.state === 'unknown' && base.gapReason && (
+              <Pill tone={base.gapReason === 'unauthored' ? 'orange' : 'violet'}>{GAP_REASON_LABEL[base.gapReason]}</Pill>
+            )}
             {oldest > 0 && (
               <span className={`inline-flex items-center gap-1 text-[11px] ${stale ? 'font-semibold text-amber-700' : 'text-slate-400'}`}>
                 <Clock size={11} /> evidence {oldest}d old{stale ? ` · past ${control.maxAgeDays}d window` : ''}
@@ -195,8 +197,24 @@ export default function ControlDetail() {
         </div>
       </Card>
 
-      {/* 3. Evidence trail */}
-      {canSeeEvidence ? (
+      {/* 3. Evidence trail — an unauthored control has none to show: no requirement was ever
+          written, so nothing was sought. An empty trail would imply it was. */}
+      {!control.authored ? (
+        <div
+          data-testid="unauthored-statement"
+          className="flex items-start gap-3 rounded-xl border-2 border-orange-300 bg-orange-50 p-4 text-sm text-orange-950"
+        >
+          <FileQuestion size={18} className="mt-0.5 shrink-0 text-orange-600" />
+          <div>
+            <p className="font-semibold">No evidence requirement has been authored for this control.</p>
+            <p className="mt-1 leading-relaxed text-orange-900">
+              The tool has not yet been told what would count as evidence for it, so it did not look. This is a
+              limitation of the tool, not a finding about the organisation: nothing here says the control is met,
+              and nothing says it is not. Uploading evidence cannot change this.
+            </p>
+          </div>
+        </div>
+      ) : canSeeEvidence ? (
         <Card dataTour="cd-evidence" title="Evidence trail" subtitle="Every finding traces to a quote or an artifact locator with a hash">
           <div className="mb-3 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px]">
             <ShieldQuestion size={14} className="mt-0.5 shrink-0 text-slate-400" />
@@ -230,7 +248,8 @@ export default function ControlDetail() {
         </div>
       )}
 
-      {/* 4. Evidence sufficiency ladder */}
+      {/* 4. Evidence sufficiency ladder (authored controls only: it presents evidence that was sought) */}
+      {control.authored && (
       <Card title="Evidence sufficiency" subtitle="The evidence class sets the highest state a control may reach">
         <div className="flex items-stretch gap-2">
           {LADDER.map((cls) => {
@@ -253,6 +272,7 @@ export default function ControlDetail() {
           Compliant — only machine-collected artifacts or an analyst signature.
         </p>
       </Card>
+      )}
 
       {/* 5. ATT&CK exposure — always rendered */}
       <Card dataTour="cd-attack" title="ATT&CK exposure" subtitle="Control → Mitigation → Techniques">
@@ -280,7 +300,7 @@ export default function ControlDetail() {
       )}
 
       {/* How to evidence this */}
-      {(base.state === 'unknown' || base.evidenceClass === 'testimonial') && (
+      {control.authored && (base.state === 'unknown' || base.evidenceClass === 'testimonial') && (
         <Card title="How to evidence this" subtitle="Move this control out of Unknown / off the Yellow ceiling">
           <ul className="space-y-1.5 text-sm text-slate-700">
             {control.requiredSignals.map((sig) => {

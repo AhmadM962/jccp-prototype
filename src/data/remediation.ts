@@ -34,7 +34,7 @@ export const remediationPlan: RemediationAction[] = [
     id: 'rem-patch',
     action: 'Bring patch SLA adherence to policy on internet-facing hosts',
     controlsClosed: 7,
-    controlIds: ['JNCSF-307', 'JNCSF-407', 'JNCSF-32'],
+    controlIds: ['JNCSF-307', 'JNCSF-32'],
     removesExposureTo: ['T1190'],
     effort: 'high',
     affectedAssets: '14 internet-facing services, 22 servers with overdue patches',

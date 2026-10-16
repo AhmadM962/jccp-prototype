@@ -11,6 +11,7 @@ import {
   Landmark,
   ShieldHalf,
   ListTodo,
+  BookCheck,
 } from 'lucide-react';
 import type { Phase, Role } from '../../store/useAssessment';
 
@@ -35,6 +36,7 @@ export const NAV: NavItem[] = [
   { to: '/remediation', label: 'Remediation & Requests', icon: Wrench, step: 7, phase: 'assessed', roles: ['owner', 'analyst'] },
   { to: '/export', label: 'OSCAL Export', icon: FileJson, step: 8, phase: 'assessed', roles: ['owner', 'analyst', 'regulator'] },
   { to: '/rollup', label: 'National Rollup', icon: Landmark, step: 8, roles: ['owner', 'analyst', 'regulator'] },
+  { to: '/authoring', label: 'Authoring Coverage', icon: BookCheck, step: 9, roles: ['owner', 'analyst'] },
   { to: '/admin', label: 'Roles & Access', icon: ShieldHalf, step: 9, roles: ['owner', 'analyst'] },
   { to: '/chat', label: 'Compliance Chat', icon: MessagesSquare, step: 9, roles: ['owner', 'analyst', 'executive'] },
 ];

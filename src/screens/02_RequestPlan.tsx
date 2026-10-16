@@ -78,15 +78,15 @@ export default function RequestPlan() {
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900">
-              To assess your {REQUEST_PLAN_SUMMARY.applicable} applicable controls, we need{' '}
+              To assess the {REQUEST_PLAN_SUMMARY.authoredScope} controls that have an authored evidence requirement, we need{' '}
               {REQUEST_PLAN_SUMMARY.artifactCount} artifacts from {REQUEST_PLAN_SUMMARY.systemCount} systems.
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               Generated before any collection — the "how would I know what I'm missing" answer made concrete.
               Provide all {REQUEST_PLAN_SUMMARY.artifactCount} → projected coverage{' '}
               <span className="tnum font-semibold text-slate-700">{REQUEST_PLAN_SUMMARY.projectedCoveragePct}%</span>.
-              The remaining {REQUEST_PLAN_SUMMARY.uncollectable} controls are structurally uncollectable and stay
-              Unknown regardless.
+              The other {REQUEST_PLAN_SUMMARY.unauthored} controls have no evidence requirement authored, so the
+              plan cannot ask for anything that would establish them: they stay Unknown regardless.
             </p>
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function RequestPlan() {
       <Provenance tier="illustrative"><Card
         dataTour="plan-automated"
         title="Automated"
-        subtitle={`${REQUEST_PLAN_SUMMARY.automatedCount} artifacts collected by the signed collector · covers ${REQUEST_PLAN_SUMMARY.automatedControls} controls · ~15 min`}
+        subtitle={`${REQUEST_PLAN_SUMMARY.automatedCount} artifacts collected by the signed collector · ~15 min`}
         right={
           <Provenance tier="planned"><div data-tour="plan-collectors" className="flex flex-col items-end gap-1">
             <div className="flex gap-2">

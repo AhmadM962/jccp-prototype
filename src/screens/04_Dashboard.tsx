@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Bar,
@@ -12,23 +11,54 @@ import {
   YAxis,
   LabelList,
 } from 'recharts';
-import { AlertTriangle, Info, ArrowUpRight, ShieldAlert, TrendingUp, Scale } from 'lucide-react';
+import { AlertTriangle, Info, ArrowUpRight, ShieldAlert, TrendingUp } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
 import { Provenance } from '../components/Provenance';
 import ScoreInterval from '../components/ScoreInterval';
+import WidthDecomposition from '../components/WidthDecomposition';
+import FourViews from '../components/FourViews';
 import { useAssessment } from '../store/useAssessment';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { ASSURANCE_LEVELS, bandFloorPts } from '../lib/scoring';
+import { stateFor, unevidencedRows } from '../lib/views';
 import { coverageBreakdown, completenessStatement, unknownResolvedByUpload, seededChangedCount } from '../lib/coverage';
 import { dashboardView } from '../lib/derive';
-import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS, UNCOLLECTABLE_COUNT } from '../data/controls';
+import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
 import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
 import { EXCLUSIONS, SECTOR_BASELINE } from '../data/exclusions';
 import { sectorById, regulatorDisplay } from '../data/sectors';
-import { RISK_WEIGHT_TABLE, RISK_WEIGHTED_TOTALS, WEIGHTED_WIDTH_PTS, UNDERIVED_SHARE_PCT, RISK_WEIGHTING_EXPLAINER } from '../data/riskWeighting';
 import { Term } from '../tour/Term';
 
 const fmt1 = (n: number) => n.toFixed(1);
+
+/** The width decomposition under the interval: whose limitation each part of the width is. */
+function WidthBreakdown({ uploaded, eff, overridesActive }: { uploaded: boolean; eff: ReturnType<typeof dashboardView>['effective']; overridesActive: number }) {
+  const s = stateFor(uploaded);
+  return (
+    <WidthDecomposition
+      parts={eff.widthExact.parts}
+      width={eff.widthExact.total}
+      controls={eff.widthControls}
+      reasons={unevidencedRows(s)}
+      reasonsTotal={s.views.unweighted.width.unevidenced}
+      reasonsNote={overridesActive > 0 ? 'Analyst overrides are not itemised by reason: this table is the engine verdict.' : undefined}
+    />
+  );
+}
+
+/** What the aggregate does with Partial controls: the engine credits each one individually. */
+function PartialCreditNote({ uploaded }: { uploaded: boolean }) {
+  const s = stateFor(uploaded);
+  const credit = s.partialCredit[0] / s.partialCredit[1];
+  return (
+    <Provenance tier="illustrative" className="mt-3 pt-3">
+      <p data-testid="partial-credit-note" className="text-center text-[11px] text-slate-500">
+        The {s.yellow} Partial controls here earn {credit.toFixed(2)} in total, credited one by one by the engine
+        rather than at a flat weight. A control's page shows how its own share is credited.
+      </p>
+    </Provenance>
+  );
+}
 
 const TOP_RISKS = [
   { id: 'JNCSF-307', label: 'Vulnerability scanning not established', why: '22 servers overdue for patches · exposes T1190', to: '/control/JNCSF-307' },
@@ -55,14 +85,11 @@ function ExecutiveDashboard() {
               coveragePct={eff.coveragePct}
               widthPts={eff.widthPts}
               animateFrom={uploaded ? { lower: TOTALS.before.interval[0], upper: TOTALS.before.interval[1] } : undefined}
-              subline={`Assurance ${uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented'}. ${cs.unevidenced} controls still unevidenced.`}
+              subline={`Assurance ${uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented'}. ${cs.unauthored} controls have no evidence requirement authored; ${cs.unevidenced} are not yet evidenced.`}
             />
           </div>
-          <Provenance tier="illustrative" className="mt-3">
-            <p className="text-center text-[11px] text-slate-500">
-              The aggregate here applies a flat 0.5 to every Partial. Per-control quartile credit is shown on each control's page.
-            </p>
-          </Provenance>
+          <WidthBreakdown uploaded={uploaded} eff={eff} overridesActive={view.overridesActive} />
+          <PartialCreditNote uploaded={uploaded} />
         </Card></Provenance>
         <Provenance tier="illustrative"><Card title="Trend" subtitle="last four collection cycles">
           <div className="flex items-end gap-3">
@@ -108,8 +135,10 @@ function ExecutiveDashboard() {
         </div>
         <p className="text-sm leading-relaxed text-slate-700">
           This assessment covers <strong className="tnum">{cs.covered} of {cs.applicable}</strong> applicable
-          controls. <strong className="tnum">{cs.unevidenced}</strong> are unevidenced. Compliance is reported
-          as an interval because a point estimate would conceal what was not established.
+          controls. <strong className="tnum">{cs.unknown}</strong> are not established:{' '}
+          <strong className="tnum">{cs.unauthored}</strong> because no evidence requirement has been authored (a
+          limitation of the tool) and <strong className="tnum">{cs.unevidenced}</strong> because evidence was not
+          provided. Compliance is reported as an interval because a point estimate would conceal what was not established.
         </p>
         {operatesCI && (
           <p className="mt-2 border-t border-slate-200 pt-2 text-sm leading-relaxed text-slate-700">
@@ -137,7 +166,6 @@ export default function Dashboard() {
   const profile = useAssessment((s) => s.profile);
   const challenge = useAssessment((s) => s.profileChallenge);
   const role = useAssessment((s) => s.role);
-  const [weighted, setWeighted] = useState(false);
 
   if (role === 'executive') return <ExecutiveDashboard />;
 
@@ -151,8 +179,9 @@ export default function Dashboard() {
 
   const donut = [
     { name: 'Artifact-evidenced', value: cov.evidenced, fill: '#059669' },
-    { name: 'Testimony only', value: cov.testimonyOnly, fill: '#d97706' },
-    { name: 'Unevidenced — collectable', value: cov.unevidenced, fill: '#7c3aed' },
+    { name: 'Partial', value: cov.testimonyOnly, fill: '#d97706' },
+    { name: 'Not evidenced — the organisation\'s', value: cov.unevidenced, fill: '#7c3aed' },
+    { name: 'Not yet authored — the tool\'s', value: cov.unauthored, fill: '#c2410c' },
     { name: 'Structurally uncollectable', value: cov.uncollectable, fill: '#64748b' },
   ];
 
@@ -235,24 +264,22 @@ export default function Dashboard() {
               animateFrom={uploaded ? { lower: TOTALS.before.interval[0], upper: TOTALS.before.interval[1] } : undefined}
               subline={
                 uploaded
-                  ? `Interval narrowed after the Windows/AD collector bundle resolved ${unknownResolvedByUpload().resolved} of ${unknownResolvedByUpload().from} Unknown controls.`
+                  ? `Interval narrowed after the Windows/AD collector bundle resolved ${unknownResolvedByUpload().resolved} of the ${unknownResolvedByUpload().from} Unknown controls in the authored scope.`
                   : 'Width is the cost of missing evidence. '
               }
             />
             {!uploaded && (
               <p className="mx-auto -mt-1 max-w-md text-center text-xs text-slate-400">
                 <Link to="/remediation" className="underline hover:text-slate-600">
-                  Provide 5 more artifacts
+                  See what evidence would narrow this
                 </Link>{' '}
-                to narrow this toward {fmt1(bandFloorPts(TOTALS.applicable, UNCOLLECTABLE_COUNT))} points.
+                — at best to {fmt1(bandFloorPts(cs.applicable, cs.unauthored + cs.uncollectable))} points: the other{' '}
+                {cs.unauthored} controls have no evidence requirement authored.
               </p>
             )}
           </div>
-          <Provenance tier="illustrative" className="mt-3">
-            <p className="text-center text-[11px] text-slate-500">
-              The aggregate here applies a flat 0.5 to every Partial. Per-control quartile credit is shown on each control's page.
-            </p>
-          </Provenance>
+          <WidthBreakdown uploaded={uploaded} eff={eff} overridesActive={view.overridesActive} />
+          <PartialCreditNote uploaded={uploaded} />
         </Card></Provenance>
 
         <Provenance tier="illustrative"><Card dataTour="dash-coverage" title="Coverage" subtitle={`${cs.covered} of ${cs.applicable} applicable controls`}>
@@ -347,7 +374,7 @@ export default function Dashboard() {
                 <div>
                   <div className="text-sm font-semibold text-slate-800">{c.shortName}</div>
                   <div className="tnum text-[11px] text-slate-400">
-                    {stat.green}G · {stat.yellow}Y · {stat.red}R · {stat.unknown} unknown
+                    {stat.green}G · {stat.yellow}Y · {stat.red}R · {stat.unknown} unknown · {stat.authored} of {stat.applicable} authored
                   </div>
                 </div>
                 <div className="order-3 col-span-2 sm:order-none sm:col-span-1">
@@ -363,75 +390,10 @@ export default function Dashboard() {
         </div>
       </Card></Provenance>
 
-      {/* Risk weighting — additive disclosure, never replaces the bounded interval above */}
-      <Provenance tier="illustrative"><Card
-        title="Risk weighting"
-        subtitle="Derived from NIST SP 800-53B baselines — an additive view, not a replacement for the interval above"
-        right={
-          <button
-            onClick={() => setWeighted((v) => !v)}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-              weighted ? 'border-accent bg-accent/10 text-accent' : 'border-slate-300 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <Scale size={13} /> {weighted ? 'Weighted' : 'Unweighted (default)'}
-          </button>
-        }
-      >
-        {!weighted ? (
-          <p className="text-sm text-slate-500">
-            Showing the unweighted interval — every control counts equally. Switch on to see the same
-            assessment scored by NIST-baseline risk weight.
-          </p>
-        ) : (
-          <div className="space-y-4">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400">
-                    <th className="py-2 pr-4">Basis</th>
-                    <th className="py-2 pr-4 text-right">Controls</th>
-                    <th className="py-2 text-right">Weight</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {RISK_WEIGHT_TABLE.map((r) => (
-                    <tr key={r.basis} className={`border-b border-slate-100 ${r.underived ? 'bg-amber-50/50' : ''}`}>
-                      <td className="py-2 pr-4 text-slate-700">
-                        {r.basis}
-                        {r.underived && <span className="ml-1.5 text-[10px] text-amber-700">({UNDERIVED_SHARE_PCT}% of framework)</span>}
-                      </td>
-                      <td className="tnum py-2 pr-4 text-right font-semibold text-slate-800">{r.controls}</td>
-                      <td className="tnum py-2 text-right text-slate-600">{r.weight.toFixed(1)}{r.underived ? ' (conservative default)' : ''}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 p-3">
-                <div className="text-[11px] uppercase tracking-wide text-slate-400">Derived-only</div>
-                <div className="tnum text-xl font-bold text-slate-900">{RISK_WEIGHTED_TOTALS.derivedOnly}</div>
-              </div>
-              <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
-                <div className="text-[11px] uppercase tracking-wide text-amber-700">Including underived</div>
-                <div className="tnum text-xl font-bold text-slate-900">{RISK_WEIGHTED_TOTALS.includingUnderived}</div>
-              </div>
-            </div>
-            <p className="text-[11px] leading-relaxed text-slate-500">
-              Both totals are shown together — never one derived from the other. The{' '}
-              <span className="tnum font-semibold text-slate-700">{RISK_WEIGHTED_TOTALS.gap}</span>-control gap
-              between them is real uncertainty about weight, not noise to average away. Under weighting, band
-              width is also independent of coverage — an unknown high-weight control widens the interval more
-              than a low-weight one; this profile's weighted width is currently{' '}
-              <span className="tnum font-semibold text-slate-700">{WEIGHTED_WIDTH_PTS} pts</span>, which is not
-              derivable from the {fmt1(eff.coveragePct)}% coverage figure above.
-            </p>
-            <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">{RISK_WEIGHTING_EXPLAINER}</p>
-          </div>
-        )}
-      </Card></Provenance>
+      {/* The four published views of the one assessment; the weights that explain two of them sit inside */}
+      <Provenance tier="illustrative">
+        <FourViews uploaded={uploaded} effective={eff} overridesActive={view.overridesActive} />
+      </Provenance>
 
       {/* Completeness + scope exclusions, side by side */}
       <div className="grid gap-5 lg:grid-cols-2">
@@ -442,8 +404,11 @@ export default function Dashboard() {
           <p className="text-sm leading-relaxed text-slate-700">
             This assessment covers <strong className="tnum">{cs.covered} of {cs.applicable}</strong>{' '}
             <Term k="applicable controls">applicable controls</Term>.{' '}
-            <strong className="tnum">{cs.unevidenced}</strong> are unevidenced.{' '}
-            <strong className="tnum">{cs.uncollectable}</strong> are outside the tool's collection reach.{' '}
+            <strong className="tnum">{cs.unknown}</strong> are not established:{' '}
+            <strong className="tnum">{cs.unauthored}</strong> because no evidence requirement has been authored (a
+            limitation of the tool), <strong className="tnum">{cs.unevidenced}</strong> because evidence was not
+            provided, and <strong className="tnum">{cs.uncollectable}</strong> because they are outside the tool's
+            collection reach.{' '}
             <Term k="assurance level">Assurance level</Term>: <strong>{cs.assurance}</strong>. Compliance is
             reported as an interval because a point estimate would conceal what was not established.
           </p>
@@ -488,7 +453,7 @@ export default function Dashboard() {
 
       {/* Gap-reason breakdown */}
       <Provenance tier="illustrative"><Card
-        title="Why controls are unevidenced"
+        title="Why controls are Unknown"
         subtitle={
           uploaded
             ? `Breakdown of the ${gapTotal} Unknowns after the evidence bundle`
@@ -503,7 +468,7 @@ export default function Dashboard() {
               <Tooltip />
               <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive>
                 {gapData.map((g) => (
-                  <Cell key={g.reason} fill={g.invariant ? '#94a3b8' : '#7c3aed'} />
+                  <Cell key={g.reason} fill={g.invariant ? '#94a3b8' : g.reason === 'unauthored' ? '#c2410c' : '#7c3aed'} />
                 ))}
                 <LabelList dataKey="count" position="right" className="tnum" />
               </Bar>
@@ -534,7 +499,7 @@ export default function Dashboard() {
       {uploaded && (
         <div className="flex justify-end">
           <Link to="/gap-matrix?changed=1" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
-            See the {seededChangedCount().changed} of {seededChangedCount().seeded} seeded controls changed by the upload in the Gap Matrix <ArrowUpRight size={15} />
+            See the {seededChangedCount().changed} of the {seededChangedCount().seeded} controls in this sample that the upload changed in the Gap Matrix <ArrowUpRight size={15} />
           </Link>
         </div>
       )}

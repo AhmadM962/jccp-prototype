@@ -41,11 +41,24 @@ export interface BoundedScore {
   confidence: number;
 }
 
+/** Thrown when a figure fails a consistency check. Carries the `where` of the guard that fired so
+ *  the boundary that catches it (components/FigureBoundary.tsx) can log it and tell it apart from
+ *  an ordinary bug, which it must not swallow. */
+export class IntervalConsistencyError extends Error {
+  readonly where: string;
+  constructor(where: string, message: string) {
+    super(message);
+    this.name = 'IntervalConsistencyError';
+    this.where = where;
+  }
+}
+
 /** An interval whose lower bound exceeds its upper bound is impossible. A wrong number that
- *  renders is worse than a crash in a demo of a measurement tool, so this throws. */
+ *  renders is worse than none, so this throws; FigureBoundary turns the throw into a withheld
+ *  figure and an honest message instead of a blank page. */
 export function assertInterval(lower: number, upper: number, where: string): void {
   if (lower > upper) {
-    throw new Error(`Impossible interval in ${where}: lower ${lower} > upper ${upper}`);
+    throw new IntervalConsistencyError(where, `Impossible interval in ${where}: lower ${lower} > upper ${upper}`);
   }
 }
 
@@ -57,7 +70,10 @@ export function assertInterval(lower: number, upper: number, where: string): voi
 export function assertDisplayedInterval(lower: number, upper: number, width: number | undefined, where: string): void {
   assertInterval(lower, upper, where);
   if (width !== undefined && Math.abs(width - (upper - lower)) > 1e-6) {
-    throw new Error(`Displayed interval inconsistent in ${where}: width ${width} != upper ${upper} - lower ${lower}`);
+    throw new IntervalConsistencyError(
+      where,
+      `Displayed interval inconsistent in ${where}: width ${width} != upper ${upper} - lower ${lower}`,
+    );
   }
 }
 
@@ -104,11 +120,25 @@ export function projectProvision(
   uncollectable = 0,
   yellowWeight = 0.5,
 ) {
-  // Only collectable Unknowns can be resolved by providing artifacts; the uncollectable ones
-  // stay Unknown whatever is provided.
-  const collectable = Math.max(0, unknown - uncollectable);
+  return projectFromNumerator(applicable, green * WEIGHTS.green + yellow * yellowWeight, unknown, uncollectable, controlsUnlocked);
+}
+
+/**
+ * The same projection from a credit numerator (what the bounds are built from) instead of bucket counts
+ * and a flat Partial weight. `unresolvable` is how many of the Unknowns no evidence can ever resolve: the
+ * structurally uncollectable ones and, since Round 2, those with no authored evidence requirement. Only
+ * the rest — the collectable pool — can be resolved by providing artifacts.
+ */
+export function projectFromNumerator(
+  applicable: number,
+  numerator: number,
+  unknown: number,
+  unresolvable: number,
+  controlsUnlocked: number,
+) {
+  const collectable = Math.max(0, unknown - unresolvable);
   const n = Math.min(controlsUnlocked, collectable);
-  const num = green * WEIGHTS.green + yellow * yellowWeight;
+  const num = numerator;
   const remainingUnknown = unknown - n;
   assertInterval((num + n) / applicable, (num + n + remainingUnknown) / applicable, 'projectProvision best case');
   assertInterval(num / applicable, (num + remainingUnknown) / applicable, 'projectProvision worst case');
@@ -127,10 +157,10 @@ export function projectProvision(
   };
 }
 
-/** The narrowest the band can ever get: the uncollectable controls stay Unknown, so the band
- *  keeps at least `uncollectable / applicable` of width. In percentage points. */
-export const bandFloorPts = (applicable: number, uncollectable: number) =>
-  (uncollectable / applicable) * 100;
+/** The narrowest the band can ever get: the controls no evidence can resolve stay Unknown, so the band
+ *  keeps at least `unresolvable / applicable` of width. In percentage points. */
+export const bandFloorPts = (applicable: number, unresolvable: number) =>
+  (unresolvable / applicable) * 100;
 
 /**
  * Apply a set of analyst overrides to a bucket of aggregate counts and return the
