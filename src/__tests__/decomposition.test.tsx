@@ -127,7 +127,7 @@ describe('Task 3: the width decomposition under the interval', () => {
   });
 
   it('follows the headline under an analyst override: the tool\'s share narrows and the parts still sum', () => {
-    const unauth = controls.find((c) => !c.authored)!;
+    const unauth = controls().find((c) => !c.authored && c.after.state === 'unknown')!;
     useAssessment.getState().overrideControl(unauth.id, {
       state: 'green',
       previousState: 'unknown',

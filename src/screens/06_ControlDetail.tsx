@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Users, Clock, X, ShieldCheck, ShieldQuestion, FileQuestion } from 'lucide-react';
+import { ArrowLeft, Check, Users, Clock, X, ShieldCheck, ShieldQuestion, FileQuestion, Crosshair } from 'lucide-react';
 import { Card, Pill, Button, SectionLabel } from '../components/ui';
 import { Provenance } from '../components/Provenance';
 import StateBadge, { STATE_META } from '../components/StateBadge';
@@ -12,17 +12,22 @@ import {
   controls,
   snapshotFor,
   EVIDENCE_CLASS_LABEL,
+  EVIDENCE_KIND_LABEL,
+  GAP_BASIS_LABEL,
   GAP_REASON_LABEL,
+  PARTIAL_BASIS_LABEL,
   EVIDENCE_CEILING,
   EVIDENCE_BASIS_LABEL,
   EVIDENCE_BASIS_MEANING,
   type EvidenceClass,
   type ControlState,
 } from '../data/controls';
+import { CURRENT } from '../data/current';
 import { capabilityById } from '../data/capabilities';
-import { YELLOW_QUARTILE_NAME, yellowQuartileForShare, yellowWeightForShare } from '../lib/scoring';
+import { IntervalConsistencyError, YELLOW_QUARTILE_NAME, yellowQuartileForShare, yellowWeightForShare } from '../lib/scoring';
+import { toNumber } from '../lib/frac';
 import { attackBridge } from '../data/attack';
-import { evidenceFor, ageDays, ASSESSMENT_DATE } from '../data/evidence';
+import { evidenceFor, ageDays } from '../data/evidence';
 import { requestPlan } from '../data/scenario';
 
 const LADDER: EvidenceClass[] = ['none', 'testimonial', 'artifact', 'analyst_signed'];
@@ -72,6 +77,18 @@ function OverrideModal({
   );
 }
 
+/** One labelled line of the measured panel. */
+function Fact({ label, testid, children }: { label: string; testid?: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-1.5 text-sm">
+      <dt className="w-44 shrink-0 text-[12px] text-slate-400">{label}</dt>
+      <dd data-testid={testid} className="min-w-0 flex-1 text-slate-800">{children}</dd>
+    </div>
+  );
+}
+
+const pct = (x: number) => `${Math.round(x * 1000) / 10}%`;
+
 export default function ControlDetail() {
   const { id } = useParams();
   const control = id ? controlById(id) : undefined;
@@ -93,41 +110,44 @@ export default function ControlDetail() {
     );
   }
 
+  const claim = control.claim;
   const base = snapshotFor(control, uploaded);
   const ov = overrides[control.id];
   const effectiveState: ControlState = ov?.state ?? base.state;
   const effectiveClass: EvidenceClass = ov ? 'analyst_signed' : base.evidenceClass;
   const cap = capabilityById(control.capability);
-  const attack = control.attackKey ? attackBridge[control.attackKey] : undefined;
-  const evItems = evidenceFor(control.id).filter((it) => uploaded || it.type === 'testimonial');
+  const ex = control.example;
+  const attack = ex?.attackKey ? attackBridge[ex.attackKey] : undefined;
+  const ranked = CURRENT.ranking.items.filter((it) => it.controlId === control.id);
+  const evItems = ex ? evidenceFor(control.id).filter((it) => uploaded || it.type === 'testimonial') : [];
   const ceiling = EVIDENCE_CEILING[effectiveClass];
   const canOverride = role === 'analyst' || role === 'owner';
   const canSeeEvidence = role !== 'executive' && role !== 'contributor';
 
   const oldest = evItems.reduce((m, it) => Math.max(m, ageDays(it.timestamp)), 0);
-  const stale = oldest > control.maxAgeDays;
+  const stale = ex ? oldest > ex.maxAgeDays : false;
+  const measuredTier = uploaded ? 'measured' : 'illustrative';
 
-  // Partial credit this control's deployment share earns (src/lib/scoring.ts). A share whose basis
-  // is `claimed` is capped at the second quartile; the basis is a fact in the data
-  // (deploymentShareBasis on the snapshot in effect), not something derived here. A missing basis is
-  // treated as claimed. The dashboard's aggregate uses the engine's published credits, not this display.
-  let shareCreditText: string | undefined;
-  if (control.deploymentSharePct !== undefined) {
-    const share = control.deploymentSharePct / 100;
-    const basis = base.deploymentShareBasis ?? 'claimed';
-    const credit = yellowWeightForShare(share, basis);
-    const capped = credit < yellowWeightForShare(share);
-    const quartile = capped
-      ? `${YELLOW_QUARTILE_NAME[2]}; capped because the share is claimed, not measured`
-      : YELLOW_QUARTILE_NAME[yellowQuartileForShare(share)];
-    const shown = `Deployment share ${control.deploymentSharePct}% (${basis})`;
-    shareCreditText =
-      effectiveState === 'yellow'
-        ? `${shown} — partial credit ${credit} (${quartile}) for this control.`
-        : `${shown} — would earn partial credit ${credit} (${quartile}) if Partial; this control is currently ${STATE_META[effectiveState].label}, so none applies.`;
+  // The partial credit this control earns is the engine's (`claim.credit`); the quartile it falls in is shown from the
+  // share's lower bound. A `claimed` share is capped at the second quartile, so the credit can be lower than the quartile's.
+  const share = claim.share;
+  const shareLower = share?.interval?.lower ?? share?.value ?? null;
+  const claimedShare = share?.interval?.basis === 'claimed';
+  let creditText: string | undefined;
+  if (base.credit && base.state === 'yellow') {
+    creditText = `partial credit ${toNumber(base.credit)}`;
+    if (shareLower !== null && claim.partialBasis === 'share') {
+      // the prototype's own quartile model must agree with the engine's credit, or the figure is withheld
+      const expected = yellowWeightForShare(shareLower, claimedShare ? 'claimed' : 'measured');
+      if (Math.abs(expected - toNumber(base.credit)) > 1e-9) {
+        throw new IntervalConsistencyError('ControlDetail', `Credit for ${control.id} is ${toNumber(base.credit)} but the quartile model gives ${expected}`);
+      }
+      const q = yellowQuartileForShare(shareLower);
+      creditText += ` (${YELLOW_QUARTILE_NAME[q]}${claimedShare && q < 2 ? `; capped at the ${YELLOW_QUARTILE_NAME[2]} because the share is claimed, not counted` : ''})`;
+    }
   }
 
-  const related = controls
+  const related = controls()
     .filter((c) => c.id !== control.id && c.capability === control.capability)
     .slice(0, 4);
 
@@ -137,69 +157,163 @@ export default function ControlDetail() {
   };
 
   return (
-    <Provenance tier="illustrative" className="space-y-5">
+    <div className="space-y-5">
       <Link to="/gap-matrix" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
         <ArrowLeft size={15} /> Gap Matrix
       </Link>
 
       {/* 1. Header */}
-      <Card>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-sm font-bold text-slate-500">{control.id}</span>
-              {cap && <Pill tone="slate">{cap.shortName}</Pill>}
-              {control.showcase && <Pill tone="amber">showcase control</Pill>}
-              {uploaded && control.changed && <Pill tone="blue">promoted by upload</Pill>}
-              {ov && <Pill tone="violet">analyst override</Pill>}
+      <Provenance tier={measuredTier}>
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-sm font-bold text-slate-500">{control.id}</span>
+                {cap && <Pill tone="slate">{cap.shortName}</Pill>}
+                {uploaded && control.changed && <Pill tone="blue">changed by the upload</Pill>}
+                {ov && <Pill tone="violet">analyst override</Pill>}
+              </div>
+              {control.description ? (
+                <h2 className="mt-2 text-lg font-semibold leading-snug text-slate-900">{control.description}</h2>
+              ) : (
+                <h2 className="mt-2 text-sm font-medium text-slate-400">Control text is not held in this prototype.</h2>
+              )}
+              <p className="mt-1 text-[11px] text-slate-400">Assessment as of {CURRENT.asOf.slice(0, 10)}</p>
             </div>
-            <h2 className="mt-2 text-lg font-semibold leading-snug text-slate-900">{control.description}</h2>
-            <p className="mt-1 text-[11px] text-slate-400">Assessment as of {ASSESSMENT_DATE}</p>
+            <div className="flex flex-col items-end gap-2">
+              <StateBadge state={effectiveState} size="lg" />
+              <Pill tone={effectiveClass === 'artifact' ? 'green' : effectiveClass === 'testimonial' ? 'blue' : effectiveClass === 'analyst_signed' ? 'violet' : 'slate'}>
+                {EVIDENCE_CLASS_LABEL[effectiveClass]}
+              </Pill>
+              {base.state === 'unknown' && base.gapReason && (
+                <Pill tone={base.gapReason === 'unauthored' ? 'orange' : 'violet'}>{GAP_REASON_LABEL[base.gapReason]}</Pill>
+              )}
+            </div>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <StateBadge state={effectiveState} size="lg" />
-            <Pill tone={effectiveClass === 'artifact' ? 'green' : effectiveClass === 'testimonial' ? 'blue' : effectiveClass === 'analyst_signed' ? 'violet' : 'slate'}>
-              {EVIDENCE_CLASS_LABEL[effectiveClass]}
-            </Pill>
+        </Card>
+      </Provenance>
+
+      {/* 2. What the engine concluded — every value here is read from the assessment file */}
+      <Provenance tier={measuredTier} note={uploaded ? undefined : 'Before the upload this is rule R’s projection of the engine’s claim, not an engine run.'}>
+        <Card dataTour="cd-measured" title="What the engine concluded" subtitle={uploaded ? 'Read from the assessment file named at the top of the page' : 'Before the upload: which verdicts exist is rule R’s projection'}>
+          <dl data-testid="measured-panel" className="divide-y divide-slate-100">
+            <Fact label="State" testid="measured-state">
+              <span data-state={base.state}>{STATE_META[base.state].label}</span>
+              {uploaded && control.changed && <span className="text-slate-400"> · {STATE_META[control.before.state].label} before the upload (projection)</span>}
+            </Fact>
+            <Fact label="Evidence" testid="measured-evidence">
+              {EVIDENCE_CLASS_LABEL[base.evidenceClass]}
+              {base.evidenceKind && <span className="text-slate-500"> · {EVIDENCE_KIND_LABEL[base.evidenceKind]} <code className="font-mono text-[11px]">({base.evidenceKind})</code></span>}
+            </Fact>
             {base.state === 'unknown' && base.gapReason && (
-              <Pill tone={base.gapReason === 'unauthored' ? 'orange' : 'violet'}>{GAP_REASON_LABEL[base.gapReason]}</Pill>
+              <Fact label="Why Unknown" testid="measured-gap-reason">
+                {GAP_REASON_LABEL[base.gapReason]} <code className="font-mono text-[11px] text-slate-500">({base.gapReason})</code>
+              </Fact>
             )}
-            {oldest > 0 && (
-              <span className={`inline-flex items-center gap-1 text-[11px] ${stale ? 'font-semibold text-amber-700' : 'text-slate-400'}`}>
-                <Clock size={11} /> evidence {oldest}d old{stale ? ` · past ${control.maxAgeDays}d window` : ''}
-              </span>
+            {base.state === 'red' && base.gapBasis && (
+              <Fact label="Gap basis" testid="measured-gap-basis">
+                <code className="font-mono text-[12px]">{base.gapBasis}</code>
+                <span className="text-slate-500"> — {GAP_BASIS_LABEL[base.gapBasis]}</span>
+              </Fact>
             )}
-          </div>
-        </div>
-      </Card>
+            {base.state === 'red' && base.runId && (
+              <Fact label="Module run" testid="measured-run">
+                <code className="font-mono text-[12px]">{base.runId}</code>
+                <span className="text-slate-500"> — the successful run whose complete enumeration found nothing</span>
+              </Fact>
+            )}
+            {base.state === 'yellow' && base.partialBasis && (
+              <Fact label="Partial basis" testid="measured-partial-basis">
+                <code className="font-mono text-[12px]">{base.partialBasis}</code>
+                <span className="text-slate-500"> — {PARTIAL_BASIS_LABEL[base.partialBasis]}</span>
+              </Fact>
+            )}
+            {base.pathLabel && (
+              <Fact label="Satisfied path" testid="measured-path">{base.pathLabel}</Fact>
+            )}
+            {share && (share.value !== null || share.interval) && (
+              <Fact label="Deployment share" testid="measured-share">
+                {share.value !== null && <span className="tnum">{pct(share.value)}</span>}
+                {share.basis && <span className="text-slate-500"> ({share.basis})</span>}
+                {share.interval && share.value === null && (
+                  <span className="tnum">
+                    {pct(share.interval.lower)}–{pct(share.interval.upper)} <span className="text-slate-500">({share.interval.basis}; lower bound {share.interval.lowerBoundSource})</span>
+                  </span>
+                )}
+                {share.interval?.lowerBoundSource === 'host_census' && Boolean(share.interval.census) && (
+                  <span className="block text-[12px] text-slate-500">
+                    {(share.interval.census as Record<string, number>).compliant_hosts} of {(share.interval.census as Record<string, number>).all_hosts} hosts compliant,{' '}
+                    {(share.interval.census as Record<string, number>).unreached_hosts} not reached: a host the collector did not reach is never a Gap.
+                  </span>
+                )}
+                {creditText && <span className="block text-[12px] text-slate-600">— {creditText}</span>}
+              </Fact>
+            )}
+            {!share && creditText && <Fact label="Credit" testid="measured-credit">{creditText}</Fact>}
+            {claim.enforcement && (
+              <Fact label="Enforcement mode" testid="measured-enforcement">
+                {claim.enforcement.mode}
+                {claim.enforcement.basis && <span className="text-slate-500"> ({claim.enforcement.basis})</span>}
+              </Fact>
+            )}
+            {claim.population && <Fact label="Population">{claim.population}</Fact>}
+            {claim.reasoning && <Fact label="Engine's note" testid="measured-reasoning">{claim.reasoning}</Fact>}
+            <Fact label="Risk weight" testid="measured-weight">
+              <span className="tnum">{toNumber(control.weight)}</span> <span className="text-slate-500">({claim.weightBasis})</span>
+            </Fact>
+            <Fact label="Evidence requirement">{control.authored ? 'authored' : 'not authored'}</Fact>
+          </dl>
 
-      {/* 2. Standards mapping */}
-      <Card title="Standards mapping" subtitle="ISO/IEC 27002 and NIST SP 800-53">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <SectionLabel>ISO 27002</SectionLabel>
-            <div className="flex flex-wrap gap-1.5">
-              {control.iso.length === 0 && <span className="text-sm text-slate-400">—</span>}
-              {control.iso.map((ref, i) => (
-                <Pill key={ref} tone="blue" title={control.isoNames[i]}>{ref} · {control.isoNames[i]}</Pill>
-              ))}
+          {claim.contradicted && claim.contradicted.length > 0 && (
+            <div data-testid="contradicted-testimony" className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-[12px]">
+              <div className="font-semibold text-slate-700">Testimony the conclusion went against (retained, not outvoted)</div>
+              <ul className="mt-1.5 space-y-2">
+                {claim.contradicted.map((t, i) => (
+                  <li key={i} className="text-slate-700">
+                    <span className="font-mono text-[11px] text-slate-500">{t.basis}</span> · {t.respondentRole} ({t.stance})
+                    <div className="text-slate-600">{t.contradictedBy}</div>
+                    <div className="font-mono text-[11px] text-slate-400">{t.locator} · {t.signalKey}</div>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-          <div>
-            <SectionLabel>NIST 800-53</SectionLabel>
-            <div className="flex flex-wrap gap-1.5">
-              {control.nist.length === 0 && <span className="text-sm text-slate-400">—</span>}
-              {control.nist.map((ref, i) => (
-                <Pill key={ref} tone="slate" title={control.nistNames[i]}>{ref} · {control.nistNames[i]}</Pill>
-              ))}
-            </div>
-          </div>
-        </div>
-      </Card>
+          )}
+          {claim.overruled && claim.overruled.length > 0 && (
+            <p className="mt-3 text-[12px] text-slate-600">{claim.overruled.length} document{claim.overruled.length === 1 ? '' : 's'} overruled by machine evidence, retained on the claim.</p>
+          )}
+        </Card>
+      </Provenance>
 
-      {/* 3. Evidence trail — an unauthored control has none to show: no requirement was ever
-          written, so nothing was sought. An empty trail would imply it was. */}
-      {!control.authored ? (
+      {/* 3. Standards mapping — the NCSC catalogue content the prototype holds for this control (not from the assessment) */}
+      {(control.iso.length > 0 || control.nist.length > 0 || control.description) && (
+        <Provenance tier="illustrative" note="Catalogue content the prototype carries for this control; it is not part of the assessment file.">
+          <Card title="Standards mapping" subtitle="ISO/IEC 27002 and NIST SP 800-53">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <SectionLabel>ISO 27002</SectionLabel>
+                <div className="flex flex-wrap gap-1.5">
+                  {control.iso.length === 0 && <span className="text-sm text-slate-400">—</span>}
+                  {control.iso.map((ref, i) => (
+                    <Pill key={ref} tone="blue" title={control.isoNames[i]}>{ref} · {control.isoNames[i]}</Pill>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <SectionLabel>NIST 800-53</SectionLabel>
+                <div className="flex flex-wrap gap-1.5">
+                  {control.nist.length === 0 && <span className="text-sm text-slate-400">—</span>}
+                  {control.nist.map((ref, i) => (
+                    <Pill key={ref} tone="slate" title={control.nistNames[i]}>{ref} · {control.nistNames[i]}</Pill>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Card>
+        </Provenance>
+      )}
+
+      {/* 4. Evidence — an unauthored control has none to show: no requirement was ever written, so nothing was sought. */}
+      {!control.authored && (
         <div
           data-testid="unauthored-statement"
           className="flex items-start gap-3 rounded-xl border-2 border-orange-300 bg-orange-50 p-4 text-sm text-orange-950"
@@ -216,115 +330,172 @@ export default function ControlDetail() {
             </p>
           </div>
         </div>
-      ) : canSeeEvidence ? (
-        <Card dataTour="cd-evidence" title="Evidence trail" subtitle="Every finding traces to a quote or an artifact locator with a hash">
-          <div className="mb-3 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px]">
-            <ShieldQuestion size={14} className="mt-0.5 shrink-0 text-slate-400" />
-            <span>
-              <span className="font-semibold text-slate-700">Evidence basis: {EVIDENCE_BASIS_LABEL[control.evidenceBasis]}.</span>{' '}
-              <span className="text-slate-600">{EVIDENCE_BASIS_MEANING[control.evidenceBasis]}</span>{' '}
-              <span className="text-slate-400">This is why an absent finding here can be a Gap rather than Unknown.</span>
-            </span>
-          </div>
-          <EvidenceTrail items={evItems} />
-        </Card>
-      ) : (
-        <Card dataTour="cd-evidence" title="Evidence trail">
-          <p className="text-sm text-slate-500">
-            Evidence excerpts are hidden in the {ROLE_LABEL[role]} view — they may contain account names and
-            other personal data.
-          </p>
-        </Card>
       )}
 
-      {control.noConclusivePath && (
-        <div className="flex items-start gap-2 rounded-lg border-2 border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
-          <ShieldQuestion size={16} className="mt-0.5 shrink-0 text-violet-500" />
-          <div>
-            <p className="font-semibold">No conclusive evidence path.</p>
-            <p className="mt-1 leading-relaxed text-violet-800">
-              This control requires an organisational arrangement rather than a system state. It can reach
-              Partial on documentary evidence, but never Compliant without analyst attestation.
+      {ex && control.authored && evItems.length > 0 && canSeeEvidence && (
+        <Provenance tier="illustrative" note={`Worked-example evidence, invented for the demonstration. It is not the evidence behind the measured verdict above (${STATE_META[base.state].label}${base.pathLabel ? `; ${base.pathLabel}` : ''}) and may contradict it.`}>
+          <Card dataTour="cd-evidence" title="Evidence trail (worked example)" subtitle="Every finding traces to a quote or an artifact locator with a hash">
+            <div className="mb-3 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px]">
+              <ShieldQuestion size={14} className="mt-0.5 shrink-0 text-slate-400" />
+              <span>
+                <span className="font-semibold text-slate-700">Evidence basis: {EVIDENCE_BASIS_LABEL[ex.evidenceBasis]}.</span>{' '}
+                <span className="text-slate-600">{EVIDENCE_BASIS_MEANING[ex.evidenceBasis]}</span>
+              </span>
+            </div>
+            <EvidenceTrail items={evItems} />
+            {oldest > 0 && (
+              <span className={`mt-2 inline-flex items-center gap-1 text-[11px] ${stale ? 'font-semibold text-amber-700' : 'text-slate-400'}`}>
+                <Clock size={11} /> evidence {oldest}d old{stale ? ` · past ${ex.maxAgeDays}d window` : ''}
+              </span>
+            )}
+          </Card>
+        </Provenance>
+      )}
+      {ex && control.authored && evItems.length > 0 && !canSeeEvidence && (
+        <Provenance tier="illustrative">
+          <Card dataTour="cd-evidence" title="Evidence trail">
+            <p className="text-sm text-slate-500">
+              Evidence excerpts are hidden in the {ROLE_LABEL[role]} view — they may contain account names and
+              other personal data.
             </p>
-          </div>
-        </div>
+          </Card>
+        </Provenance>
       )}
 
-      {/* 4. Evidence sufficiency ladder (authored controls only: it presents evidence that was sought) */}
+      {ex?.noConclusivePath && (
+        <Provenance tier="illustrative">
+          <div className="flex items-start gap-2 rounded-lg border-2 border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
+            <ShieldQuestion size={16} className="mt-0.5 shrink-0 text-violet-500" />
+            <div>
+              <p className="font-semibold">No conclusive evidence path.</p>
+              <p className="mt-1 leading-relaxed text-violet-800">
+                This control requires an organisational arrangement rather than a system state. It can reach
+                Partial on documentary evidence, but never Compliant without analyst attestation.
+              </p>
+            </div>
+          </div>
+        </Provenance>
+      )}
+
+      {/* 5. Evidence sufficiency ladder: the engine's rule applied to this control's measured evidence class */}
       {control.authored && (
-      <Card title="Evidence sufficiency" subtitle="The evidence class sets the highest state a control may reach">
-        <div className="flex items-stretch gap-2">
-          {LADDER.map((cls) => {
-            const current = cls === effectiveClass;
-            return (
-              <div key={cls} className={`flex-1 rounded-lg border p-3 text-center ${current ? 'border-accent bg-accent/5' : 'border-slate-200'}`}>
-                <div className={`text-xs font-semibold ${current ? 'text-slate-900' : 'text-slate-400'}`}>{EVIDENCE_CLASS_LABEL[cls]}</div>
-                <div className="mt-1.5 flex justify-center">
-                  <StateBadge state={EVIDENCE_CEILING[cls]} size="sm" showLabel={false} />
-                </div>
-                <div className="mt-1 text-[10px] text-slate-400">ceiling: {STATE_META[EVIDENCE_CEILING[cls]].label}</div>
-                {current && <div className="mt-1 text-[10px] font-bold uppercase text-accent">current</div>}
-              </div>
-            );
-          })}
-        </div>
-        <p className="mt-3 text-[12px] text-slate-500">
-          This control's evidence is <strong>{EVIDENCE_CLASS_LABEL[effectiveClass]}</strong>, so it can reach
-          at most <strong>{STATE_META[ceiling].label}</strong>. Testimony alone can never mark a control
-          Compliant — only machine-collected artifacts or an analyst signature.
-        </p>
-      </Card>
+        <Provenance tier={measuredTier}>
+          <Card title="Evidence sufficiency" subtitle="The evidence class sets the highest state a control may reach">
+            <div className="flex items-stretch gap-2">
+              {LADDER.map((cls) => {
+                const current = cls === effectiveClass;
+                return (
+                  <div key={cls} className={`flex-1 rounded-lg border p-3 text-center ${current ? 'border-accent bg-accent/5' : 'border-slate-200'}`}>
+                    <div className={`text-xs font-semibold ${current ? 'text-slate-900' : 'text-slate-400'}`}>{EVIDENCE_CLASS_LABEL[cls]}</div>
+                    <div className="mt-1.5 flex justify-center">
+                      <StateBadge state={EVIDENCE_CEILING[cls]} size="sm" showLabel={false} />
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-400">ceiling: {STATE_META[EVIDENCE_CEILING[cls]].label}</div>
+                    {current && <div className="mt-1 text-[10px] font-bold uppercase text-accent">current</div>}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-[12px] text-slate-500">
+              This control's evidence is <strong>{EVIDENCE_CLASS_LABEL[effectiveClass]}</strong>, so it can reach
+              at most <strong>{STATE_META[ceiling].label}</strong>. Testimony alone can never mark a control
+              Compliant — only machine-collected artifacts or an analyst signature.
+            </p>
+          </Card>
+        </Provenance>
       )}
 
-      {/* 5. ATT&CK exposure — always rendered */}
-      <Card dataTour="cd-attack" title="ATT&CK exposure" subtitle="Control → Mitigation → Techniques">
-        <AttackExposure controlId={control.id} entry={attack} enforced={effectiveState === 'green'} />
-      </Card>
+      {/* 6. ATT&CK exposure: the engine's, where the control is ranked; the worked-example chain, where it has one */}
+      {ranked.length > 0 && (
+        <Provenance tier="measured" note="The engine's exposure for this control's ranked action.">
+          <Card dataTour="cd-attack" title="ATT&CK exposure (engine)" subtitle="From the ranking in the assessment file">
+            {ranked.slice(0, 1).map((it) => (
+              <div key={it.rank + it.description} data-testid="engine-attack" className="text-sm text-slate-700">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Crosshair size={14} className="text-slate-400" />
+                  <code className="font-mono text-[12px]">{it.attack.exposure}</code>
+                </div>
+                <p className="mt-1 text-[12px] text-slate-600">
+                  {it.attack.techniqueIds.length} technique{it.attack.techniqueIds.length === 1 ? '' : 's'} shown
+                  {it.attack.techniqueIds.length > 0 && <>: <span className="font-mono">{it.attack.techniqueIds.join(', ')}</span></>}; {it.attack.broadCount} broad, {it.attack.diffuseCount} diffuse,{' '}
+                  <strong>{it.attack.suppressedCount} suppressed</strong> by the engine (withheld, not counted as exposure).
+                </p>
+              </div>
+            ))}
+          </Card>
+        </Provenance>
+      )}
+      {attack && (
+        <Provenance tier="illustrative" note="Worked-example ATT&CK chain for this control; not part of the assessment.">
+          <Card dataTour={ranked.length > 0 ? undefined : 'cd-attack'} title="ATT&CK exposure (worked example)" subtitle="Control → Mitigation → Techniques">
+            <AttackExposure controlId={control.id} entry={attack} enforced={effectiveState === 'green'} />
+          </Card>
+        </Provenance>
+      )}
 
-      {/* 6. Population data */}
-      {(control.populationNote || control.exceptionPopulation || control.deploymentSharePct !== undefined) && (
-        <Card title="Population data" subtitle="Numerator / denominator with provenance">
-          <div className="space-y-2 text-sm text-slate-700">
-            {control.populationNote && (
-              <div className="flex items-start gap-2">
-                <Users size={15} className="mt-0.5 shrink-0 text-slate-400" />
-                <span>{control.populationNote}</span>
-              </div>
-            )}
-            {shareCreditText && <div className="tnum">{shareCreditText}</div>}
-            {control.exceptionPopulation && (
-              <div className="rounded-md bg-red-50 px-3 py-2 text-[13px] text-red-700">
-                Named exception retained: {control.exceptionPopulation}
-              </div>
-            )}
-          </div>
-        </Card>
+      {/* 7. Population data */}
+      {ex && (ex.populationNote || ex.exceptionPopulation) && (
+        <Provenance tier="illustrative" note="Worked-example population figures; not part of the assessment.">
+          <Card title="Population data" subtitle="Numerator / denominator with provenance">
+            <div className="space-y-2 text-sm text-slate-700">
+              {ex.populationNote && (
+                <div className="flex items-start gap-2">
+                  <Users size={15} className="mt-0.5 shrink-0 text-slate-400" />
+                  <span>{ex.populationNote}</span>
+                </div>
+              )}
+              {ex.exceptionPopulation && (
+                <div className="rounded-md bg-red-50 px-3 py-2 text-[13px] text-red-700">
+                  Named exception retained: {ex.exceptionPopulation}
+                </div>
+              )}
+            </div>
+          </Card>
+        </Provenance>
       )}
 
       {/* How to evidence this */}
-      {control.authored && (base.state === 'unknown' || base.evidenceClass === 'testimonial') && (
+      {control.authored && (base.state === 'unknown' || base.evidenceClass === 'testimonial') && (ranked.length > 0 || (ex && ex.requiredSignals.length > 0)) && (
         <Card title="How to evidence this" subtitle="Move this control out of Unknown / off the Yellow ceiling">
-          <ul className="space-y-1.5 text-sm text-slate-700">
-            {control.requiredSignals.map((sig) => {
-              const req = requestPlan.find((r) => r.command.toLowerCase().includes(sig.split('_')[0]) || r.formatHint.toLowerCase().includes(sig.split('_')[0]));
-              return (
-                <li key={sig} className="flex items-start gap-2">
-                  <Check size={14} className="mt-0.5 shrink-0 text-slate-300" />
-                  <span>
-                    <span className="font-medium">{sig.replace(/_/g, ' ')}</span>
-                    {req && <span className="text-slate-500"> — via “{req.artifact}” ({req.effort}, unlocks {req.controlsUnlocked})</span>}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+          {ranked.length > 0 && (
+            <Provenance tier="measured" note="The engine's ranked action for this control.">
+              <ul data-testid="engine-actions" className="space-y-1.5 text-sm text-slate-700">
+                {ranked.map((it) => (
+                  <li key={it.description} className="flex items-start gap-2">
+                    <Check size={14} className="mt-0.5 shrink-0 text-slate-300" />
+                    <span>
+                      {it.description} <span className="text-slate-400">· rank {it.rank} · {it.actionType}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Provenance>
+          )}
+          {ex && ex.requiredSignals.length > 0 && (
+            <Provenance tier="illustrative" note="Worked-example signals, not the engine's." className="mt-3">
+              <ul className="space-y-1.5 text-sm text-slate-700">
+                {ex.requiredSignals.map((sig) => {
+                  const req = requestPlan.find((r) => r.command.toLowerCase().includes(sig.split('_')[0]) || r.formatHint.toLowerCase().includes(sig.split('_')[0]));
+                  return (
+                    <li key={sig} className="flex items-start gap-2">
+                      <Check size={14} className="mt-0.5 shrink-0 text-slate-300" />
+                      <span>
+                        <span className="font-medium">{sig.replace(/_/g, ' ')}</span>
+                        {req && <span className="text-slate-500"> — via “{req.artifact}” ({req.effort})</span>}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Provenance>
+          )}
           <Link to="/remediation" className="mt-3 inline-block text-xs font-semibold text-accent hover:underline">
-            Open in Remediation → What you didn't provide
+            Open in Remediation
           </Link>
         </Card>
       )}
 
-      {/* 7. Analyst actions + audit trail */}
+      {/* 8. Analyst actions + audit trail */}
       <Card title="Analyst actions" subtitle={canOverride ? 'Overrides are recorded and move the dashboard interval' : `Read-only in the ${ROLE_LABEL[role]} view`}>
         <div className="flex flex-wrap gap-2">
           <Button variant={effectiveState === 'green' ? 'primary' : 'outline'} disabled={!canOverride} onClick={() => applyOverride('green')}>
@@ -366,8 +537,8 @@ export default function ControlDetail() {
         <div className="flex flex-wrap gap-2">
           {related.map((c) => (
             <Link key={c.id} to={`/control/${c.id}`} className="rounded-md border border-slate-200 px-2.5 py-1.5 text-xs hover:border-accent">
-              <span className="font-mono font-semibold text-slate-500">{c.id}</span>{' '}
-              <span className="text-slate-600">{c.description.slice(0, 44)}…</span>
+              <span className="font-mono font-semibold text-slate-500">{c.id}</span>
+              {c.description && <span className="text-slate-600"> {c.description.slice(0, 44)}…</span>}
             </Link>
           ))}
         </div>
@@ -392,6 +563,6 @@ export default function ControlDetail() {
           }}
         />
       )}
-    </Provenance>
+    </div>
   );
 }

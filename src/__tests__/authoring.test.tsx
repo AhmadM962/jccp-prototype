@@ -93,10 +93,10 @@ describe('Task 5: the authoring figures (taken from the engine\'s reports, then 
       expect(CURRENT.after.capabilities[id].authored, id).toBeLessThanOrEqual(AUTHORED_BY_CAPABILITY[id]);
     }
   });
-  it('the sample never shows more authored controls in a capability than the framework has', () => {
+  it('the controls themselves carry exactly the authored count the figures state, in every capability', () => {
     for (const id of Object.keys(AUTHORED_BY_CAPABILITY) as (keyof typeof AUTHORED_BY_CAPABILITY)[]) {
-      const authored = controls.filter((c) => c.capability === id && c.authored).length;
-      expect(authored, id).toBeLessThanOrEqual(CURRENT.after.capabilities[id].authored);
+      const authored = controls().filter((c) => c.capability === id && c.authored).length;
+      expect(authored, id).toBe(CURRENT.after.capabilities[id].authored);
     }
   });
 });

@@ -208,7 +208,7 @@ describe('no screen says L2', () => {
 });
 
 describe('the unauthored statement claims only what is true of every unauthored control', () => {
-  const un = controls.find((c) => !c.authored)!;
+  const un = controls().find((c) => !c.authored && c.after.state === 'unknown')!;
   const show = () => renderAt(`/control/${un.id}`, <ControlDetail />, '/control/:id').getByTestId('unauthored-statement').textContent ?? '';
 
   it('says an upload cannot establish that the control is met, not that it cannot change anything', () => {

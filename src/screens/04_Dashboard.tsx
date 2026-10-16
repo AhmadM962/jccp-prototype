@@ -21,11 +21,11 @@ import { useAssessment } from '../store/useAssessment';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { ASSURANCE_LEVELS, bandFloorPts } from '../lib/scoring';
 import { stateFor, unevidencedRows } from '../lib/views';
-import { coverageBreakdown, completenessStatement, unknownResolvedByUpload, movedOutOfUnknown, outsideScopeSentence, seededChangedCount } from '../lib/coverage';
+import { coverageBreakdown, completenessStatement, unknownResolvedByUpload, movedOutOfUnknown, outsideScopeSentence, changedControlCount } from '../lib/coverage';
 import { assuranceMeasurement, heldLevelReading, levelDefinition } from '../lib/assurance';
 import DemotionChecks from '../components/DemotionChecks';
 import { dashboardView } from '../lib/derive';
-import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
+import { gapReasonBreakdown, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
 import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
 import { EXCLUSIONS, SECTOR_BASELINE } from '../data/exclusions';
 import { sectorById, regulatorDisplay } from '../data/sectors';
@@ -191,7 +191,7 @@ export default function Dashboard() {
   const assurance = assuranceMeasurement();
   const before = heldLevelReading('before');
 
-  const gapData = GAP_REASON_BREAKDOWN.map((g) => ({
+  const gapData = gapReasonBreakdown().map((g) => ({
     reason: g.reason,
     name: GAP_REASON_LABEL[g.reason],
     count: uploaded ? g.after : g.before,
@@ -512,7 +512,7 @@ export default function Dashboard() {
       {uploaded && (
         <div className="flex justify-end">
           <Link to="/gap-matrix?changed=1" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
-            See the {seededChangedCount().changed} of the {seededChangedCount().seeded} controls in this sample that the upload changed in the Gap Matrix <ArrowUpRight size={15} />
+            See the {changedControlCount().changed} of the {changedControlCount().applicable} controls that the upload changed in the Gap Matrix <ArrowUpRight size={15} />
           </Link>
         </div>
       )}

@@ -6,7 +6,7 @@ import { useAssessment, type OverrideRecord } from '../store/useAssessment';
 import { CURRENT, type StateFigures, type ViewId } from '../data/current';
 import { APPLICABLE_CONTROLS, EXCLUDED_COUNT, TOTAL_CONTROLS } from '../data/figures';
 import { capabilities, TOTALS } from '../data/capabilities';
-import { GAP_REASON_BREAKDOWN, controls } from '../data/controls';
+import { gapReasonBreakdown, controls } from '../data/controls';
 import { add, eq, fmtPct, frac, mul, sub, sum, toPct } from '../lib/frac';
 import { dashboardView } from '../lib/derive';
 import { IntervalConsistencyError } from '../lib/scoring';
@@ -158,10 +158,13 @@ describe('Task 2: the upload moves a control outside the authored scope only by 
     const a = CURRENT.after.views.unweighted.width.unevidenced;
     expect(toPct(b)).toBeGreaterThan(toPct(a));
   });
-  it('the sample: unauthored controls are Unknown for that reason in both states', () => {
-    for (const c of controls.filter((x) => !x.authored)) {
-      expect(c.before.gapReason).toBe('unauthored');
-      expect(c.after.gapReason).toBe('unauthored');
+  it('every unauthored control is Unknown for that reason before the upload, and after it except the ones observed from the bundle', () => {
+    const observed = new Set(CURRENT.ruleR.verdictsOutsideAuthoredScope.map((v) => v.id));
+    for (const c of controls().filter((x) => !x.authored)) {
+      expect(c.before.state, c.id).toBe('unknown');
+      expect(c.before.gapReason, c.id).toBe('unauthored');
+      if (observed.has(c.id)) expect(c.after.state, c.id).not.toBe('unknown');
+      else expect(c.after.gapReason, c.id).toBe('unauthored');
     }
   });
 });
@@ -224,9 +227,9 @@ describe('Task 2: the portfolio and the capability rows reconcile exactly', () =
     expect(del.after!.applicable).toBe(44);
   });
   it('the gap-reason rows reconcile to the Unknown count and put unauthored first', () => {
-    expect(GAP_REASON_BREAKDOWN.reduce((n, r) => n + r.before, 0)).toBe(CURRENT.before.unknown);
-    expect(GAP_REASON_BREAKDOWN.reduce((n, r) => n + r.after, 0)).toBe(CURRENT.after.unknown);
-    expect(GAP_REASON_BREAKDOWN[0].reason).toBe('unauthored');
+    expect(gapReasonBreakdown().reduce((n, r) => n + r.before, 0)).toBe(CURRENT.before.unknown);
+    expect(gapReasonBreakdown().reduce((n, r) => n + r.after, 0)).toBe(CURRENT.after.unknown);
+    expect(gapReasonBreakdown()[0].reason).toBe('unauthored');
   });
 });
 
@@ -244,7 +247,7 @@ describe('Task 2: the dashboard figures are the published figures, and overrides
     }
   });
   it('overriding an authored Unknown control to Compliant narrows the organisation\'s share only', () => {
-    const c = controls.find((x) => x.authored && x.after.state === 'unknown')!;
+    const c = controls().find((x) => x.authored && x.after.state === 'unknown')!;
     const base = dashboardView(true, {});
     const v = dashboardView(true, { [c.id]: ov('green') });
     expect(v.effective.buckets.unknown).toBe(base.effective.buckets.unknown - 1);
@@ -253,7 +256,7 @@ describe('Task 2: the dashboard figures are the published figures, and overrides
     expect(v.overridesActive).toBe(1);
   });
   it('overriding an unauthored control narrows the tool\'s share, and the parts still sum to the width', () => {
-    const c = controls.find((x) => !x.authored)!;
+    const c = controls().find((x) => !x.authored && x.after.state === 'unknown')!;
     const base = dashboardView(true, {});
     const v = dashboardView(true, { [c.id]: ov('green') });
     expect(v.effective.buckets.unknownUnauthored).toBe(base.effective.buckets.unknownUnauthored - 1);
@@ -262,23 +265,21 @@ describe('Task 2: the dashboard figures are the published figures, and overrides
   });
 });
 
-describe('Task 2: the sample never holds more of a kind than the portfolio (so an override cannot make a bucket negative)', () => {
-  it.each(['before', 'after'] as const)('%s: Compliant / Partial / Gap seeds ≤ the aggregate; reasons ≤ their rows', (when) => {
+describe('Task 2 (Round 3): the controls ARE the portfolio: no sample, so nothing is held to be "at most" the aggregate', () => {
+  it.each(['before', 'after'] as const)('%s: the controls, counted by state and by reason, equal the figures exactly', (when) => {
     const s = STATES[when];
-    const n = (state: string) => controls.filter((c) => c[when].state === state).length;
-    expect(n('green')).toBeLessThanOrEqual(s.green);
-    expect(n('yellow')).toBeLessThanOrEqual(s.yellow);
-    expect(n('red')).toBeLessThanOrEqual(s.red);
-    for (const row of GAP_REASON_BREAKDOWN) {
-      const seeded = controls.filter((c) => c[when].state === 'unknown' && c[when].gapReason === row.reason).length;
-      expect(seeded, `${when} ${row.reason}`).toBeLessThanOrEqual(row[when]);
+    const n = (state: string) => controls().filter((c) => c[when].state === state).length;
+    expect([n('green'), n('yellow'), n('red'), n('unknown')]).toEqual([s.green, s.yellow, s.red, s.unknown]);
+    for (const row of gapReasonBreakdown()) {
+      const have = controls().filter((c) => c[when].state === 'unknown' && c[when].gapReason === row.reason).length;
+      expect(have, `${when} ${row.reason}`).toBe(row[when]);
     }
   });
-  it('before the upload no sample control is Compliant: testimony and documents cannot reach it', () => {
-    expect(controls.filter((c) => c.before.state === 'green')).toEqual([]);
+  it('before the upload no control is Compliant: testimony and documents cannot reach it', () => {
+    expect(controls().filter((c) => c.before.state === 'green')).toEqual([]);
   });
-  it('before the upload every Unknown authored seed is not_provided (nothing has been collected)', () => {
-    for (const c of controls.filter((x) => x.authored && x.before.state === 'unknown')) {
+  it('before the upload every Unknown authored control is not_provided (nothing has been collected)', () => {
+    for (const c of controls().filter((x) => x.authored && x.before.state === 'unknown')) {
       expect(c.before.gapReason, c.id).toBe('not_provided');
     }
   });

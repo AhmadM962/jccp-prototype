@@ -145,7 +145,7 @@ describe('Task 4: the weights explain a view that exists, and the totals agree w
 
 describe('Task 4: analyst overrides', () => {
   it('apply to the unweighted row only, and the page says so', () => {
-    const c = controls.find((x) => x.authored && x.after.state === 'unknown')!;
+    const c = controls().find((x) => x.authored && x.after.state === 'unknown')!;
     useAssessment.getState().overrideControl(c.id, { state: 'green', previousState: 'unknown', justification: 'r', analystId: 't', timestamp: 't' });
     const { container } = dashboard(true);
     expect(cell(container, 'unweighted', 'low')).not.toBe('4.87%');

@@ -12,11 +12,15 @@ import {
   controls,
   snapshotFor,
   EVIDENCE_CLASS_LABEL,
+  GAP_BASIS_LABEL,
   GAP_REASON_LABEL,
+  PARTIAL_BASIS_LABEL,
   type ControlState,
   type EvidenceClass,
   type GapReason,
 } from '../data/controls';
+import type { GapBasis, PartialBasis } from '../data/current';
+import { CURRENT } from '../data/current';
 
 // Worst *established* state for a capability — from the fixture aggregate, never from
 // visible rows. "Established" excludes Unknown: we do not know it's broken, so it does
@@ -35,11 +39,13 @@ export default function GapMatrix() {
 
   const [open, setOpen] = useState<Record<string, boolean>>(() => {
     const cap = params.get('cap');
-    return cap ? { [cap]: true } : { ops: true };
+    return cap ? { [cap]: true } : { del: true };
   });
   const [stateF, setStateF] = useState<ControlState | 'all'>((params.get('state') as ControlState) ?? 'all');
   const [evF, setEvF] = useState<EvidenceClass | 'all'>((params.get('ev') as EvidenceClass) ?? 'all');
   const [gapF, setGapF] = useState<GapReason | 'all'>((params.get('gap') as GapReason) ?? 'all');
+  const [gbF, setGbF] = useState<GapBasis | 'all'>('all');
+  const [pbF, setPbF] = useState<PartialBasis | 'all'>('all');
   const [q, setQ] = useState('');
   const [onlyChanged, setOnlyChanged] = useState(params.get('changed') === '1');
   const [onlyOverrides, setOnlyOverrides] = useState(params.get('overrides') === '1');
@@ -61,7 +67,7 @@ export default function GapMatrix() {
   }, [params, setParams]);
 
   const rows = useMemo(() => {
-    return controls
+    return controls()
       .map((c) => {
         const base = snapshotFor(c, uploaded);
         const ov = overrides[c.id];
@@ -72,12 +78,14 @@ export default function GapMatrix() {
         if (stateF !== 'all' && snap.state !== stateF) return false;
         if (evF !== 'all' && snap.evidenceClass !== evF) return false;
         if (gapF !== 'all' && snap.gapReason !== gapF) return false;
+        if (gbF !== 'all' && snap.gapBasis !== gbF) return false;
+        if (pbF !== 'all' && snap.partialBasis !== pbF) return false;
         if (onlyChanged && !(uploaded && c.changed)) return false;
         if (onlyOverrides && !overridden) return false;
-        if (q && !`${c.id} ${c.description}`.toLowerCase().includes(q.toLowerCase())) return false;
+        if (q && !`${c.id} ${c.description ?? ''} ${snap.pathLabel ?? ''} ${snap.runId ?? ''}`.toLowerCase().includes(q.toLowerCase())) return false;
         return true;
       });
-  }, [uploaded, overrides, stateF, evF, gapF, q, onlyChanged, onlyOverrides]);
+  }, [uploaded, overrides, stateF, evF, gapF, gbF, pbF, q, onlyChanged, onlyOverrides]);
 
   const byCap = (capId: string) => rows.filter((r) => r.c.capability === capId);
 
@@ -90,7 +98,7 @@ export default function GapMatrix() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search controls…"
+              placeholder="Search id, text, path, run…"
               className="w-56 rounded-lg border border-slate-300 py-2 pl-8 pr-3 text-sm"
             />
           </div>
@@ -112,6 +120,18 @@ export default function GapMatrix() {
               <option key={s} value={s}>{GAP_REASON_LABEL[s]}</option>
             ))}
           </select>
+          <select value={gbF} onChange={(e) => setGbF(e.target.value as GapBasis | 'all')} className="rounded-lg border border-slate-300 px-2.5 py-2 text-sm" aria-label="Gap basis">
+            <option value="all">Any gap basis</option>
+            {(Object.keys(GAP_BASIS_LABEL) as GapBasis[]).map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <select value={pbF} onChange={(e) => setPbF(e.target.value as PartialBasis | 'all')} className="rounded-lg border border-slate-300 px-2.5 py-2 text-sm" aria-label="Partial basis">
+            <option value="all">Any partial basis</option>
+            {(Object.keys(PARTIAL_BASIS_LABEL) as PartialBasis[]).map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
           <label className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${uploaded ? 'cursor-pointer border-slate-300' : 'cursor-not-allowed border-slate-200 opacity-50'}`}>
             <input type="checkbox" disabled={!uploaded} checked={onlyChanged} onChange={(e) => setOnlyChanged(e.target.checked)} className="h-4 w-4" />
             Show only what changed after evidence upload
@@ -125,13 +145,15 @@ export default function GapMatrix() {
         </div>
       </Card>
 
-      <p data-testid="sample-note" className="text-[12px] leading-relaxed text-slate-500">
-        The figures on each capability (applicable, authored, worst established, unestablished) are the assessment's.
-        The controls listed under it are a worked-example sample: their individual states are illustrative and are not
-        drawn from those figures.
+      <p data-testid="matrix-note" className="text-[12px] leading-relaxed text-slate-500">
+        <span data-testid="matrix-count" className="tnum font-semibold text-slate-700">{rows.length} of {controls().length}</span> applicable controls shown.
+        {uploaded
+          ? ' Every state, reason, basis, path and run on this screen is the engine\u2019s, read from the assessment file named above.'
+          : ' Before the upload, which controls have a verdict is rule R\u2019s projection of the engine\u2019s data (illustrative); after it, the states are the engine\u2019s.'}{' '}
+        Control text is shown only for the controls the prototype holds it for.
       </p>
 
-      <Provenance tier="illustrative" className="space-y-5">{capabilities.map((cap) => {
+      <Provenance tier={uploaded ? 'measured' : 'illustrative'} className="space-y-5">{capabilities.map((cap) => {
         if (!cap.organisationallyAssessable) {
           return (
             <div key={cap.id} className="rounded-xl border border-slate-200 bg-white px-5 py-4 opacity-70">
@@ -154,12 +176,12 @@ export default function GapMatrix() {
                 <ChevronDown size={16} className={`text-slate-400 transition ${isOpen ? '' : '-rotate-90'}`} />
                 <span className="text-sm font-semibold text-slate-800">{cap.name}</span>
                 <span className="tnum text-[11px] text-slate-400">
-                  {stat.applicable} applicable · {stat.authored} authored · {capRows.length} of {controls.filter((c) => c.capability === cap.id).length} in this sample shown
+                  {stat.applicable} applicable · {stat.authored} authored · {capRows.length} of {controls().filter((c) => c.capability === cap.id).length} shown
                 </span>
               </div>
               <div
                 className="flex items-center gap-4 text-[11px]"
-                title="Two independent figures from the capability fixture — never an average, and unaffected by filters"
+                title="Two independent figures from the assessment — never an average, and unaffected by filters"
               >
                 <span className="inline-flex items-center gap-1.5">
                   <span className="text-slate-400">worst established</span>
@@ -180,7 +202,7 @@ export default function GapMatrix() {
                 <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                   {capRows.length === 0 ? (
                     <div className="border-t border-slate-100 px-5 py-4 text-sm text-slate-400">
-                      No controls in this sample match the current filters.
+                      No controls match the current filters.
                     </div>
                   ) : (
                     <div className="border-t border-slate-100">

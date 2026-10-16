@@ -8,7 +8,7 @@ import Intake from '../screens/03_Intake';
 import Exclusions from '../screens/10_Exclusions';
 import { useAssessment } from '../store/useAssessment';
 import { TOTALS } from '../data/capabilities';
-import { GAP_REASON_BREAKDOWN, controls } from '../data/controls';
+import { gapReasonBreakdown, controls } from '../data/controls';
 import { APPLICABLE_CONTROLS } from '../data/figures';
 import { CURRENT } from '../data/current';
 import { movedOutOfUnknown } from '../lib/coverage';
@@ -40,7 +40,7 @@ describe('4.1 each "resolved" figure is computed from its own source and named p
   // that an artifact in the bundle shows unmet (observation, not a requirement). The sample is a different population again.
   const scope = { b: CURRENT.before.views.authored_scope, a: CURRENT.after.views.authored_scope };
   const resolved = scope.b.unknown - scope.a.unknown;
-  const changed = controls.filter((c) => c.changed).length;
+  const changed = controls().filter((c) => c.changed).length;
 
   it('the sources: 542 → 505 Unknown overall (37 moved: 36 inside the 65-control authored scope, 1 outside it by observation)', () => {
     expect(CURRENT.before.unknown).toBe(542);
@@ -50,24 +50,25 @@ describe('4.1 each "resolved" figure is computed from its own source and named p
     expect(resolved).toBe(36);
     expect(CURRENT.before.unknown - CURRENT.after.unknown).toBe(resolved + 1);
     expect(movedOutOfUnknown()).toMatchObject({ total: 37, inside: 36, outside: 1 });
-    expect(controls.length).toBe(48);
-    // the sample's own count: seeds whose snapshot the upload changes
-    expect(changed).toBe(21);
+    // every applicable control is listed (no sample), and the ones whose state the upload changes are exactly the ones that moved
+    expect(controls().length).toBe(557);
+    expect(changed).toBe(37);
+    expect(changed).toBe(movedOutOfUnknown().total);
   });
   it('the literal 90 is gone from the dashboard copy', () => {
     expect(dashboardSrc).not.toContain('closed 90 evidence gaps');
     expect(dashboardSrc).not.toContain('the 90 promoted controls');
     expect(intakeSrc).not.toContain('148 evidence gaps closed');
   });
-  it('the dashboard names 36 of the 50 Unknown controls in the authored scope, and 21 of the 48 in this sample', () => {
+  it('the dashboard names 36 of the 50 Unknown controls in the authored scope, and the 37 of the 557 controls the upload changed', () => {
     useAssessment.setState({ evidenceUploaded: true });
     const { container } = renderAt('/dashboard', <Dashboard />, '/dashboard');
     expect(container.textContent).toContain(`resolved ${resolved} of the ${scope.b.unknown} Unknown controls in the authored scope.`);
     expect(container.textContent).toContain(
-      `See the ${changed} of the ${controls.length} controls in this sample that the upload changed in the Gap Matrix`,
+      `See the ${changed} of the ${controls().length} controls that the upload changed in the Gap Matrix`,
     );
-    // 'seeded' is a developer's word; the sample-versus-framework distinction is kept in plain words
-    expect(container.textContent).not.toContain('seeded controls changed');
+    // there is no sample any more: nothing on the Dashboard calls a population one
+    expect(container.textContent).not.toContain('in this sample');
   });
   it('Intake names the same 36, its before/after counts, and says the rest cannot move', () => {
     useAssessment.setState({ evidenceUploaded: true });
@@ -78,40 +79,22 @@ describe('4.1 each "resolved" figure is computed from its own source and named p
     );
     expect(container.textContent).toContain(`The other ${CURRENT.after.unknownUnauthored} Unknown controls have no authored evidence requirement; an upload cannot establish that any of them is met.`);
   });
-  it('the Gap Matrix filter the link opens shows exactly the changed seeds', () => {
+  it('the Gap Matrix filter the link opens shows exactly the changed controls', () => {
     useAssessment.setState({ evidenceUploaded: true });
-    const { container } = renderAt('/gap-matrix?changed=1', <GapMatrix />, '/gap-matrix');
-    const shown = Array.from((container.textContent ?? '').matchAll(/(\d+) of \d+ in this sample shown/g)).reduce(
-      (n, m) => n + Number(m[1]),
-      0,
-    );
-    expect(shown).toBe(changed);
+    const { getByTestId } = renderAt('/gap-matrix?changed=1', <GapMatrix />, '/gap-matrix');
+    expect(getByTestId('matrix-count').textContent).toBe(`${changed} of ${controls().length}`);
   });
 });
 
 describe('4.2 the gap-reason chart accounts for every Unknown', () => {
   it('has a module_failed row, and it is the engine\'s figure (2), not a chosen one', () => {
-    expect(GAP_REASON_BREAKDOWN.map((r) => r.reason)).toContain('module_failed');
-    expect(GAP_REASON_BREAKDOWN.find((r) => r.reason === 'module_failed')).toMatchObject({ before: 0, after: 2 });
+    expect(gapReasonBreakdown().map((r) => r.reason)).toContain('module_failed');
+    expect(gapReasonBreakdown().find((r) => r.reason === 'module_failed')).toMatchObject({ before: 0, after: 2 });
   });
   it('rows reconcile to the Unknown count before and after, unauthored included', () => {
-    expect(GAP_REASON_BREAKDOWN.reduce((s, r) => s + r.before, 0)).toBe(TOTALS.before.unknown);
-    expect(GAP_REASON_BREAKDOWN.reduce((s, r) => s + r.after, 0)).toBe(TOTALS.after.unknown);
-    expect(GAP_REASON_BREAKDOWN[0]).toMatchObject({ reason: 'unauthored', before: 492, after: 491 });
-  });
-  it('every reason a seeded Unknown carries has a row at least as large as the seeds that carry it', () => {
-    for (const when of ['before', 'after'] as const) {
-      const seeded: Record<string, number> = {};
-      for (const c of controls) {
-        const snap = c[when];
-        if (snap.state === 'unknown' && snap.gapReason) seeded[snap.gapReason] = (seeded[snap.gapReason] ?? 0) + 1;
-      }
-      for (const [reason, n] of Object.entries(seeded)) {
-        const row = GAP_REASON_BREAKDOWN.find((r) => r.reason === reason);
-        expect(row, `${when}: no row for ${reason}`).toBeDefined();
-        expect(row![when], `${when}: ${reason}`).toBeGreaterThanOrEqual(n);
-      }
-    }
+    expect(gapReasonBreakdown().reduce((s, r) => s + r.before, 0)).toBe(TOTALS.before.unknown);
+    expect(gapReasonBreakdown().reduce((s, r) => s + r.after, 0)).toBe(TOTALS.after.unknown);
+    expect(gapReasonBreakdown()[0]).toMatchObject({ reason: 'unauthored', before: 492, after: 491 });
   });
   it('the dashboard chart subtitle total is the Unknown count (the bars themselves need a layout engine)', () => {
     const { container } = renderAt('/dashboard', <Dashboard />, '/dashboard');
@@ -156,20 +139,17 @@ describe('4.3 starting the guided tour keeps the user\'s work', () => {
   });
 });
 
-// Figures the Round 1 report states, committed so they are guarded rather than asserted once.
-describe('the seeded sample behind the 4.2 choice', () => {
-  const unknownAfter = controls.filter((c) => c.after.state === 'unknown');
-  it('48 seeded controls; 25 are Unknown after the upload: 21 unauthored and 4 collection failures, 2 of them module_failed', () => {
-    expect(controls.length).toBe(48);
-    expect(unknownAfter.length).toBe(25);
-    expect(unknownAfter.filter((c) => c.after.gapReason === 'unauthored').length).toBe(21);
-    expect(unknownAfter.filter((c) => c.after.gapReason !== 'unauthored').length).toBe(4);
-    expect(unknownAfter.filter((c) => c.after.gapReason === 'module_failed').map((c) => c.id)).toEqual(['JNCSF-173', 'JNCSF-179']);
+describe('the Unknowns after the upload, by reason, are the controls themselves (no sample)', () => {
+  const unknownAfter = controls().filter((c) => c.after.state === 'unknown');
+  it('505 are Unknown after the upload: 491 unauthored and 14 collection failures or missing evidence, 2 of them module_failed', () => {
+    expect(controls().length).toBe(557);
+    expect(unknownAfter.length).toBe(505);
+    expect(unknownAfter.filter((c) => c.after.gapReason === 'unauthored').length).toBe(491);
+    expect(unknownAfter.filter((c) => c.after.gapReason !== 'unauthored').length).toBe(14);
+    expect(unknownAfter.filter((c) => c.after.gapReason === 'module_failed').map((c) => c.id)).toHaveLength(2);
   });
-  it('both module_failed controls were not_provided before the upload', () => {
-    for (const id of ['JNCSF-173', 'JNCSF-179']) {
-      expect(controls.find((c) => c.id === id)!.before.gapReason).toBe('not_provided');
-    }
+  it('a control with a module_failed reason was not_provided before the upload', () => {
+    for (const c of unknownAfter.filter((x) => x.after.gapReason === 'module_failed')) expect(c.before.gapReason, c.id).toBe('not_provided');
   });
 });
 
@@ -210,9 +190,11 @@ describe('on-screen vocabulary: no "seeded"', () => {
       unmount();
     }
   });
-  it('Gap Matrix counts are phrased "in this sample"', () => {
-    const { container } = renderAt('/gap-matrix', <GapMatrix />, '/gap-matrix');
-    expect(container.textContent).toMatch(/\d+ of \d+ in this sample shown/);
+  it('Gap Matrix lists every applicable control and calls nothing a sample', () => {
+    const { container, getByTestId } = renderAt('/gap-matrix', <GapMatrix />, '/gap-matrix');
+    expect(getByTestId('matrix-count').textContent).toBe('557 of 557');
+    expect(container.textContent).toMatch(/\d+ of \d+ shown/);
+    expect(container.textContent).not.toContain('sample');
   });
   it('the exclusions register lists all 19 and says so plainly', () => {
     const { container } = renderAt('/exclusions', <Exclusions />, '/exclusions');

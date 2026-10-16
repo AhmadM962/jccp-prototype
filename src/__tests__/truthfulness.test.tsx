@@ -11,6 +11,7 @@ import { useAssessment } from '../store/useAssessment';
 import { controls } from '../data/controls';
 import { APPLICABLE_CONTROLS } from '../data/figures';
 import { CURRENT } from '../data/current';
+import { PROFILES, PROFILE_ORDER } from '../data/profiles';
 import { dashboardView } from '../lib/derive';
 import { bandFloorPts, boundedScore, projectFromNumerator, yellowWeightForShare } from '../lib/scoring';
 
@@ -69,22 +70,47 @@ describe('3.2 partial-credit quartile', () => {
     const callers = SRC.filter(([p, t]) => p.startsWith('/src/screens/') && t.includes('yellowWeightForShare('));
     expect(callers.length).toBeGreaterThanOrEqual(1);
   });
-  it('Control Detail shows the actual credit (artifact-backed share, Partial)', () => {
+  // The engine's own data holds the whole quartile table: 117 (0.9) and 118 (0.75) top, 119 (0.6) and 120 (0.5) second,
+  // 121 (0.3) third, 123 (0.1) bottom; 24 and 129 are claimed shares capped at the second; 32 is a host census.
+  it('Control Detail shows the engine\u2019s credit for a counted share, with its quartile', () => {
     useAssessment.setState({ evidenceUploaded: true });
-    const { container } = renderAt('/control/JNCSF-459', <ControlDetail />, '/control/:id');
-    expect(container.textContent).toContain('Deployment share 78% (measured) — partial credit 0.85 (top quartile) for this control.');
-    expect(container.textContent).not.toContain('partial-credit quartile applied to the Yellow weighting');
+    const c = renderAt('/control/JNCSF-117', <ControlDetail />, '/control/:id');
+    const t = c.getByTestId('measured-share').textContent ?? '';
+    expect(t).toContain('90%');
+    expect(t).toContain('(established)');
+    expect(t).toContain('partial credit 0.85 (top quartile)');
+    c.unmount();
+    const d = renderAt('/control/JNCSF-121', <ControlDetail />, '/control/:id');
+    expect(d.getByTestId('measured-share').textContent).toContain('partial credit 0.25 (third quartile)');
   });
-  it('Control Detail applies the cap to a claimed share before upload and says so', () => {
-    const { container } = renderAt('/control/JNCSF-102', <ControlDetail />, '/control/:id');
-    expect(container.textContent).toContain(
-      'Deployment share 80% (claimed) — partial credit 0.5 (second quartile; capped because the share is claimed, not measured) for this control.',
-    );
+  it('Control Detail applies the cap to a claimed share and says so', () => {
+    useAssessment.setState({ evidenceUploaded: true });
+    const { getByTestId } = renderAt('/control/JNCSF-24', <ControlDetail />, '/control/:id');
+    const t = getByTestId('measured-share').textContent ?? '';
+    expect(t).toContain('90%');
+    expect(t).toContain('(claimed)');
+    expect(t).toContain('partial credit 0.5 (top quartile; capped at the second quartile because the share is claimed, not counted)');
+  });
+  it('Control Detail shows a host census as a census, and a host the collector did not reach is not a Gap', () => {
+    useAssessment.setState({ evidenceUploaded: true });
+    const { getByTestId } = renderAt('/control/JNCSF-32', <ControlDetail />, '/control/:id');
+    const t = getByTestId('measured-share').textContent ?? '';
+    expect(t).toContain('60 of 100 hosts compliant, 40 not reached');
+    expect(t).toContain('never a Gap');
   });
   it('Control Detail does not claim credit for a control that is not Partial', () => {
     useAssessment.setState({ evidenceUploaded: true });
-    const { container } = renderAt('/control/JNCSF-102', <ControlDetail />, '/control/:id');
-    expect(container.textContent).toContain('this control is currently Gap, so none applies.');
+    const { container } = renderAt('/control/JNCSF-109', <ControlDetail />, '/control/:id');
+    expect(container.textContent).not.toContain('partial credit');
+  });
+  it('the engine\u2019s credit and the prototype\u2019s quartile model agree for every share-based Partial, in every profile', () => {
+    for (const id of PROFILE_ORDER) {
+      for (const c of PROFILES[id].claims.filter((x) => x.state === 'yellow' && x.partialBasis === 'share')) {
+        const lower = c.share!.interval!.lower;
+        const expected = yellowWeightForShare(lower, c.share!.interval!.basis === 'claimed' ? 'claimed' : 'measured');
+        expect(c.credit![0] / c.credit![1], `${id} ${c.id}`).toBeCloseTo(expected, 12);
+      }
+    }
   });
   it('the dashboard says Partials are credited one by one, with the published totals (no flat weight)', () => {
     for (const uploaded of [false, true]) {
@@ -167,7 +193,7 @@ describe('3.4 projection floor, pool and invariant', () => {
   it('the new invariant never fires for any analyst override of any seeded control', () => {
     for (const state of ['green', 'red', 'unknown'] as const) {
       const overrides = Object.fromEntries(
-        controls.map((c) => [c.id, { state, previousState: 'unknown', justification: 'x', analystId: 't', timestamp: 't' }]),
+        controls().map((c) => [c.id, { state, previousState: 'unknown', justification: 'x', analystId: 't', timestamp: 't' }]),
       ) as Parameters<typeof dashboardView>[1];
       for (const uploaded of [false, true]) expect(() => dashboardView(uploaded, overrides)).not.toThrow();
     }

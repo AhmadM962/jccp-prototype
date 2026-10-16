@@ -63,10 +63,10 @@ export const outsideScopeSentence = (): string =>
       }, so it moved from Unknown to ${c.state === 'red' ? 'a ' : ''}${STATE_WORD[c.state]}${c.gapBasis ? ` (${c.gapBasis})` : ''}.`,
   ).join(' ');
 
-/** Sample controls whose snapshot the upload changes: `changed: true`. */
-export const seededChangedCount = () => ({
-  changed: controls.filter((c) => c.changed).length,
-  seeded: controls.length,
+/** Controls whose state the upload changes (they get a verdict that they did not have), out of all applicable controls. */
+export const changedControlCount = () => ({
+  changed: controls().filter((c) => c.changed).length,
+  applicable: controls().length,
 });
 
 export const completenessStatement = (uploaded: boolean) => {
