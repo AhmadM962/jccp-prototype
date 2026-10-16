@@ -106,10 +106,11 @@ const S = (state: ControlState, ev: EvidenceClass, prov: string[] = [], gap?: Ga
   providedSignals: prov,
 });
 
-// shareBasis (JNCSF-102, -394, -459 are the only seeds with a share): seeded from the evidence class
-// that applied before this field existed — testimonial before the upload → claimed, artifact after →
-// measured. The underlying records are in evidence.ts (102: 410/512 reconciled; 459: 484/620;
-// 394 only states "Coverage ~80%").
+// shareBasis (JNCSF-102, -394, -459 are the only seeds with a share): how the share was learned in
+// each snapshot. Testimony before the upload → claimed. After it: 102 (410/512 reconciled) and 459
+// (484/620) are counts → measured; 394 stays claimed — its record says only "Coverage ~80%", a tilde
+// and no denominator, so nobody counted (evidence.ts). 394 is the control whose share is still capped
+// after the upload.
 const seeds: Seed[] = [
   { n: 1, d: 'Develop and document control policies', cap: 'arch', iso: ['5.1.1', '9.1.1'], nist: ['AC-1', 'AT-1', 'AU-1', 'CA-1', 'CM-1'], req: ['policy_document', 'approval_record', 'review_date'], before: ['green', 'artifact'], after: ['green', 'artifact'] },
   { n: 3, d: 'Address information security requirements and risks in all project management', cap: 'arch', iso: ['6.1.5', '14.1.1'], nist: [], req: ['project_gate_checklist', 'risk_register_entries'], before: ['yellow', 'testimonial'], after: ['yellow', 'testimonial'] },
@@ -149,7 +150,7 @@ const seeds: Seed[] = [
   { n: 257, d: 'Require users to report suspected security incidents to the incident response capability within a specified time period', cap: 'ops', iso: ['16.1.2', '16.1.1'], nist: ['IR-6'], req: ['reporting_procedure', 'sla_definition', 'awareness_material'], before: ['yellow', 'testimonial'], after: ['green', 'artifact'], changed: true },
   { n: 307, d: 'Scan for vulnerabilities in information systems and hosted applications', cap: 'ops', iso: ['12.6.1'], nist: ['RA-5'], req: ['scanner_config', 'scan_coverage', 'remediation_sla'], before: ['unknown', 'none', 'not_provided'], after: ['red', 'artifact'], changed: true, attackKey: 'JNCSF-307' },
   { n: 382, d: 'Configure information systems to protect the confidentiality and integrity of information at rest', cap: 'ops', iso: [], nist: ['SC-28'], req: ['bitlocker_state', 'server_encryption_state', 'key_escrow'], before: ['unknown', 'none', 'not_provided'], after: ['yellow', 'artifact'], changed: true },
-  { n: 394, d: 'Install and regularly update malware detection and repair software to scan computers and media', cap: 'ops', iso: ['12.2.1'], nist: [], req: ['defender_status', 'signature_age', 'coverage_by_host'], before: ['yellow', 'testimonial'], after: ['green', 'artifact'], changed: true, attackKey: 'JNCSF-394', share: 80, shareBasis: { before: 'claimed', after: 'measured' }, exception: 'Contractor-managed workstations excluded from managed AV' },
+  { n: 394, d: 'Install and regularly update malware detection and repair software to scan computers and media', cap: 'ops', iso: ['12.2.1'], nist: [], req: ['defender_status', 'signature_age', 'coverage_by_host'], before: ['yellow', 'testimonial'], after: ['green', 'artifact'], changed: true, attackKey: 'JNCSF-394', share: 80, shareBasis: { before: 'claimed', after: 'claimed' }, exception: 'Contractor-managed workstations excluded from managed AV' },
   { n: 407, d: 'Identify, report, and correct information system flaws', cap: 'ops', iso: [], nist: ['SI-2'], req: ['patch_compliance_report', 'sla_adherence', 'exception_register'], before: ['unknown', 'none', 'not_provided'], after: ['red', 'artifact'], changed: true },
   { n: 435, d: 'Establish multifactor authentication for local and network access to privileged accounts and for network access to non-privileged accounts', cap: 'ops', iso: [], nist: [], req: ['mfa_policy', 'privileged_enrolment', 'nonprivileged_enrolment'], before: ['yellow', 'testimonial'], after: ['red', 'artifact'], changed: true, attackKey: 'JNCSF-435', exception: '43 of 512 privileged accounts without MFA' },
   { n: 437, d: 'Establish minimum password complexity, password change, and reuse restriction protocols', cap: 'ops', iso: [], nist: [], req: ['password_policy_export', 'history_setting', 'min_length'], before: ['unknown', 'none', 'not_provided'], after: ['green', 'artifact'], changed: true },

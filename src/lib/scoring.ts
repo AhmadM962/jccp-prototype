@@ -41,11 +41,24 @@ export interface BoundedScore {
   confidence: number;
 }
 
+/** Thrown when a figure fails a consistency check. Carries the `where` of the guard that fired so
+ *  the boundary that catches it (components/FigureBoundary.tsx) can log it and tell it apart from
+ *  an ordinary bug, which it must not swallow. */
+export class IntervalConsistencyError extends Error {
+  readonly where: string;
+  constructor(where: string, message: string) {
+    super(message);
+    this.name = 'IntervalConsistencyError';
+    this.where = where;
+  }
+}
+
 /** An interval whose lower bound exceeds its upper bound is impossible. A wrong number that
- *  renders is worse than a crash in a demo of a measurement tool, so this throws. */
+ *  renders is worse than none, so this throws; FigureBoundary turns the throw into a withheld
+ *  figure and an honest message instead of a blank page. */
 export function assertInterval(lower: number, upper: number, where: string): void {
   if (lower > upper) {
-    throw new Error(`Impossible interval in ${where}: lower ${lower} > upper ${upper}`);
+    throw new IntervalConsistencyError(where, `Impossible interval in ${where}: lower ${lower} > upper ${upper}`);
   }
 }
 
@@ -57,7 +70,10 @@ export function assertInterval(lower: number, upper: number, where: string): voi
 export function assertDisplayedInterval(lower: number, upper: number, width: number | undefined, where: string): void {
   assertInterval(lower, upper, where);
   if (width !== undefined && Math.abs(width - (upper - lower)) > 1e-6) {
-    throw new Error(`Displayed interval inconsistent in ${where}: width ${width} != upper ${upper} - lower ${lower}`);
+    throw new IntervalConsistencyError(
+      where,
+      `Displayed interval inconsistent in ${where}: width ${width} != upper ${upper} - lower ${lower}`,
+    );
   }
 }
 

@@ -7,7 +7,9 @@ import GapMatrix from '../screens/05_GapMatrix';
 import Intake from '../screens/03_Intake';
 import { useAssessment } from '../store/useAssessment';
 import { TOTALS } from '../data/capabilities';
-import { GAP_REASON_BREAKDOWN, controls } from '../data/controls';
+import { GAP_REASON_BREAKDOWN, UNCOLLECTABLE_COUNT, controls } from '../data/controls';
+import { evidenceRequests } from '../data/remediation';
+import { bandFloorPts, projectProvision } from '../lib/scoring';
 
 const raw = import.meta.glob('/src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const dashboardSrc = raw['/src/screens/04_Dashboard.tsx'];
@@ -33,6 +35,8 @@ describe('4.1 90 vs 148 vs 25 — each figure computed from its own source and n
   const changed = controls.filter((c) => c.changed).length;
 
   it('the three sources are what the brief says they are', () => {
+    expect(TOTALS.before.unknown).toBe(207);
+    expect(TOTALS.after.unknown).toBe(59);
     expect(resolved).toBe(148);
     expect(changed).toBe(25);
     expect(controls.length).toBe(48);
@@ -42,13 +46,17 @@ describe('4.1 90 vs 148 vs 25 — each figure computed from its own source and n
     expect(dashboardSrc).not.toContain('the 90 promoted controls');
     expect(intakeSrc).not.toContain('148 evidence gaps closed');
   });
-  it('the dashboard names 148 of 207 Unknown controls and 25 of 48 seeded controls', () => {
+  it('the dashboard names 148 of 207 Unknown controls and 25 of the 48 controls in this sample', () => {
     useAssessment.setState({ evidenceUploaded: true });
     const { container } = renderAt('/dashboard', <Dashboard />, '/dashboard');
     expect(container.textContent).toContain(
       `resolved ${resolved} of ${TOTALS.before.unknown} Unknown controls.`,
     );
-    expect(container.textContent).toContain(`See the ${changed} of ${controls.length} seeded controls changed by the upload in the Gap Matrix`);
+    expect(container.textContent).toContain(
+      `See the ${changed} of the ${controls.length} controls in this sample that the upload changed in the Gap Matrix`,
+    );
+    // 'seeded' is a developer's word; the sample-versus-framework distinction is kept in plain words
+    expect(container.textContent).not.toContain('seeded controls changed');
   });
   it('Intake names the same 148 and its before/after Unknown counts', () => {
     useAssessment.setState({ evidenceUploaded: true });
@@ -131,5 +139,40 @@ describe('4.3 starting the guided tour keeps the user\'s work', () => {
     useAssessment.getState().setProfile({ namedAttestation: 'C' });
     useAssessment.getState().resetDemo();
     expect(useAssessment.getState().profile.namedAttestation).toBe('');
+  });
+});
+
+// Figures the Round 1 report states, committed so they are guarded rather than asserted once.
+describe('the seeded sample behind the 4.2 choice', () => {
+  const unknownAfter = controls.filter((c) => c.after.state === 'unknown');
+  it('48 seeded controls; 8 are Unknown after the upload, 2 of them module_failed', () => {
+    expect(controls.length).toBe(48);
+    expect(unknownAfter.length).toBe(8);
+    expect(unknownAfter.filter((c) => c.after.gapReason === 'module_failed').map((c) => c.id)).toEqual(['JNCSF-173', 'JNCSF-179']);
+  });
+  it('both module_failed controls were not_provided before the upload', () => {
+    for (const id of ['JNCSF-173', 'JNCSF-179']) {
+      expect(controls.find((c) => c.id === id)!.before.gapReason).toBe('not_provided');
+    }
+  });
+});
+
+describe('fixture: the five Remediation artifacts claim more than the Unknown pool they draw from', () => {
+  // 49 = sum of controlsUnlocked over the five evidenceRequests (src/data/remediation.ts).
+  // 20 = collectable Unknowns after the upload: TOTALS.after.unknown (59) − UNCOLLECTABLE_COUNT (39).
+  // The per-artifact counts overlap or are overstated; they cannot be added. The cap in
+  // projectProvision keeps the projection honest; the fixture itself is replaced in Round 3.
+  const claimed = evidenceRequests.reduce((s, r) => s + r.controlsUnlocked, 0);
+  const pool = TOTALS.after.unknown - UNCOLLECTABLE_COUNT;
+  it('names both numbers', () => {
+    expect(claimed).toBe(49);
+    expect(pool).toBe(20);
+    expect(claimed).toBeGreaterThan(pool);
+  });
+  it('providing all five resolves exactly the pool, and the band stops at the floor', () => {
+    const t = TOTALS.after;
+    const p = projectProvision(TOTALS.applicable, t.green, t.yellow, t.unknown, claimed, UNCOLLECTABLE_COUNT);
+    expect(p.resolved).toBe(pool);
+    expect(p.resultingWidthPts).toBeCloseTo(bandFloorPts(TOTALS.applicable, UNCOLLECTABLE_COUNT), 10);
   });
 });

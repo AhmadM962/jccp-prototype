@@ -534,7 +534,7 @@ export default function Dashboard() {
       {uploaded && (
         <div className="flex justify-end">
           <Link to="/gap-matrix?changed=1" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
-            See the {seededChangedCount().changed} of {seededChangedCount().seeded} seeded controls changed by the upload in the Gap Matrix <ArrowUpRight size={15} />
+            See the {seededChangedCount().changed} of the {seededChangedCount().seeded} controls in this sample that the upload changed in the Gap Matrix <ArrowUpRight size={15} />
           </Link>
         </div>
       )}
