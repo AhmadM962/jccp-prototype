@@ -21,6 +21,7 @@ import { interviews, type InterviewRole } from '../data/interviews';
 import { bundleStages, moduleLedger, BUNDLE_MANIFEST, requestPlan, type ModuleStatus } from '../data/scenario';
 import { reviewQueue, CONFLICT_FLAG, scopedLinkFor, type ScopedLink } from '../data/collaboration';
 import { unknownResolvedByUpload } from '../lib/coverage';
+import { assuranceMeasurement } from '../lib/assurance';
 import { MINISTRY } from '../data/ministry';
 import { viewPercents } from '../lib/views';
 
@@ -205,6 +206,7 @@ function BundlePanel() {
   const fmt1 = (n: number) => n.toFixed(1);
   const viewsBefore = viewPercents(MINISTRY.before.views.unweighted);
   const viewsAfter = viewPercents(MINISTRY.after.views.unweighted);
+  const assurance = assuranceMeasurement();
   const covEstimate = (((before.unweighted.known + controlsEvidenced) * 100) / before.unweighted.applicable).toFixed(1);
 
   return (
@@ -340,8 +342,8 @@ function BundlePanel() {
                 {unknownResolvedByUpload().resolved} of the {unknownResolvedByUpload().from} Unknown controls in the authored scope resolved ({unknownResolvedByUpload().from} → {unknownResolvedByUpload().to})
               </div>
               <div className="text-xs text-emerald-700">
-                Interval {fmt1(viewsBefore.lowerPct)}–{fmt1(viewsBefore.upperPct)}% → {fmt1(viewsAfter.lowerPct)}–{fmt1(viewsAfter.upperPct)}% · coverage {fmt1(viewsBefore.coveragePct)}% → {fmt1(viewsAfter.coveragePct)}% · assurance L1 → L2.
-                The other {MINISTRY.after.unknownUnauthored} Unknown controls have no authored evidence requirement; an upload cannot change them.
+                Interval {fmt1(viewsBefore.lowerPct)}–{fmt1(viewsBefore.upperPct)}% → {fmt1(viewsAfter.lowerPct)}–{fmt1(viewsAfter.upperPct)}% · coverage {fmt1(viewsBefore.coveragePct)}% → {fmt1(viewsAfter.coveragePct)}%. Assurance stays at {assurance.level}: {assurance.count} of {assurance.total} verdicts ({assurance.measuredPct}%) are {assurance.qualifies}, and {assurance.next} needs {assurance.thresholdPct}%.
+                The other {MINISTRY.after.unknownUnauthored} Unknown controls have no authored evidence requirement; an upload cannot establish that any of them is met.
               </div>
             </div>
             <Button dataTour="bundle-reveal" onClick={() => navigate('/dashboard')}>

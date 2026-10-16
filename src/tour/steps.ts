@@ -5,6 +5,8 @@
 
 import { MINISTRY } from '../data/ministry';
 import { toPct } from '../lib/frac';
+import { assuranceMeasurement, assuranceReason } from '../lib/assurance';
+import { unknownResolvedByUpload } from '../lib/coverage';
 
 // Figures quoted in the narration come from the same numbers the screens use.
 const fmt1 = (n: number) => n.toFixed(1);
@@ -226,7 +228,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/dashboard',
     target: 'dash-assurance',
     title: 'How the evidence was obtained',
-    body: 'Not all assessments are equally trustworthy. “L1” means documents and interviews. “L2” means machine-collected evidence. This is what allows a regulator to compare two organisations’ submissions meaningfully — an 85% at L1 is a weaker statement than a 72% at L2.',
+    body: `Not all assessments are equally trustworthy, and the level is not raised by collecting evidence alone. It is the highest level at which a disclosed share of the verdicts rest on evidence of at least that strength. The collection succeeded and ${unknownResolvedByUpload().resolved} controls moved out of Unknown, yet the level stays at ${assuranceMeasurement().level}: ${assuranceReason()} This is what allows a regulator to compare two organisations’ submissions meaningfully.`,
   },
   {
     id: 'disclosure',

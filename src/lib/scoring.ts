@@ -199,7 +199,7 @@ export function applyOverrides(
 // Assurance ladder (brief §7.5).
 export const ASSURANCE_LEVELS = [
   { id: 'L0', name: 'Declared', definition: 'Profile declared; no evidence of any kind supplied.' },
-  { id: 'L1', name: 'Documented', definition: 'Policy and testimonial evidence only; no machine-collected artifacts.' },
-  { id: 'L2', name: 'Tool-evidenced', definition: 'Machine-collected artifacts corroborate a majority of controls.' },
+  { id: 'L1', name: 'Documented', definition: 'The share of verdicts that rest on documents or stronger evidence meets the threshold; the share that rest on machine-collected evidence or an analyst\u2019s signature does not.' },
+  { id: 'L2', name: 'Tool-evidenced', definition: 'The share of verdicts that rest on machine-collected evidence or an analyst\u2019s signature meets the threshold.' },
   { id: 'L3', name: 'Analyst-signed', definition: 'An accredited assessor has reviewed and signed the evidence set.' },
 ] as const;

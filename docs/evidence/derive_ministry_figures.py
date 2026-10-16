@@ -5,8 +5,10 @@
 # It READS the engine's golden output and risk-weight table and writes nothing into the engine
 # repository. Only numbers leave it. It first reproduces the engine's four published views (after
 # state) exactly from per-control data and refuses to write if any differ; the before-upload state
-# is then derived with the same model under RULE R below, which is the prototype's own rule and not
-# an engine figure.
+# is then derived with the same model under RULE R below. RULE R is a selection from the engine's
+# own per-control data -- the verdicts that rest on testimony or documents -- not a model of its own;
+# the facts that make it a projection and not an invention are asserted below ("provenance of rule R")
+# and written beside the figures. The one choice that is the prototype's (JNCSF-139) is stated there.
 import csv, json, sys, collections as C
 from fractions import Fraction as F
 root = sys.argv[1].rstrip('/')
@@ -71,15 +73,20 @@ print('mine unknown weight', sum(weight(i) for i in claims if claims[i]['state']
 print('published width parts (x W):', {k: F(pub['width'][k + '_exact']) * W for k in ('unauthored', 'unevidenced', 'uncollectable')})
 
 # ------------------------------------------------------------------------------------------
-# RULE R (prototype-authored, NOT an engine figure): before the evidence bundle exists, only
-# verdicts resting on testimony or documents (assurance L0 / L1) exist. Verdicts resting on
-# machine collection, absence checks or analyst attestation do not. Controls outside the authored
-# scope are unaffected by the upload (JNCSF-139 keeps its verdict in both states).
+# RULE R: before the evidence bundle exists, only verdicts resting on testimony or documents
+# (assurance L0 / L1) exist. Verdicts resting on machine collection, absence checks or analyst
+# attestation do not, and every other control is Unknown. This is one stated projection of the
+# engine's per-control data, and its two premises are asserted from that data below, not assumed.
+# THE ONE CHOICE THAT IS THE PROTOTYPE'S: JNCSF-139 has no authored path (it is in the unauthored
+# set) yet carries a Gap whose basis is `observed`; by the engine's own assurance rule that is a
+# machine-evidence verdict (L2), so it presumably arrived with collection. It is KEPT in the
+# before-state, because no authored path produces it: the upload's effect on the authored scope
+# (the only thing the before/after beat claims to move) is the same either way.
 # ------------------------------------------------------------------------------------------
 CAP = {'Security in Architecture and Portfolio': 'arch', 'Development': 'dev', 'Delivery': 'del', 'Operation': 'ops', 'Foundational': 'found'}
 def before(i):
     c = claims[i]
-    if i in ua: return credit(c)                                      # outside the authored scope: unaffected
+    if i in ua: return credit(c)                                      # outside the authored scope: kept (JNCSF-139; see above)
     if c['state'] != 'unknown' and c['evidence_kind'] in ('testimony', 'document'): return credit(c)
     return None
 def frac(x): return [x.numerator, x.denominator]
@@ -126,6 +133,45 @@ def state_figures(label, st):
     out['capabilities'] = caps
     return out
 result = {'after': state_figures('after', after), 'before': state_figures('before', before)}
+
+# ------------------------------------------------------------------------------------------
+# Provenance of rule R, and the engine's assurance level. Everything here is asserted from the
+# golden file; a failed assertion stops the write.
+# ------------------------------------------------------------------------------------------
+LEVEL_OF_KIND = {'testimony': 'L0', 'document': 'L1', 'machine_collected': 'L2', 'analyst_attestation': 'L3'}
+def assurance_level(c):
+    # engine/scoring.py, per-control assurance: read from evidence KIND. testimony -> L0, document -> L1,
+    # machine_collected -> L2, analyst attestation -> L3; an inference from absence backed by a successful
+    # module, or an observed Gap established by machine evidence -> L2 (such a claim carries no kind).
+    if c['evidence_kind'] is not None: return LEVEL_OF_KIND[c['evidence_kind']]
+    assert c['state'] == 'red' and c['gap_basis'] in ('absence', 'observed'), c['control_id']
+    return 'L2'
+known_ids = [i for i in claims if claims[i]['state'] != 'unknown']
+dist = C.Counter(assurance_level(claims[i]) for i in known_ids)
+A = S['assurance']
+GOLD_LEVEL = {'l0_declared': 'L0', 'l1_documented': 'L1', 'l2_tool_evidenced': 'L2', 'l3_analyst_signed': 'L3'}
+assert {GOLD_LEVEL[k]: v for k, v in A['distribution'].items()} == {k: dist.get(k, 0) for k in ('L0', 'L1', 'L2', 'L3')}, 'assurance distribution not reproduced'
+thr = F(str(A['assurance_proportion_threshold']))
+total = len(known_ids); cum = 0; head = None
+for lvl in ('L3', 'L2', 'L1', 'L0'):                      # highest level whose cumulative share meets the threshold
+    cum += dist.get(lvl, 0)
+    if F(cum, total) >= thr: head = lvl; break
+assert head == GOLD_LEVEL[A['base_level']] == GOLD_LEVEL[A['reported_level']] and A['demotions'] == [], 'headline level not reproduced'
+l2_up = dist['L2'] + dist['L3']
+print('--- assurance: distribution', dict(dist), '| total', total, '| L2-or-above', l2_up, 'of', total, '=', float(F(l2_up, total)), '| threshold', thr, '| headline', head)
+# premise 1: every Compliant rests on machine collection -- none on a document
+greens = [i for i in known_ids if claims[i]['state'] == 'green']
+assert greens and all(claims[i]['evidence_kind'] == 'machine_collected' for i in greens), 'a Compliant is not machine-collected'
+# premise 2: outside the unauthored set, the before-state's verdicts are exactly the engine's L0 and L1 verdicts
+b_known = [i for i in claims if before(i) is not None]
+b_authored = [i for i in b_known if i not in ua]
+b_kept = [i for i in b_known if i in ua]
+assert set(b_authored) == {i for i in known_ids if assurance_level(claims[i]) in ('L0', 'L1')}, 'rule R is not the L0/L1 verdicts'
+assert len(b_authored) == dist['L0'] + dist['L1']
+assert b_kept == ['JNCSF-139'] and assurance_level(claims['JNCSF-139']) == 'L2' and claims['JNCSF-139']['gap_basis'] == 'observed'
+assert claims['JNCSF-139']['negative_evidence_module_run_id'] is None and claims['JNCSF-139']['satisfied_path_label'] is None
+print('--- provenance of rule R: compliants', len(greens), '(all machine_collected) | before verdicts', len(b_known), '= L0/L1', len(b_authored), '+ kept outside authored scope', len(b_kept))
+prov = {'greens': len(greens), 'b_known': len(b_known), 'b_l01': len(b_authored), 'b_kept': len(b_kept)}
 # framework-wide facts over the applicable controls
 basis = C.Counter(rw[i]['weight_basis'] for i in claims)
 out_basis = {k: {'controls': v, 'weight': str(F(next(r for r in rw.values() if r['weight_basis'] == k)['risk_weight'] or 1).limit_denominator(1000)) if k != 'underived' else '1'} for k, v in basis.items()}
@@ -184,9 +230,19 @@ ts = """// Figures for the demonstration organisation (a government ministry), a
 // Do not edit by hand: change the generator and regenerate. Numbers only. Every fraction is [numerator,
 // denominator], so sums can be asserted exactly and nothing is rounded until it is displayed.
 //
-// The `after` state is the engine's assessed state. The `before` state is NOT an engine figure: it is
-// derived with the same model under a stated rule (before an evidence bundle exists, only verdicts
-// resting on testimony or documents exist; the authored scope is the only part an upload can move).
+// The `after` state is the engine's assessed state. The `before` state is the engine's own per-control
+// data under ONE stated projection (rule R): before an evidence bundle exists, only the verdicts that
+// rest on testimony or documents exist. Its two premises are asserted by the generator from the
+// engine's output, not assumed, and exported below as RULE_R_PROVENANCE:
+//   - all @@greens@@ Compliant verdicts rest on machine collection (evidence kind machine_collected);
+//     none rests on a document, so no Compliant can exist before an upload;
+//   - the engine's assurance distribution over the settled verdicts has @@b_l01@@ at L0 or L1, and
+//     those @@b_l01@@ are exactly the before-state's verdicts outside the unauthored set.
+// The one thing in `before` that is a choice, and not the engine's data, is JNCSF-139: it has no
+// authored path (so it is outside the authored scope) but carries a Gap whose basis is `observed`,
+// which the engine's assurance rule scores as L2 -- machine evidence that presumably arrived with
+// collection. It is KEPT in `before` (@@b_known@@ verdicts = @@b_l01@@ + @@b_kept@@), because no authored
+// path produces it and the authored-scope movement is the same either way. One control, either way.
 //
 // Tier: illustrative. These are real engine figures, but the prototype does not read them from the engine.
 
@@ -262,5 +318,27 @@ export const WEIGHT_BASIS_COUNTS = {
 } as const;
 """ % (state_ts(result['before'], '    '), state_ts(result['after'], '    '),
        basis_ts(result['applicable_by_weight_basis']), basis_ts(result['framework_by_weight_basis']), basis_ts(result['excluded_by_weight_basis']))
+ts = ts.replace('@@greens@@', str(prov['greens'])).replace('@@b_l01@@', str(prov['b_l01'])).replace('@@b_known@@', str(prov['b_known'])).replace('@@b_kept@@', str(prov['b_kept']))
+ts += """
+/** The engine's assurance for this assessment (the `after` state), over its settled (non-Unknown) verdicts.
+ *  The headline level is the highest level L such that the share of verdicts at L or above meets
+ *  `proportionThreshold`; the engine reports it from the distribution and demotes nothing here. */
+export const ASSURANCE = {
+  distribution: { L0: %d, L1: %d, L2: %d, L3: %d },
+  proportionThreshold: [%d, %d] as Frac,
+  reported: '%s',
+} as const;
+
+/** The two premises of the before-state's rule, asserted by the generator from the engine's output. */
+export const RULE_R_PROVENANCE = {
+  /** Compliant verdicts in the engine's output, and how many of them rest on machine collection */
+  compliant: %d,
+  compliantMachineCollected: %d,
+  /** the before-state's verdicts, the L0/L1 verdicts among them, and those kept from outside the authored scope */
+  beforeVerdicts: %d,
+  beforeVerdictsAtL0OrL1: %d,
+  beforeVerdictsKeptOutsideAuthoredScope: %d,
+} as const;
+""" % (dist['L0'], dist['L1'], dist['L2'], dist['L3'], thr.numerator, thr.denominator, head, prov['greens'], prov['greens'], prov['b_known'], prov['b_l01'], prov['b_kept'])
 open(sys.argv[2], 'w').write(ts)
 print('wrote', sys.argv[2])

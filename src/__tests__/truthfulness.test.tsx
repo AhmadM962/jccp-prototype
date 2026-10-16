@@ -182,7 +182,7 @@ describe('3.5 the chat quotes the live interval', () => {
   it('differs between before and after upload and matches the dashboard each time', () => {
     const before = askScore(renderAt('/chat', <Chat />));
     expect(before).toContain(quoted(false));
-    expect(before).toContain('0.3–97.5% at 2.9% coverage'); // derived pre-upload state (rule R), not an engine figure
+    expect(before).toContain('0.3–97.5% at 2.9% coverage'); // the engine's data under rule R (the pre-upload projection stated in ministry.ts)
     document.body.innerHTML = '';
     useAssessment.setState({ evidenceUploaded: true });
     const after = askScore(renderAt('/chat', <Chat />));

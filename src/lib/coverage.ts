@@ -3,6 +3,8 @@
 import { controls } from '../data/controls';
 import { MINISTRY } from '../data/ministry';
 import { stateFor } from './views';
+import { TOTALS } from '../data/capabilities';
+import { assuranceLabel } from './assurance';
 
 export interface CoverageBreakdown {
   /** artifact-backed verdicts: Compliant + Gap */
@@ -56,6 +58,6 @@ export const completenessStatement = (uploaded: boolean) => {
     unauthored: s.unknownUnauthored,
     unevidenced: s.unknown - s.unknownUnauthored - uncollectable,
     uncollectable,
-    assurance: uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented',
+    assurance: assuranceLabel((uploaded ? TOTALS.after : TOTALS.before).assurance),
   };
 };

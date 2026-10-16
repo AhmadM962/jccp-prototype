@@ -74,7 +74,7 @@ describe('4.1 each "resolved" figure is computed from its own source and named p
     expect(container.textContent).toContain(
       `${resolved} of the ${scope.b.unknown} Unknown controls in the authored scope resolved (${scope.b.unknown} → ${scope.a.unknown})`,
     );
-    expect(container.textContent).toContain(`The other ${MINISTRY.after.unknownUnauthored} Unknown controls have no authored evidence requirement; an upload cannot change them.`);
+    expect(container.textContent).toContain(`The other ${MINISTRY.after.unknownUnauthored} Unknown controls have no authored evidence requirement; an upload cannot establish that any of them is met.`);
   });
   it('the Gap Matrix filter the link opens shows exactly the changed seeds', () => {
     useAssessment.setState({ evidenceUploaded: true });

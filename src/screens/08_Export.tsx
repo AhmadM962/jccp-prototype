@@ -5,6 +5,7 @@ import { Card, Pill, Button } from '../components/ui';
 import { Provenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
 import { TOTALS } from '../data/capabilities';
+import { assuranceLabel } from '../lib/assurance';
 
 const HASH = 'e7c1 9a02 44bd 8f10 55ce 7731 a9b0 2d4f 88e0 1c6a 90ff 43d2';
 const SIGNING = { alg: 'Ed25519', identity: 'JCCP Appliance — MoDS-JCCP-01', at: '2026-09-08T10:04:00+03:00' };
@@ -21,7 +22,7 @@ function oscalDoc(model: string, uploaded: boolean, overrideCount: number, opera
       roles: [{ id: 'assessor', title: 'JCCP Automated Assessor' }],
     },
     'jccp:coverage-metadata': {
-      'assurance-level': uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented',
+      'assurance-level': assuranceLabel(t.assurance),
       'controls-applicable': TOTALS.applicable,
       'controls-evidenced': t.evidenced,
       'controls-unevidenced': t.unknown - t.unknownUnauthored,

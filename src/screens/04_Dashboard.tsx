@@ -22,6 +22,7 @@ import { capabilities, TOTALS } from '../data/capabilities';
 import { ASSURANCE_LEVELS, bandFloorPts } from '../lib/scoring';
 import { stateFor, unevidencedRows } from '../lib/views';
 import { coverageBreakdown, completenessStatement, unknownResolvedByUpload, seededChangedCount } from '../lib/coverage';
+import { assuranceMeasurement } from '../lib/assurance';
 import { dashboardView } from '../lib/derive';
 import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
 import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
@@ -85,7 +86,7 @@ function ExecutiveDashboard() {
               coveragePct={eff.coveragePct}
               widthPts={eff.widthPts}
               animateFrom={uploaded ? { lower: TOTALS.before.interval[0], upper: TOTALS.before.interval[1] } : undefined}
-              subline={`Assurance ${uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented'}. ${cs.unauthored} controls have no evidence requirement authored; ${cs.unevidenced} are not yet evidenced.`}
+              subline={`Assurance ${cs.assurance}. ${cs.unauthored} controls have no evidence requirement authored; ${cs.unevidenced} are not yet evidenced.`}
             />
           </div>
           <WidthBreakdown uploaded={uploaded} eff={eff} overridesActive={view.overridesActive} />
@@ -185,7 +186,8 @@ export default function Dashboard() {
     { name: 'Structurally uncollectable', value: cov.uncollectable, fill: '#64748b' },
   ];
 
-  const currentAssurance = uploaded ? 'L2' : 'L1';
+  const currentAssurance = (uploaded ? TOTALS.after : TOTALS.before).assurance;
+  const assurance = assuranceMeasurement();
 
   const gapData = GAP_REASON_BREAKDOWN.map((g) => ({
     reason: g.reason,
@@ -335,14 +337,14 @@ export default function Dashboard() {
               );
             })}
           </ol>
-          {uploaded && (
-            <div className="mt-3 rounded-lg bg-slate-50 p-3 text-[11px] leading-snug text-slate-600">
-              <span className="font-semibold text-slate-800">Why L2, not L3.</span> L3 requires analyst
-              sign-off and every declared-estate module succeeding — the <code className="font-mono">logging</code>{' '}
-              module failed.
-              <div className="mt-1.5 text-slate-500">
-                Demotion risks: 1 declined module · {Object.keys(overrides).length} analyst override
-                {Object.keys(overrides).length === 1 ? '' : 's'} · N/A rate above sector baseline
+          {uploaded && assurance.next && (
+            <div data-testid="assurance-measurement" className="mt-3 rounded-lg bg-slate-50 p-3 text-[11px] leading-snug text-slate-600">
+              <span className="font-semibold text-slate-800">The collection succeeded; the level did not rise.</span>{' '}
+              {unknownResolvedByUpload().resolved} controls moved out of Unknown, and the assessment still did not raise its
+              own confidence: the share of verdicts that are {assurance.qualifies} is below the threshold {assurance.next} requires.
+              <div className="mt-1.5 text-slate-700" data-testid="assurance-numbers">
+                Measured <strong className="tnum">{assurance.count} of {assurance.total} ({assurance.measuredPct}%)</strong> · threshold{' '}
+                <strong className="tnum">{assurance.thresholdPct}%</strong> · reported <strong>{assurance.level}</strong>
               </div>
             </div>
           )}

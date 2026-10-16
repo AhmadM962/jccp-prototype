@@ -4,9 +4,19 @@
 // Do not edit by hand: change the generator and regenerate. Numbers only. Every fraction is [numerator,
 // denominator], so sums can be asserted exactly and nothing is rounded until it is displayed.
 //
-// The `after` state is the engine's assessed state. The `before` state is NOT an engine figure: it is
-// derived with the same model under a stated rule (before an evidence bundle exists, only verdicts
-// resting on testimony or documents exist; the authored scope is the only part an upload can move).
+// The `after` state is the engine's assessed state. The `before` state is the engine's own per-control
+// data under ONE stated projection (rule R): before an evidence bundle exists, only the verdicts that
+// rest on testimony or documents exist. Its two premises are asserted by the generator from the
+// engine's output, not assumed, and exported below as RULE_R_PROVENANCE:
+//   - all 21 Compliant verdicts rest on machine collection (evidence kind machine_collected);
+//     none rests on a document, so no Compliant can exist before an upload;
+//   - the engine's assurance distribution over the settled verdicts has 15 at L0 or L1, and
+//     those 15 are exactly the before-state's verdicts outside the unauthored set.
+// The one thing in `before` that is a choice, and not the engine's data, is JNCSF-139: it has no
+// authored path (so it is outside the authored scope) but carries a Gap whose basis is `observed`,
+// which the engine's assurance rule scores as L2 -- machine evidence that presumably arrived with
+// collection. It is KEPT in `before` (16 verdicts = 15 + 1), because no authored
+// path produces it and the authored-scope movement is the same either way. One control, either way.
 //
 // Tier: illustrative. These are real engine figures, but the prototype does not read them from the engine.
 
@@ -159,4 +169,24 @@ export const WEIGHT_BASIS_COUNTS = {
   applicable: { nist_baseline_low: 246, nist_baseline_moderate: 67, nist_baseline_high: 12, nist_no_baseline: 65, underived: 167 },
   framework: { nist_baseline_low: 251, nist_baseline_moderate: 72, nist_baseline_high: 14, nist_no_baseline: 66, underived: 173 },
   excluded: { nist_baseline_low: 5, nist_baseline_moderate: 5, nist_baseline_high: 2, nist_no_baseline: 1, underived: 6 },
+} as const;
+
+/** The engine's assurance for this assessment (the `after` state), over its settled (non-Unknown) verdicts.
+ *  The headline level is the highest level L such that the share of verdicts at L or above meets
+ *  `proportionThreshold`; the engine reports it from the distribution and demotes nothing here. */
+export const ASSURANCE = {
+  distribution: { L0: 3, L1: 12, L2: 36, L3: 1 },
+  proportionThreshold: [4, 5] as Frac,
+  reported: 'L1',
+} as const;
+
+/** The two premises of the before-state's rule, asserted by the generator from the engine's output. */
+export const RULE_R_PROVENANCE = {
+  /** Compliant verdicts in the engine's output, and how many of them rest on machine collection */
+  compliant: 21,
+  compliantMachineCollected: 21,
+  /** the before-state's verdicts, the L0/L1 verdicts among them, and those kept from outside the authored scope */
+  beforeVerdicts: 16,
+  beforeVerdictsAtL0OrL1: 15,
+  beforeVerdictsKeptOutsideAuthoredScope: 1,
 } as const;

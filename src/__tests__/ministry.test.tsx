@@ -36,7 +36,7 @@ describe('Task 2: the per-state counts, derived from per-control data (see docs/
     expect([a.green, a.yellow, a.red, a.unknown]).toEqual([21, 25, 6, 505]);
     expect(a.green + a.yellow + a.red + a.unknown).toBe(APPLICABLE_CONTROLS);
   });
-  it('pre-upload state (rule R, not an engine figure): 0 / 14 / 2 / 541 = 557', () => {
+  it('pre-upload state (engine data under rule R): 0 / 14 / 2 / 541 = 557', () => {
     const b = MINISTRY.before;
     expect([b.green, b.yellow, b.red, b.unknown]).toEqual([0, 14, 2, 541]);
     expect(b.green + b.yellow + b.red + b.unknown).toBe(APPLICABLE_CONTROLS);

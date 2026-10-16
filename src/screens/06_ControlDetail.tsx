@@ -208,9 +208,11 @@ export default function ControlDetail() {
           <div>
             <p className="font-semibold">No evidence requirement has been authored for this control.</p>
             <p className="mt-1 leading-relaxed text-orange-900">
-              The tool has not yet been told what would count as evidence for it, so it did not look. This is a
-              limitation of the tool, not a finding about the organisation: nothing here says the control is met,
-              and nothing says it is not. Uploading evidence cannot change this.
+              The tool has not yet been told what would count as evidence that this control is met, so it did not
+              look for that.
+              {effectiveState === 'unknown' &&
+                ' This is a limitation of the tool, not a finding about the organisation: nothing here says the control is met, and nothing says it is not.'}{' '}
+              Uploading evidence cannot establish that this control is met.
             </p>
           </div>
         </div>

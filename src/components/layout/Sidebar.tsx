@@ -4,9 +4,11 @@ import { ShieldCheck, X } from 'lucide-react';
 import { navForRole } from './nav';
 import PhaseStepper from './PhaseStepper';
 import { useAssessment, ROLE_LABEL } from '../../store/useAssessment';
+import { assuranceMeasurement } from '../../lib/assurance';
 
 export default function Sidebar() {
   const uploaded = useAssessment((s) => s.evidenceUploaded);
+  const assurance = assuranceMeasurement();
   const role = useAssessment((s) => s.role);
   const navOpen = useAssessment((s) => s.navOpen);
   const setNavOpen = useAssessment((s) => s.setNavOpen);
@@ -85,7 +87,12 @@ export default function Sidebar() {
               uploaded ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'
             }`}
           >
-            {uploaded ? 'Evidence bundle loaded · L2' : 'Testimony only · L1'}
+            {uploaded ? `Evidence bundle loaded · ${assurance.level}` : 'Testimony only · L1'}
+            {uploaded && assurance.next && (
+              <div data-testid="sidebar-assurance-measurement" className="mt-0.5 text-[10px] font-normal opacity-80">
+                {assurance.measuredPct}% {assurance.qualifies} · {assurance.next} needs {assurance.thresholdPct}%
+              </div>
+            )}
           </div>
         </div>
       </aside>

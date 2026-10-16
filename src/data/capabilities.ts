@@ -4,7 +4,7 @@
 // TOTALS at the bottom of this file (asserted in tests).
 
 import { APPLICABLE_CONTROLS, EXCLUDED_COUNT, TOTAL_CONTROLS } from './figures';
-import { MINISTRY, type CapabilityFigures, type StateFigures } from './ministry';
+import { ASSURANCE, MINISTRY, type CapabilityFigures, type StateFigures } from './ministry';
 
 export interface CapabilityStat {
   applicable: number;
@@ -106,6 +106,6 @@ export const TOTALS = {
   totalControls: TOTAL_CONTROLS,
   notApplicable: EXCLUDED_COUNT,
   applicable: APPLICABLE_CONTROLS,
-  before: { ...stateTotals(MINISTRY.before), assurance: 'L1' },
-  after: { ...stateTotals(MINISTRY.after), assurance: 'L2' },
+  before: { ...stateTotals(MINISTRY.before), assurance: 'L1' as const },
+  after: { ...stateTotals(MINISTRY.after), assurance: ASSURANCE.reported },
 };

@@ -5,6 +5,7 @@ import { Card, Pill } from '../components/ui';
 import { Provenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
 import { dashboardView } from '../lib/derive';
+import { assuranceMeasurement, assuranceReason, atOrAbove, settledVerdicts } from '../lib/assurance';
 
 interface Citation {
   label: string;
@@ -55,9 +56,8 @@ function buildCanned(fig: ReturnType<typeof liveFigures>): QA[] {
   {
     q: "What's blocking L3 assurance?",
     grounded: true,
-    a: 'Two things. The logging module failed at collection (wineventlog_access_denied), so its controls stay Unknown rather than being established — L3 requires every declared-estate module to succeed. And L3 requires an accredited assessor to review and sign the evidence set; no analyst sign-off has been recorded.',
+    a: `The level is not set by the best evidence collected: it is the highest level at which a disclosed share of the verdicts, ${assuranceMeasurement().thresholdPct}%, rest on evidence of at least that strength. After the evidence bundle the assessment is reported at ${assuranceMeasurement().level}: ${assuranceReason()} L3 would need ${assuranceMeasurement().thresholdPct}% of the verdicts analyst-signed; here that is ${atOrAbove('L3')} of ${settledVerdicts()}.`,
     citations: [
-      { label: 'Module ledger · logging', to: '/intake', passage: 'module=logging status=FAILED reason=wineventlog_access_denied' },
       { label: 'Assurance ladder', to: '/dashboard', passage: 'L3 — Analyst-signed: an accredited assessor has reviewed and signed the evidence set.' },
     ],
   },
