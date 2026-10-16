@@ -66,8 +66,8 @@ export const interviews: InterviewRole[] = [
       { who: 'agent', text: 'Noted. That brings the 48-hour breach-notification obligation into scope.' },
     ],
     claims: [
-      { text: 'Crown-jewel systems: citizen services portal, internal HR system', confidence: 0.86, cappedAtYellow: true, relatedControls: ['JNCSF-225', 'JNCSF-252'] },
-      { text: 'PDPL-sensitive health data held in HR (medical leave records)', confidence: 0.93, cappedAtYellow: true, relatedControls: ['JNCSF-25', 'JNCSF-382'], note: '48-hour breach-notification obligation now in scope' },
+      { text: 'Crown-jewel systems: citizen services portal, internal HR system', confidence: 0.86, cappedAtYellow: true, relatedControls: [] },
+      { text: 'PDPL-sensitive health data held in HR (medical leave records)', confidence: 0.93, cappedAtYellow: true, relatedControls: ['JNCSF-25'], note: '48-hour breach-notification obligation now in scope' },
     ],
   },
   {

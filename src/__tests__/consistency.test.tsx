@@ -39,7 +39,8 @@ describe('4.1 90 vs 148 vs 25 — each figure computed from its own source and n
     expect(TOTALS.before.unknown).toBe(207);
     expect(TOTALS.after.unknown).toBe(59);
     expect(resolved).toBe(148);
-    expect(changed).toBe(25);
+    // 25 before Round 2 Task 1; 9 of those became unauthored (never changed by an upload)
+    expect(changed).toBe(16);
     expect(controls.length).toBe(48);
   });
   it('the literal 90 is gone from the dashboard copy', () => {
@@ -94,6 +95,8 @@ describe('4.2 the gap-reason chart accounts for every Unknown', () => {
         if (snap.state === 'unknown' && snap.gapReason) seeded[snap.gapReason] = (seeded[snap.gapReason] ?? 0) + 1;
       }
       for (const [reason, n] of Object.entries(seeded)) {
+        // `unauthored` has no row in the aggregate until Round 2 Task 2 restructures it
+        if (reason === 'unauthored') continue;
         const row = GAP_REASON_BREAKDOWN.find((r) => r.reason === reason);
         expect(row, `${when}: no row for ${reason}`).toBeDefined();
         expect(row![when], `${when}: ${reason}`).toBeGreaterThanOrEqual(n);
@@ -146,9 +149,11 @@ describe('4.3 starting the guided tour keeps the user\'s work', () => {
 // Figures the Round 1 report states, committed so they are guarded rather than asserted once.
 describe('the seeded sample behind the 4.2 choice', () => {
   const unknownAfter = controls.filter((c) => c.after.state === 'unknown');
-  it('48 seeded controls; 8 are Unknown after the upload, 2 of them module_failed', () => {
+  it('48 seeded controls; 25 are Unknown after the upload: 21 unauthored and 4 collection failures, 2 of them module_failed', () => {
     expect(controls.length).toBe(48);
-    expect(unknownAfter.length).toBe(8);
+    expect(unknownAfter.length).toBe(25);
+    expect(unknownAfter.filter((c) => c.after.gapReason === 'unauthored').length).toBe(21);
+    expect(unknownAfter.filter((c) => c.after.gapReason !== 'unauthored').length).toBe(4);
     expect(unknownAfter.filter((c) => c.after.gapReason === 'module_failed').map((c) => c.id)).toEqual(['JNCSF-173', 'JNCSF-179']);
   });
   it('both module_failed controls were not_provided before the upload', () => {

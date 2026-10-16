@@ -37,7 +37,7 @@ export function Pill({
   title,
 }: {
   children: ReactNode;
-  tone?: 'slate' | 'blue' | 'amber' | 'red' | 'green' | 'violet';
+  tone?: 'slate' | 'blue' | 'amber' | 'red' | 'green' | 'violet' | 'orange';
   title?: string;
 }) {
   const tones: Record<string, string> = {
@@ -47,6 +47,8 @@ export function Pill({
     red: 'bg-red-50 text-red-700 border-red-200',
     green: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     violet: 'bg-violet-50 text-violet-700 border-violet-200',
+    // ours, not the organisation's: the tool has no evidence requirement for the control
+    orange: 'bg-orange-50 text-orange-800 border-orange-300',
   };
   return (
     <span

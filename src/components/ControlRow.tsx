@@ -42,7 +42,7 @@ export default function ControlRow({
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <Pill tone={evTone(snap.evidenceClass)}>{EVIDENCE_CLASS_LABEL[snap.evidenceClass]}</Pill>
             {snap.state === 'unknown' && snap.gapReason && (
-              <Pill tone="violet">{GAP_REASON_LABEL[snap.gapReason]}</Pill>
+              <Pill tone={snap.gapReason === 'unauthored' ? 'orange' : 'violet'}>{GAP_REASON_LABEL[snap.gapReason]}</Pill>
             )}
             {highlight && (
               <Pill tone="blue">
