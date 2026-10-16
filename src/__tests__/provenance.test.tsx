@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { Provenance, TierLegend } from '../components/Provenance';
+import { Provenance, StateProvenance, TierLegend } from '../components/Provenance';
+import { PROFILES, PROFILE_ORDER, setActiveProfile, type ProfileData } from '../data/profiles';
 import TopBar from '../components/layout/TopBar';
 import { useAssessment } from '../store/useAssessment';
 import Profile from '../screens/01_Profile';
@@ -50,20 +51,36 @@ function renderAt(path: string, el: ReactElement) {
 beforeEach(() => {
   localStorage.clear();
   useAssessment.getState().resetDemo();
+  setActiveProfile('ministry');
 });
 
+/** Does a dotted path ("after.views.unweighted", "ranking.items") exist in the assessment data? */
+const resolves = (profile: ProfileData, path: string): boolean => {
+  let at: unknown = profile;
+  for (const part of path.split('.')) {
+    if (at === null || typeof at !== 'object' || !(part in (at as object))) return false;
+    at = (at as Record<string, unknown>)[part];
+  }
+  return at !== undefined;
+};
+
+/** Sources that are the assessed state: before the upload they are a projection, never measured. */
+const STATE_SOURCES = /^(after|assurance|claims|ranking|dual|coverage|ruleR)(\.|$)/;
+
 describe('Provenance component', () => {
-  it('hides the chip for measured, shows it for illustrative and planned', () => {
+  it('shows a chip for every tier, measured included, and a measured one says where it is read from', () => {
     const { container } = render(
       <>
-        <Provenance tier="measured">m</Provenance>
+        <Provenance tier="measured" from="after.views.unweighted">m</Provenance>
         <Provenance tier="illustrative">i</Provenance>
         <Provenance tier="planned">p</Provenance>
       </>,
     );
-    expect(container.querySelector('[data-tier-chip="measured"]')).toBeNull();
+    expect(container.querySelector('[data-tier-chip="measured"]')).toHaveTextContent('measured');
     expect(container.querySelector('[data-tier-chip="illustrative"]')).toHaveTextContent('illustrative');
     expect(container.querySelector('[data-tier-chip="planned"]')).toHaveTextContent('planned');
+    expect(container.querySelector('[data-tier="measured"]')?.getAttribute('data-source')).toBe('after.views.unweighted');
+    expect(container.querySelector('[data-tier="illustrative"]')?.hasAttribute('data-source')).toBe(false);
   });
 
   it('renders planned content at 85% opacity and nothing else', () => {
@@ -99,16 +116,120 @@ describe('Provenance component', () => {
   });
 });
 
+describe('StateProvenance: the engine\u2019s assessed state is measured; everything else about the state is a projection', () => {
+  const tier = (props: { uploaded: boolean; overridesActive?: number }) => {
+    const { container } = render(
+      <StateProvenance from="after.views.unweighted" {...props}>
+        x
+      </StateProvenance>,
+    );
+    const el = container.querySelector('[data-tier]')!;
+    return [el.getAttribute('data-tier'), el.getAttribute('data-source'), container.textContent] as const;
+  };
+  it('after the upload with no override: measured, with its source', () => {
+    expect(tier({ uploaded: true })).toEqual(['measured', 'after.views.unweighted', 'measuredx']);
+  });
+  it('before the upload: illustrative, and it says it is rule R\u2019s projection, not an engine run', () => {
+    const [t, src, text] = tier({ uploaded: false });
+    expect(t).toBe('illustrative');
+    expect(src).toBeNull();
+    expect(text).toContain('a projection (rule R), not an engine run');
+  });
+  it('with an analyst override: illustrative, and it says the file does not contain the override', () => {
+    const [t, , text] = tier({ uploaded: true, overridesActive: 1 });
+    expect(t).toBe('illustrative');
+    expect(text).toContain('analyst overrides, which the assessment file does not contain');
+  });
+});
+
 describe('every screen states its provenance', () => {
-  it.each(SCREENS)('%s renders at least one tier chip and no measured region', (_name, path, el) => {
+  it.each(SCREENS)('%s renders at least one tier chip', (_name, path, el) => {
     const { container } = renderAt(path, el);
     expect(container.querySelectorAll('[data-tier-chip]').length).toBeGreaterThanOrEqual(1);
-    // nothing in this repository is produced by a real assessment engine yet
-    expect(container.querySelectorAll('[data-tier="measured"]').length).toBe(0);
-    expect(container.querySelectorAll('[data-tier-chip="measured"]').length).toBe(0);
   });
 
   it('covers all 14 screens', () => {
     expect(SCREENS.length).toBe(14);
+  });
+});
+
+describe('measured is used, and only where the figure traces to the assessment file', () => {
+  const uploadedStates = [false, true];
+
+  it.each(SCREENS)('%s: every measured region names a source that exists in all three profiles', (_name, path, el) => {
+    for (const uploaded of uploadedStates) {
+      useAssessment.setState({ evidenceUploaded: uploaded });
+      const { container, unmount } = renderAt(path, el);
+      for (const m of Array.from(container.querySelectorAll('[data-tier="measured"]'))) {
+        const from = m.getAttribute('data-source');
+        expect(from, `${path} uploaded=${uploaded}: a measured region with no source`).toBeTruthy();
+        for (const id of PROFILE_ORDER) expect(resolves(PROFILES[id], from!), `${path} ${id}: "${from}" is not in the data`).toBe(true);
+        // and the chip sits on the same element, so the reader sees it
+        expect(m.querySelector('[data-tier-chip="measured"]'), `${path} ${from}`).toBeTruthy();
+      }
+      unmount();
+    }
+  });
+
+  it('before the upload nothing that is the assessed state is measured', () => {
+    for (const [, path, el] of SCREENS) {
+      const { container, unmount } = renderAt(path, el);
+      for (const m of Array.from(container.querySelectorAll('[data-tier="measured"]'))) {
+        expect(m.getAttribute('data-source'), `${path}: ${m.getAttribute('data-source')} is measured before the upload`).not.toMatch(STATE_SOURCES);
+      }
+      unmount();
+    }
+  });
+
+  it('after the upload the Dashboard, the Gap Matrix and the Control Detail have measured regions', () => {
+    useAssessment.setState({ evidenceUploaded: true });
+    for (const [name, path, el] of SCREENS.filter(([n]) => ['04_Dashboard', '05_GapMatrix', '06_ControlDetail'].includes(n))) {
+      const { container, unmount } = renderAt(path, el);
+      expect(container.querySelectorAll('[data-tier="measured"]').length, name).toBeGreaterThanOrEqual(1);
+      unmount();
+    }
+  });
+
+  it('the scope exclusions are measured before and after: scope does not depend on the upload', () => {
+    for (const uploaded of uploadedStates) {
+      useAssessment.setState({ evidenceUploaded: uploaded });
+      const { container, unmount } = renderAt('/exclusions', <Exclusions />);
+      expect(container.querySelectorAll('[data-tier="measured"][data-source="exclusions"]').length).toBeGreaterThanOrEqual(1);
+      unmount();
+    }
+  });
+
+  it('the invented material stays illustrative or planned: the trend, the top risks, the evidence dates, the chat, the collector', () => {
+    useAssessment.setState({ evidenceUploaded: true });
+    const dash = renderAt('/dashboard', <Dashboard />);
+    expect(dash.getByTestId('evidence-freshness').closest('[data-tier]')!.getAttribute('data-tier')).toBe('illustrative');
+    dash.unmount();
+    useAssessment.setState({ role: 'executive' });
+    const exec = renderAt('/dashboard', <Dashboard />);
+    const tierOf = (text: string) =>
+      Array.from(exec.container.querySelectorAll('*')).find((e) => e.children.length === 0 && e.textContent === text)?.closest('[data-tier]')?.getAttribute('data-tier');
+    expect(tierOf('Trend')).toBe('illustrative');
+    expect(tierOf('Top 3 risks')).toBe('illustrative');
+    exec.unmount();
+    useAssessment.setState({ role: 'owner' });
+    const chat = renderAt('/chat', <Chat />);
+    expect(chat.container.querySelector('[data-tier="measured"]')).toBeNull();
+    chat.unmount();
+    const intake = renderAt('/intake', <Intake />);
+    expect(intake.container.querySelector('[data-tier="measured"]')).toBeNull();
+  });
+
+  it('rule R\u2019s provenance is visible: the before-upload Dashboard says what its figures are', () => {
+    const { container } = renderAt('/dashboard', <Dashboard />);
+    expect(container.textContent).toContain('rule R\u2019s projection of the engine\u2019s data');
+    expect(container.textContent).toContain('not an engine run');
+  });
+
+  it('and nothing in the source marks a region measured without a source: the type refuses it', () => {
+    // `tier="measured"` without `from` does not type-check (ProvenanceProps); this holds the text as well
+    const raw = import.meta.glob('/src/screens/*.tsx', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+    for (const [p, text] of Object.entries(raw)) {
+      for (const m of text.matchAll(/<Provenance[^>]*tier="measured"[^>]*>/g)) expect(m[0], p).toContain('from=');
+    }
   });
 });

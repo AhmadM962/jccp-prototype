@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ChevronDown, Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Card, Pill } from '../components/ui';
-import { Provenance } from '../components/Provenance';
+import { Provenance, StateProvenance } from '../components/Provenance';
 import StateBadge from '../components/StateBadge';
 import ControlRow from '../components/ControlRow';
 import { useAssessment } from '../store/useAssessment';
@@ -153,7 +153,7 @@ export default function GapMatrix() {
         Control text is shown only for the controls the prototype holds it for.
       </p>
 
-      <Provenance tier={uploaded ? 'measured' : 'illustrative'} className="space-y-5">{capabilities.map((cap) => {
+      <StateProvenance uploaded={uploaded} overridesActive={Object.keys(overrides).length} from="claims" className="space-y-5">{capabilities.map((cap) => {
         if (!cap.organisationallyAssessable) {
           return (
             <div key={cap.id} className="rounded-xl border border-slate-200 bg-white px-5 py-4 opacity-70">
@@ -222,7 +222,7 @@ export default function GapMatrix() {
             </AnimatePresence>
           </div>
         );
-      })}</Provenance>
+      })}</StateProvenance>
     </div>
   );
 }

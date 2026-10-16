@@ -171,6 +171,8 @@ export interface RankItem {
 
 export interface Exclusion {
   controlId: string;
+  /** the control's capability, from the framework's weight table (the golden's exclusion row does not carry one) */
+  capability: CapabilityId;
   justification: string;
   reason: string;
   triggeringFlag: string;

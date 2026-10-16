@@ -13,12 +13,13 @@ import {
 } from 'recharts';
 import { AlertTriangle, Info, ArrowUpRight, ShieldAlert, TrendingUp } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
-import { Provenance } from '../components/Provenance';
+import { Provenance, StateProvenance } from '../components/Provenance';
 import ScoreInterval from '../components/ScoreInterval';
 import WidthDecomposition from '../components/WidthDecomposition';
 import FourViews from '../components/FourViews';
 import { useAssessment } from '../store/useAssessment';
 import { capabilities, TOTALS } from '../data/capabilities';
+import { CURRENT } from '../data/current';
 import { ASSURANCE_LEVELS, bandFloorPts } from '../lib/scoring';
 import { stateFor, unevidencedRows } from '../lib/views';
 import { coverageBreakdown, completenessStatement, unknownResolvedByUpload, movedOutOfUnknown, outsideScopeSentence, changedControlCount } from '../lib/coverage';
@@ -26,8 +27,7 @@ import { assuranceMeasurement, heldLevelReading, levelDefinition } from '../lib/
 import DemotionChecks from '../components/DemotionChecks';
 import { dashboardView } from '../lib/derive';
 import { gapReasonBreakdown, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
-import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
-import { EXCLUSIONS, SECTOR_BASELINE } from '../data/exclusions';
+import { EVIDENCE_FRESHNESS } from '../data/evidence';
 import { sectorById, regulatorDisplay } from '../data/sectors';
 import { Term } from '../tour/Term';
 
@@ -53,12 +53,12 @@ function PartialCreditNote({ uploaded }: { uploaded: boolean }) {
   const s = stateFor(uploaded);
   const credit = s.partialCredit[0] / s.partialCredit[1];
   return (
-    <Provenance tier="illustrative" className="mt-3 pt-3">
+    <StateProvenance uploaded={uploaded} from="after.partialCredit" className="mt-3 pt-3">
       <p data-testid="partial-credit-note" className="text-center text-[11px] text-slate-500">
         The {s.yellow} Partial controls here earn {credit.toFixed(2)} in total, credited one by one by the engine
         rather than at a flat weight. A control's page shows how its own share is credited.
       </p>
-    </Provenance>
+    </StateProvenance>
   );
 }
 
@@ -79,7 +79,7 @@ function ExecutiveDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-        <Provenance tier="illustrative"><Card title="Compliance interval" subtitle="Executive summary — the band, not a number">
+        <StateProvenance uploaded={uploaded} overridesActive={view.overridesActive} from="after.views.unweighted"><Card title="Compliance interval" subtitle="Executive summary — the band, not a number">
           <div className="py-3">
             <ScoreInterval
               lower={eff.lowerPct}
@@ -92,7 +92,7 @@ function ExecutiveDashboard() {
           </div>
           <WidthBreakdown uploaded={uploaded} eff={eff} overridesActive={view.overridesActive} />
           <PartialCreditNote uploaded={uploaded} />
-        </Card></Provenance>
+        </Card></StateProvenance>
         <Provenance tier="illustrative"><Card title="Trend" subtitle="last four collection cycles">
           <div className="flex items-end gap-3">
             {[
@@ -131,7 +131,7 @@ function ExecutiveDashboard() {
         </ol>
       </Card></Provenance>
 
-      <Provenance tier="illustrative"><div className="rounded-xl border-2 border-slate-300 bg-white p-5">
+      <StateProvenance uploaded={uploaded} from="after.views.unweighted"><div className="rounded-xl border-2 border-slate-300 bg-white p-5">
         <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
           <Info size={14} /> Completeness statement
         </div>
@@ -151,7 +151,7 @@ function ExecutiveDashboard() {
             regulatory obligation.
           </p>
         )}
-      </div></Provenance>
+      </div></StateProvenance>
 
       <p className="text-[11px] text-slate-400">
         Executive view — evidence excerpts, personal data and per-control detail are not shown. Switch role
@@ -200,14 +200,16 @@ export default function Dashboard() {
   const gapTotal = gapData.reduce((s, g) => s + g.count, 0);
 
   const naRate = (TOTALS.notApplicable / TOTALS.totalControls) * 100;
-  const unjustified = EXCLUSIONS.filter((e) => !e.justification).length;
+  const unjustified = CURRENT.exclusions.filter((e) => !e.justification).length;
+  const naCheck = CURRENT.assurance.checks.find((c) => c.cause === 'na_rate_above_baseline');
 
   return (
     <div className="space-y-6">
       {!uploaded && (
         <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
           <span>
-            Pre-upload state — testimony and documents only. Run the collector bundle on the{' '}
+            Pre-upload state — testimony and documents only. These figures are <strong>rule R&rsquo;s projection</strong> of the engine&rsquo;s data
+            (the verdicts that rest on testimony or documents), not an engine run. Run the collector bundle on the{' '}
             <Link to="/intake" className="font-semibold underline">
               Intake
             </Link>{' '}
@@ -254,7 +256,7 @@ export default function Dashboard() {
 
       {/* Top row: three cards */}
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr_1fr]">
-        <Provenance tier="illustrative"><Card dataTour="dash-interval" title="Compliance Interval" subtitle="Never a single percentage — the band is the cost of missing evidence">
+        <StateProvenance uploaded={uploaded} overridesActive={view.overridesActive} from="after.views.unweighted"><Card dataTour="dash-interval" title="Compliance Interval" subtitle="Never a single percentage — the band is the cost of missing evidence">
           <p className="text-center text-[11px] text-slate-400">
             The <Term k="compliance interval">compliance interval</Term>: true compliance lies somewhere in
             this band. Its width is what the assessment could not establish.
@@ -284,9 +286,9 @@ export default function Dashboard() {
           </div>
           <WidthBreakdown uploaded={uploaded} eff={eff} overridesActive={view.overridesActive} />
           <PartialCreditNote uploaded={uploaded} />
-        </Card></Provenance>
+        </Card></StateProvenance>
 
-        <Provenance tier="illustrative"><Card dataTour="dash-coverage" title="Coverage" subtitle={`${cs.covered} of ${cs.applicable} applicable controls`}>
+        <StateProvenance uploaded={uploaded} from="after.views.unweighted"><Card dataTour="dash-coverage" title="Coverage" subtitle={`${cs.covered} of ${cs.applicable} applicable controls`}>
           <div className="h-[190px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -314,15 +316,17 @@ export default function Dashboard() {
             <Term k="coverage">Coverage</Term> is the share of applicable controls with evidence.
           </p>
           {uploaded && (
-            <p className="mt-2 border-t border-slate-100 pt-2 text-[11px] text-slate-500">
-              Oldest evidence: <span className="tnum font-semibold">{EVIDENCE_FRESHNESS.oldestDays} days</span>{' '}
-              (<Link to={`/control/${EVIDENCE_FRESHNESS.oldestControl}`} className="text-accent hover:underline">{EVIDENCE_FRESHNESS.oldestControl}</Link>) ·{' '}
-              {EVIDENCE_FRESHNESS.approachingStaleness} controls approaching staleness · assessed {ASSESSMENT_DATE}
-            </p>
+            <Provenance tier="illustrative" note="Worked-example dates: the assessment file carries no evidence dates." className="mt-2 border-t border-slate-100 pt-2">
+              <p data-testid="evidence-freshness" className="text-[11px] text-slate-500">
+                Oldest evidence: <span className="tnum font-semibold">{EVIDENCE_FRESHNESS.oldestDays} days</span>{' '}
+                (<Link to={`/control/${EVIDENCE_FRESHNESS.oldestControl}`} className="text-accent hover:underline">{EVIDENCE_FRESHNESS.oldestControl}</Link>) ·{' '}
+                {EVIDENCE_FRESHNESS.approachingStaleness} controls approaching staleness
+              </p>
+            </Provenance>
           )}
-        </Card></Provenance>
+        </Card></StateProvenance>
 
-        <Provenance tier="illustrative"><Card dataTour="dash-assurance" title="Assurance level" subtitle="How the evidence was established">
+        <StateProvenance uploaded={uploaded} from="assurance"><Card dataTour="dash-assurance" title="Assurance level" subtitle="How the evidence was established">
           <ol className="space-y-2">
             {ASSURANCE_LEVELS.map((l) => {
               const active = l.id === currentAssurance;
@@ -359,11 +363,11 @@ export default function Dashboard() {
             </div>
           )}
           {uploaded && <DemotionChecks />}
-        </Card></Provenance>
+        </Card></StateProvenance>
       </div>
 
       {/* Per-capability rows */}
-      <Provenance tier="illustrative"><Card dataTour="dash-capabilities" title="By capability" subtitle="Each capability carries its own interval and coverage figure">
+      <StateProvenance uploaded={uploaded} from="after.capabilities"><Card dataTour="dash-capabilities" title="By capability" subtitle="Each capability carries its own interval and coverage figure">
         <div className="divide-y divide-slate-100">
           {capabilities.map((c) => {
             if (!c.organisationallyAssessable) {
@@ -401,16 +405,16 @@ export default function Dashboard() {
             );
           })}
         </div>
-      </Card></Provenance>
+      </Card></StateProvenance>
 
       {/* The four published views of the one assessment; the weights that explain two of them sit inside */}
-      <Provenance tier="illustrative">
+      <StateProvenance uploaded={uploaded} overridesActive={view.overridesActive} from="after.views">
         <FourViews uploaded={uploaded} effective={eff} overridesActive={view.overridesActive} />
-      </Provenance>
+      </StateProvenance>
 
       {/* Completeness + scope exclusions, side by side */}
       <div className="grid gap-5 lg:grid-cols-2">
-        <Provenance tier="illustrative"><div data-tour="dash-completeness" className="rounded-xl border-2 border-slate-300 bg-white p-5">
+        <StateProvenance uploaded={uploaded} from="after.views.unweighted"><div data-tour="dash-completeness" className="rounded-xl border-2 border-slate-300 bg-white p-5">
           <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
             <Info size={14} /> Completeness statement — cannot be dismissed
           </div>
@@ -434,22 +438,15 @@ export default function Dashboard() {
               regulatory obligation.
             </p>
           )}
-        </div></Provenance>
+        </div></StateProvenance>
 
-        <Provenance tier="illustrative"><div className="rounded-xl border-2 border-amber-300 bg-amber-50/60 p-5">
+        <Provenance tier="measured" from="exclusions"><div className="rounded-xl border-2 border-amber-300 bg-amber-50/60 p-5">
           <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700">
-            <AlertTriangle size={14} /> Scope exclusions — {TOTALS.notApplicable} of {TOTALS.totalControls} controls
+            <AlertTriangle size={14} /> Scope exclusions — {CURRENT.totals.excluded} of {CURRENT.totals.framework} controls
           </div>
           <p className="text-sm leading-relaxed text-slate-700">
-            <strong className="tnum">{TOTALS.notApplicable}</strong> controls ({fmt1(naRate)}%) are marked Not
-            Applicable. Sector baseline for {sectorById(profile.sector).label}:{' '}
-            <span className="tnum">{fmt1(SECTOR_BASELINE.naRatePct)}%</span> —{' '}
-            {naRate > SECTOR_BASELINE.naRatePct ? (
-              <span className="font-semibold text-amber-800">⚠ your rate is above baseline</span>
-            ) : (
-              <span>in line with baseline</span>
-            )}
-            .
+            <strong className="tnum">{CURRENT.totals.excluded}</strong> controls ({fmt1(naRate)}%) are marked Not
+            Applicable. {naCheck ? `The engine was not given a sector baseline to compare that rate with (its check: ${naCheck.status.replace('_', ' ')}).` : ''}
           </p>
           <p className="mt-1.5 text-[12px] text-slate-600">
             <strong className="tnum">{unjustified}</strong> exclusions carry no recorded justification ·{' '}
@@ -459,13 +456,13 @@ export default function Dashboard() {
             onClick={() => navigate('/exclusions')}
             className="mt-2 text-xs font-semibold text-accent hover:underline"
           >
-            Review all {TOTALS.notApplicable} exclusions →
+            Review all {CURRENT.totals.excluded} exclusions →
           </button>
         </div></Provenance>
       </div>
 
       {/* Gap-reason breakdown */}
-      <Provenance tier="illustrative"><Card
+      <StateProvenance uploaded={uploaded} from="after.unevidencedByReason"><Card
         title="Why controls are Unknown"
         subtitle={
           uploaded
@@ -495,7 +492,8 @@ export default function Dashboard() {
             artifact it needs; a non-zero value here would indicate a defect in the request planner.
           </span>
         </div>
-        <div className="mt-2 flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+        <Provenance tier="illustrative" note="Framework-wide figures from the engine's reports, not from this assessment file." className="mt-2">
+        <div className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
           <Info size={13} className="mt-0.5 shrink-0 text-slate-400" />
           <span>
             Every evidence signal records why it is or isn't negative-capable, framework-wide: of{' '}
@@ -507,7 +505,8 @@ export default function Dashboard() {
             conclusive path at all — each such control's detail page states the limit.
           </span>
         </div>
-      </Card></Provenance>
+        </Provenance>
+      </Card></StateProvenance>
 
       {uploaded && (
         <div className="flex justify-end">

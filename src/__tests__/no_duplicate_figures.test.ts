@@ -29,8 +29,7 @@ const ALLOW: Record<string, Partial<Record<Lit, number>>> = {
   'src/screens/01_Profile.tsx': { '135': 1, '405': 2, '576': 1 },
   // TODO round 3: use CICSC_CONTROLS
   'src/screens/04_Dashboard.tsx': { '405': 2 },
-  // TODO round 3: use APPLICABLE_CONTROLS, TOTAL_CONTROLS, CICSC_CONTROLS
-  'src/screens/08_Export.tsx': { '405': 1, '557': 3, '576': 2 },
+  // Round 3 removed every entry for 08_Export.tsx: its figures come from the assessment and figures.ts.
   // TODO round 3: use TOTAL_CONTROLS
   'src/screens/09_Chat.tsx': { '576': 2 },
   // TODO round 3: use TOTAL_CONTROLS

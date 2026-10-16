@@ -285,18 +285,27 @@ describe('Task 2 (Round 3): the controls ARE the portfolio: no sample, so nothin
   });
 });
 
-describe('Task 2: the whole aggregate is tagged illustrative', () => {
-  it('every region on the Dashboard is illustrative; none is measured', () => {
-    for (const uploaded of [false, true]) {
-      useAssessment.setState({ evidenceUploaded: uploaded });
-      const { container, unmount } = render(
-        <MemoryRouter>
-          <Dashboard />
-        </MemoryRouter>,
-      );
-      const tiers = new Set(Array.from(container.querySelectorAll('[data-tier]')).map((e) => e.getAttribute('data-tier')));
-      expect(Array.from(tiers)).toEqual(['illustrative']);
-      unmount();
+describe('Task 3: the aggregate is measured after the upload and a projection before it', () => {
+  const tiersOnDashboard = (uploaded: boolean) => {
+    useAssessment.setState({ evidenceUploaded: uploaded });
+    const { container, unmount } = render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>,
+    );
+    const out = Array.from(container.querySelectorAll('[data-tier]')).map((e) => [e.getAttribute('data-tier'), e.getAttribute('data-source')] as const);
+    unmount();
+    return out;
+  };
+  it('before the upload only the scope exclusions are measured on the Dashboard; every other region is rule R\u2019s projection or invented', () => {
+    expect(new Set(tiersOnDashboard(false).map(([t]) => t))).toEqual(new Set(['illustrative', 'measured']));
+    // the only measured region before the upload is the scope exclusions, which do not depend on it
+    expect(tiersOnDashboard(false).filter(([t]) => t === 'measured').every(([, from]) => from === 'exclusions')).toBe(true);
+  });
+  it('after the upload the figures are measured, each with its source: the interval, coverage, assurance, capabilities, views, reasons', () => {
+    const measured = new Set(tiersOnDashboard(true).filter(([t]) => t === 'measured').map(([, from]) => from));
+    for (const from of ['after.views.unweighted', 'after.partialCredit', 'assurance', 'after.capabilities', 'after.views', 'after.unevidencedByReason', 'exclusions']) {
+      expect(measured.has(from), from).toBe(true);
     }
   });
 });

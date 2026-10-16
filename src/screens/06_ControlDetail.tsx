@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Users, Clock, X, ShieldCheck, ShieldQuestion, FileQuestion, Crosshair } from 'lucide-react';
 import { Card, Pill, Button, SectionLabel } from '../components/ui';
-import { Provenance } from '../components/Provenance';
+import { Provenance, StateProvenance } from '../components/Provenance';
 import StateBadge, { STATE_META } from '../components/StateBadge';
 import EvidenceTrail from '../components/EvidenceTrail';
 import AttackExposure from '../components/AttackExposure';
@@ -118,7 +118,8 @@ export default function ControlDetail() {
   const cap = capabilityById(control.capability);
   const ex = control.example;
   const attack = ex?.attackKey ? attackBridge[ex.attackKey] : undefined;
-  const ranked = CURRENT.ranking.items.filter((it) => it.controlId === control.id);
+  // the ranking is the engine's output for the assessed state: it is not shown for the before-upload projection
+  const ranked = uploaded ? CURRENT.ranking.items.filter((it) => it.controlId === control.id) : [];
   const evItems = ex ? evidenceFor(control.id).filter((it) => uploaded || it.type === 'testimonial') : [];
   const ceiling = EVIDENCE_CEILING[effectiveClass];
   const canOverride = role === 'analyst' || role === 'owner';
@@ -126,7 +127,6 @@ export default function ControlDetail() {
 
   const oldest = evItems.reduce((m, it) => Math.max(m, ageDays(it.timestamp)), 0);
   const stale = ex ? oldest > ex.maxAgeDays : false;
-  const measuredTier = uploaded ? 'measured' : 'illustrative';
 
   // The partial credit this control earns is the engine's (`claim.credit`); the quartile it falls in is shown from the
   // share's lower bound. A `claimed` share is capped at the second quartile, so the credit can be lower than the quartile's.
@@ -163,7 +163,7 @@ export default function ControlDetail() {
       </Link>
 
       {/* 1. Header */}
-      <Provenance tier={measuredTier}>
+      <StateProvenance uploaded={uploaded} overridesActive={ov ? 1 : 0} from="claims">
         <Card>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
@@ -191,10 +191,10 @@ export default function ControlDetail() {
             </div>
           </div>
         </Card>
-      </Provenance>
+      </StateProvenance>
 
       {/* 2. What the engine concluded — every value here is read from the assessment file */}
-      <Provenance tier={measuredTier} note={uploaded ? undefined : 'Before the upload this is rule R’s projection of the engine’s claim, not an engine run.'}>
+      <StateProvenance uploaded={uploaded} overridesActive={ov ? 1 : 0} from="claims">
         <Card dataTour="cd-measured" title="What the engine concluded" subtitle={uploaded ? 'Read from the assessment file named at the top of the page' : 'Before the upload: which verdicts exist is rule R’s projection'}>
           <dl data-testid="measured-panel" className="divide-y divide-slate-100">
             <Fact label="State" testid="measured-state">
@@ -282,7 +282,7 @@ export default function ControlDetail() {
             <p className="mt-3 text-[12px] text-slate-600">{claim.overruled.length} document{claim.overruled.length === 1 ? '' : 's'} overruled by machine evidence, retained on the claim.</p>
           )}
         </Card>
-      </Provenance>
+      </StateProvenance>
 
       {/* 3. Standards mapping — the NCSC catalogue content the prototype holds for this control (not from the assessment) */}
       {(control.iso.length > 0 || control.nist.length > 0 || control.description) && (
@@ -379,7 +379,7 @@ export default function ControlDetail() {
 
       {/* 5. Evidence sufficiency ladder: the engine's rule applied to this control's measured evidence class */}
       {control.authored && (
-        <Provenance tier={measuredTier}>
+        <StateProvenance uploaded={uploaded} overridesActive={ov ? 1 : 0} from="claims">
           <Card title="Evidence sufficiency" subtitle="The evidence class sets the highest state a control may reach">
             <div className="flex items-stretch gap-2">
               {LADDER.map((cls) => {
@@ -402,12 +402,12 @@ export default function ControlDetail() {
               Compliant — only machine-collected artifacts or an analyst signature.
             </p>
           </Card>
-        </Provenance>
+        </StateProvenance>
       )}
 
       {/* 6. ATT&CK exposure: the engine's, where the control is ranked; the worked-example chain, where it has one */}
       {ranked.length > 0 && (
-        <Provenance tier="measured" note="The engine's exposure for this control's ranked action.">
+        <Provenance tier="measured" from="ranking.items" note="The engine's exposure for this control's ranked action.">
           <Card dataTour="cd-attack" title="ATT&CK exposure (engine)" subtitle="From the ranking in the assessment file">
             {ranked.slice(0, 1).map((it) => (
               <div key={it.rank + it.description} data-testid="engine-attack" className="text-sm text-slate-700">
@@ -458,7 +458,7 @@ export default function ControlDetail() {
       {control.authored && (base.state === 'unknown' || base.evidenceClass === 'testimonial') && (ranked.length > 0 || (ex && ex.requiredSignals.length > 0)) && (
         <Card title="How to evidence this" subtitle="Move this control out of Unknown / off the Yellow ceiling">
           {ranked.length > 0 && (
-            <Provenance tier="measured" note="The engine's ranked action for this control.">
+            <Provenance tier="measured" from="ranking.items" note="The engine's ranked action for this control.">
               <ul data-testid="engine-actions" className="space-y-1.5 text-sm text-slate-700">
                 {ranked.map((it) => (
                   <li key={it.description} className="flex items-start gap-2">

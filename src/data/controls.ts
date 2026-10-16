@@ -239,6 +239,9 @@ function build(c: Claim): Control {
   };
 }
 
+/** Control text, where the prototype holds it (it does not for most controls: the goldens carry none). */
+export const controlText = (id: string): string | undefined => BY_NUM.get(Number(id.split('-')[1]))?.d;
+
 let cache: { id: ProfileId; list: Control[]; byId: Map<string, Control> } | null = null;
 function current() {
   const id = activeProfileId();

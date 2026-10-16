@@ -278,7 +278,7 @@ def derive(root, golden):
         'parameters': camelize(d['parameters']),
         'cicsc': camelize(cic),
         'totals': {'framework': len(rw), 'applicable': len(claims), 'excluded': len(excluded)},
-        'exclusions': camelize(d['exclusions']),
+        'exclusions': [dict(camelize(e), capability=CAP[rw[e['control_id']]['capability']]) for e in d['exclusions']],
         'before': result_before, 'after': result_after,
         'weightBasisCounts': {'applicable': wb(basis), 'framework': wb(C.Counter(x['weight_basis'] for x in rw.values())), 'excluded': wb(C.Counter(rw[i]['weight_basis'] for i in excluded))},
         'assurance': {'distribution': {k: dist.get(k, 0) for k in ('L0', 'L1', 'L2', 'L3')}, 'proportionThreshold': frac(thr), 'reported': head, 'baseLevel': GOLD_LEVEL[A['base_level']],
