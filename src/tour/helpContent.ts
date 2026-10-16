@@ -104,6 +104,14 @@ export const SCREEN_HELP: Record<string, ScreenHelp> = {
       'Use “Submit” to mark a task done.',
     ],
   },
+  '/authoring': {
+    title: 'Authoring Coverage',
+    lines: [
+      'How much of the framework the tool has been told how to assess, and what it would take to cover the rest.',
+      'The first card is the proof that the work finishes: a whole capability written down end to end.',
+      'A control with no written evidence requirement is Unknown because of the tool, not because of the organisation.',
+    ],
+  },
   '/chat': {
     title: 'Compliance Chat',
     lines: [

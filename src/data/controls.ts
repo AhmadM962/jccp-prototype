@@ -4,6 +4,7 @@
 
 import { isoNamesFor, nistNamesFor } from './standards';
 import { MINISTRY, type StateFigures } from './ministry';
+import { AUTHORED_CONTROLS, AUTHORING, SIGNALS_TOTAL } from './authoring';
 
 export type ControlState = 'green' | 'yellow' | 'red' | 'grey' | 'unknown';
 export type EvidenceClass = 'none' | 'testimonial' | 'artifact' | 'analyst_signed';
@@ -119,6 +120,12 @@ const S = (state: ControlState, ev: EvidenceClass, prov: string[] = [], gap?: Ga
 // (484/620) are counts → measured; 394 stays claimed — its record says only "Coverage ~80%", a tilde
 // and no denominator, so nobody counted (evidence.ts). 394 is the control whose share is still capped
 // after the upload.
+// `unauthored: true` seeds (21 of 48): controls with no authored evidence requirement. They are chosen so
+// the sample never shows more authored controls in a capability than the framework has (asserted in
+// src/__tests__/authoring.test.tsx), and each is a control the engine also has no authored path for.
+// Ten other sample controls are shown as authored here although the engine has none for them (e.g. 30, 394,
+// 435): remediation, evidence and the Round 1 shares demonstration depend on them, and the sample is
+// illustrative; Round 3 replaces it with the engine's data.
 const seeds: Seed[] = [
   { n: 1, d: 'Develop and document control policies', cap: 'arch', iso: ['5.1.1', '9.1.1'], nist: ['AC-1', 'AT-1', 'AU-1', 'CA-1', 'CM-1'], req: [], before: ['unknown', 'none', 'unauthored'], after: ['unknown', 'none', 'unauthored'], unauthored: true },
   { n: 3, d: 'Address information security requirements and risks in all project management', cap: 'arch', iso: ['6.1.5', '14.1.1'], nist: [], req: [], before: ['unknown', 'none', 'unauthored'], after: ['unknown', 'none', 'unauthored'], unauthored: true },
@@ -275,21 +282,24 @@ export interface EvidenceBasisRow {
   count: number;
 }
 
+// Corrected in Round 2 from the signal catalogue's own counts (the earlier 68 / 31 / 15 / 1 was wrong on
+// three of the four): 38 are negative-capable; of the 77 that are not, 45 are so by rule, 31 by judgement
+// and 1 through uncertainty. 38 + 45 + 31 + 1 = 115. The negative-capable count is shared with the
+// Authoring Coverage screen (src/data/authoring.ts).
 export const EVIDENCE_BASIS_BREAKDOWN: EvidenceBasisRow[] = [
-  { basis: 'negative_capable', count: 68 },
-  { basis: 'by_rule', count: 31 },
-  { basis: 'judgement', count: 15 },
+  { basis: 'negative_capable', count: AUTHORING.signals.negativeCapable },
+  { basis: 'by_rule', count: 45 },
+  { basis: 'judgement', count: 31 },
   { basis: 'uncertainty', count: 1 },
 ];
-// 68 + 31 + 15 + 1 = 115
-export const EVIDENCE_SIGNAL_TOTAL = 115;
+export const EVIDENCE_SIGNAL_TOTAL = SIGNALS_TOTAL;
 
 // No-conclusive-path controls (brief §Change 7): require an organisational arrangement
 // rather than a system state. Can reach Partial on documentary evidence, but never
 // Compliant without analyst attestation.
 export const NO_CONCLUSIVE_PATH_STATS = {
-  authoredTotal: 66,
-  noPath: 7,
+  authoredTotal: AUTHORED_CONTROLS,
+  noPath: AUTHORING.authoredIndicativeOnly,
   seededNoPath: 3,
 };
 

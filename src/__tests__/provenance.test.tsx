@@ -18,6 +18,7 @@ import Exclusions from '../screens/10_Exclusions';
 import Admin from '../screens/11_Admin';
 import Tasks from '../screens/12_Tasks';
 import Rollup from '../screens/13_Rollup';
+import Authoring from '../screens/14_Authoring';
 
 const SCREENS: [string, string, ReactElement][] = [
   ['01_Profile', '/profile', <Profile />],
@@ -33,6 +34,7 @@ const SCREENS: [string, string, ReactElement][] = [
   ['11_Admin', '/admin', <Admin />],
   ['12_Tasks', '/tasks', <Tasks />],
   ['13_Rollup', '/rollup', <Rollup />],
+  ['14_Authoring', '/authoring', <Authoring />],
 ];
 
 function renderAt(path: string, el: ReactElement) {
@@ -106,7 +108,7 @@ describe('every screen states its provenance', () => {
     expect(container.querySelectorAll('[data-tier-chip="measured"]').length).toBe(0);
   });
 
-  it('covers all 13 screens', () => {
-    expect(SCREENS.length).toBe(13);
+  it('covers all 14 screens', () => {
+    expect(SCREENS.length).toBe(14);
   });
 });
