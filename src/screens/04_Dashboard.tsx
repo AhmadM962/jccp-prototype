@@ -22,7 +22,7 @@ import { capabilities, TOTALS } from '../data/capabilities';
 import { ASSURANCE_LEVELS, bandFloorPts } from '../lib/scoring';
 import { stateFor, unevidencedRows } from '../lib/views';
 import { coverageBreakdown, completenessStatement, unknownResolvedByUpload, movedOutOfUnknown, outsideScopeSentence, seededChangedCount } from '../lib/coverage';
-import { assuranceMeasurement, levelDefinition } from '../lib/assurance';
+import { assuranceMeasurement, heldLevelReading, levelDefinition } from '../lib/assurance';
 import DemotionChecks from '../components/DemotionChecks';
 import { dashboardView } from '../lib/derive';
 import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
@@ -189,6 +189,7 @@ export default function Dashboard() {
 
   const currentAssurance = (uploaded ? TOTALS.after : TOTALS.before).assurance;
   const assurance = assuranceMeasurement();
+  const before = heldLevelReading('before');
 
   const gapData = GAP_REASON_BREAKDOWN.map((g) => ({
     reason: g.reason,
@@ -338,6 +339,14 @@ export default function Dashboard() {
               );
             })}
           </ol>
+          {!uploaded && (
+            <div data-testid="assurance-boundary" className="mt-3 rounded-lg bg-slate-50 p-3 text-[11px] leading-snug text-slate-700">
+              <span className="tnum">
+                {before.count} of {before.total} ({before.measuredPct}%) · threshold {before.thresholdPct}% · reported {before.level}
+                {before.atBoundary ? ' — at the boundary' : ''}
+              </span>
+            </div>
+          )}
           {uploaded && assurance.next && (
             <div data-testid="assurance-measurement" className="mt-3 rounded-lg bg-slate-50 p-3 text-[11px] leading-snug text-slate-600">
               <span className="font-semibold text-slate-800">The collection succeeded; the level did not rise.</span>{' '}

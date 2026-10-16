@@ -179,6 +179,13 @@ export const ASSURANCE = {
   reported: 'L1',
 } as const;
 
+/** The before-state's own distribution (rule R's 15 verdicts), and the level the engine's rule gives it. This is a
+ *  projection, not an engine run: it is what the engine's rule says of the verdicts that exist before an upload. */
+export const ASSURANCE_BEFORE = {
+  distribution: { L0: 3, L1: 12, L2: 0, L3: 0 },
+  reported: 'L1',
+} as const;
+
 /** The premises of the before-state's rule, asserted by the generator from the engine's output. */
 export const RULE_R_PROVENANCE = {
   /** Compliant verdicts in the engine's output, and how many of them rest on machine collection */

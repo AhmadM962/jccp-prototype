@@ -174,6 +174,12 @@ assert assurance_level(o) == 'L2' and o['gap_basis'] == 'observed' and o['eviden
 assert o['negative_evidence_module_run_id'] is None and o['satisfied_path_label'] is None
 assert not any(before(i) is not None for i in outside)
 print('--- provenance of rule R: compliants', len(greens), '(all machine_collected) | before verdicts', len(b_known), '= the engine L0/L1 verdicts, no exception | verdicts outside the authored scope', len(outside), outside, '(observed, artifact: arrive with the bundle)')
+bdist = C.Counter(assurance_level(claims[i]) for i in b_known)
+btotal = len(b_known); bcum = 0; bhead = None
+for lvl in ('L3', 'L2', 'L1', 'L0'):
+    bcum += bdist.get(lvl, 0)
+    if F(bcum, btotal) >= thr: bhead = lvl; break
+print('--- before-state assurance: distribution', dict(bdist), '| headline', bhead, '| share at that level or above', F(sum(bdist.get(l, 0) for l in ('L1', 'L2', 'L3')), btotal), 'of', btotal)
 prov = {'greens': len(greens), 'b_known': len(b_known), 'outside': len(outside), 'outside_ids': outside}
 
 # the engine's demotion checks: every one is listed, and one that could not run is neither passed nor failed
@@ -355,6 +361,13 @@ export const ASSURANCE = {
   reported: '%s',
 } as const;
 
+/** The before-state's own distribution (rule R's 15 verdicts), and the level the engine's rule gives it. This is a
+ *  projection, not an engine run: it is what the engine's rule says of the verdicts that exist before an upload. */
+export const ASSURANCE_BEFORE = {
+  distribution: { L0: %d, L1: %d, L2: %d, L3: %d },
+  reported: '%s',
+} as const;
+
 /** The premises of the before-state's rule, asserted by the generator from the engine's output. */
 export const RULE_R_PROVENANCE = {
   /** Compliant verdicts in the engine's output, and how many of them rest on machine collection */
@@ -393,6 +406,7 @@ export const DEMOTION_CHECKS: readonly DemotionCheck[] = [
 export const DEMOTIONS_APPLIED = %d;
 export const BASE_LEVEL = '%s';
 """ % (dist['L0'], dist['L1'], dist['L2'], dist['L3'], thr.numerator, thr.denominator, head,
+       bdist.get('L0', 0), bdist.get('L1', 0), bdist.get('L2', 0), bdist.get('L3', 0), bhead,
        prov['greens'], prov['greens'], prov['b_known'], prov['b_known'], prov['outside'],
        ', '.join("{ id: '%s', state: '%s', gapBasis: %s }" % (x, claims[x]['state'], 'null' if claims[x]['gap_basis'] is None else "'%s'" % claims[x]['gap_basis']) for x in prov['outside_ids']),
        '\n'.join("  { cause: '%s', status: '%s', count: %s, of: %s, threshold: %s, because: %s, components: [%s] }," % (

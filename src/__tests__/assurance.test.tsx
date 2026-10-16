@@ -12,12 +12,12 @@ import Remediation from '../screens/07_Remediation';
 import Sidebar from '../components/layout/Sidebar';
 import { useAssessment } from '../store/useAssessment';
 import { TOTALS } from '../data/capabilities';
-import { ASSURANCE, DEMOTIONS_APPLIED, DEMOTION_CHECKS, MINISTRY, RULE_R_PROVENANCE, VERDICT_OUTSIDE_AUTHORED_SCOPE, type DemotionCheck } from '../data/ministry';
+import { ASSURANCE, ASSURANCE_BEFORE, DEMOTIONS_APPLIED, DEMOTION_CHECKS, MINISTRY, RULE_R_PROVENANCE, VERDICT_OUTSIDE_AUTHORED_SCOPE, type DemotionCheck } from '../data/ministry';
 import { checkDetail } from '../components/DemotionChecks';
 import { controls } from '../data/controls';
 import { ASSURANCE_LEVELS } from '../lib/scoring';
 import { completenessStatement, movedOutOfUnknown, outsideScopeSentence, unknownResolvedByUpload } from '../lib/coverage';
-import { assuranceMeasurement, atOrAbove, headlineLevel, levelDefinition, levelHolds, meetsThreshold, pctDown, settledVerdicts } from '../lib/assurance';
+import { assuranceMeasurement, atOrAbove, headlineLevel, heldLevelReading, levelDefinition, levelHolds, meetsThreshold, pctDown, settledVerdicts } from '../lib/assurance';
 import { TOUR_STEPS } from '../tour/steps';
 
 const raw = import.meta.glob('/src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
@@ -287,6 +287,29 @@ describe('provenance of rule R (the before-state)', () => {
     expect(header).toContain('carries no');
     expect(header).not.toContain('NOT an engine figure');
     expect(header).not.toContain('KEPT');
+  });
+});
+
+describe('the before-state sits on the threshold and says so', () => {
+  it('its own distribution gives L1, and 12 of 15 is exactly 80%: at the boundary', () => {
+    expect(ASSURANCE_BEFORE.distribution).toEqual({ L0: 3, L1: 12, L2: 0, L3: 0 });
+    expect(headlineLevel('before')).toBe(ASSURANCE_BEFORE.reported);
+    expect(heldLevelReading('before')).toMatchObject({ level: 'L1', count: 12, total: 15, measuredPct: 80, thresholdPct: 80, atBoundary: true });
+  });
+  it('and the exact comparison is exact: the after-state\u2019s 49 of 52 is not at the boundary', () => {
+    expect(heldLevelReading('after')).toMatchObject({ level: 'L1', count: 49, total: 52, atBoundary: false });
+  });
+  it('one verdict fewer at L1 or above would lose the level (the boundary is real, not rhetorical)', () => {
+    expect(meetsThreshold(12, 15, ASSURANCE.proportionThreshold)).toBe(true);
+    expect(meetsThreshold(11, 15, ASSURANCE.proportionThreshold)).toBe(false);
+  });
+  it('the Dashboard before the upload prints the whole line, contiguously, and not after it', () => {
+    const before = renderAt('/dashboard', <Dashboard />, '/dashboard');
+    expect(before.getByTestId('assurance-boundary').textContent).toBe('12 of 15 (80%) \u00b7 threshold 80% \u00b7 reported L1 \u2014 at the boundary');
+    before.unmount();
+    useAssessment.setState({ evidenceUploaded: true });
+    const after = renderAt('/dashboard', <Dashboard />, '/dashboard');
+    expect(after.queryByTestId('assurance-boundary')).toBeNull();
   });
 });
 

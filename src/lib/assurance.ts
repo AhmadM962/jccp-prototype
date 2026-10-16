@@ -8,32 +8,48 @@
 // evidence collected": collecting machine evidence moves verdicts out of Unknown, and the level rises only
 // if enough of the verdicts then rest on it.
 
-import { ASSURANCE, type Frac } from '../data/ministry';
+import { ASSURANCE, ASSURANCE_BEFORE, type Frac } from '../data/ministry';
 import { ASSURANCE_LEVELS } from './scoring';
 
 export type AssuranceId = (typeof ASSURANCE_LEVELS)[number]['id'];
 
 const HIGHEST_FIRST: readonly AssuranceId[] = ['L3', 'L2', 'L1', 'L0'];
 
-/** Verdicts at `level` or above, and the verdicts there are in all. */
-export const atOrAbove = (level: AssuranceId): number => {
+/** The state a distribution describes: `after` is the engine's assessed state; `before` is rule R's projection of it. */
+export type When = 'before' | 'after';
+const distributionFor = (when: When) => (when === 'before' ? ASSURANCE_BEFORE.distribution : ASSURANCE.distribution);
+
+/** Verdicts at `level` or above. */
+export const atOrAbove = (level: AssuranceId, when: When = 'after'): number => {
   let n = 0;
   for (const l of HIGHEST_FIRST) {
-    n += ASSURANCE.distribution[l];
+    n += distributionFor(when)[l];
     if (l === level) break;
   }
   return n;
 };
-export const settledVerdicts = (): number => HIGHEST_FIRST.reduce((n, l) => n + ASSURANCE.distribution[l], 0);
+/** Verdicts in all: the controls that have a verdict. */
+export const settledVerdicts = (when: When = 'after'): number => HIGHEST_FIRST.reduce((n, l) => n + distributionFor(when)[l], 0);
 
 /** count/total >= threshold, exactly (no float comparison). */
 export const meetsThreshold = (count: number, total: number, threshold: Frac): boolean =>
   count * threshold[1] >= total * threshold[0];
 
 /** The engine's rule, recomputed from the distribution. */
-export const headlineLevel = (): AssuranceId => {
-  const total = settledVerdicts();
-  return HIGHEST_FIRST.find((l) => meetsThreshold(atOrAbove(l), total, ASSURANCE.proportionThreshold)) ?? 'L0';
+export const headlineLevel = (when: When = 'after'): AssuranceId => {
+  const total = settledVerdicts(when);
+  return HIGHEST_FIRST.find((l) => meetsThreshold(atOrAbove(l, when), total, ASSURANCE.proportionThreshold)) ?? 'L0';
+};
+
+/** How close the REPORTED level is to losing its place: the share of verdicts at that level or above, against the
+ *  threshold. `atBoundary` is an exact comparison (equal, not nearly equal): at the boundary a single verdict
+ *  either way changes the reported level. */
+export const heldLevelReading = (when: When) => {
+  const level = headlineLevel(when);
+  const count = atOrAbove(level, when);
+  const total = settledVerdicts(when);
+  const [n, d] = ASSURANCE.proportionThreshold;
+  return { level, count, total, measuredPct: pctDown(count, total), thresholdPct: thresholdPct(), atBoundary: count * d === total * n };
 };
 
 /** Whole-number percentage, rounded DOWN: a figure below the threshold must never be displayed as equal to it. */
