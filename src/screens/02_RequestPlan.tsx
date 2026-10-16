@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Server, Cpu, HardDriveDownload, ClipboardList } from 'lucide-react';
 import { Card, Button, CodeBlock, Pill } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
 import { requestPlan, REQUEST_PLAN_SUMMARY, type RequestArtifact } from '../data/scenario';
 
@@ -70,7 +71,7 @@ export default function RequestPlan() {
 
   return (
     <div className="space-y-6">
-      <Card dataTour="plan-header">
+      <Provenance tier="illustrative"><Card dataTour="plan-header">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 text-accent">
             <Server size={22} />
@@ -89,14 +90,14 @@ export default function RequestPlan() {
             </p>
           </div>
         </div>
-      </Card>
+      </Card></Provenance>
 
-      <Card
+      <Provenance tier="illustrative"><Card
         dataTour="plan-automated"
         title="Automated"
         subtitle={`${REQUEST_PLAN_SUMMARY.automatedCount} artifacts collected by the signed collector · covers ${REQUEST_PLAN_SUMMARY.automatedControls} controls · ~15 min`}
         right={
-          <div data-tour="plan-collectors" className="flex flex-col items-end gap-1">
+          <Provenance tier="planned"><div data-tour="plan-collectors" className="flex flex-col items-end gap-1">
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setCollector('Windows/AD')}>
                 <HardDriveDownload size={13} /> Windows/AD collector
@@ -110,20 +111,20 @@ export default function RequestPlan() {
                 {collector} collector package prepared (simulated) · Ed25519-signed · run on-premise
               </span>
             )}
-          </div>
+          </div></Provenance>
         }
       >
         <ArtifactTable rows={automated} tourFirstRow="plan-firstrow" />
-      </Card>
+      </Card></Provenance>
 
-      <Card
+      <Provenance tier="illustrative"><Card
         title="Manual"
         subtitle={`${REQUEST_PLAN_SUMMARY.manualCount} artifacts requiring a console export by the named owner`}
       >
         <ArtifactTable rows={manual} />
-      </Card>
+      </Card></Provenance>
 
-      <Card
+      <Provenance tier="illustrative"><Card
         title="Full plan"
         subtitle={showAll ? `All ${allSorted.length} artifacts by controls unlocked` : `Top ${TOP_N} of ${allSorted.length} by controls unlocked`}
         right={
@@ -133,7 +134,7 @@ export default function RequestPlan() {
         }
       >
         <ArtifactTable rows={showAll ? allSorted : allSorted.slice(0, TOP_N)} />
-      </Card>
+      </Card></Provenance>
 
       <div className="flex justify-end">
         <Button

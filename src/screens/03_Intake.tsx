@@ -15,6 +15,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { Card, Button, Pill } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
 import { interviews, type InterviewRole } from '../data/interviews';
 import { bundleStages, moduleLedger, BUNDLE_MANIFEST, requestPlan, type ModuleStatus } from '../data/scenario';
@@ -53,7 +54,7 @@ function InterviewPanel({ role, onComplete }: { role: InterviewRole; onComplete:
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-      <Card
+      <Provenance tier="illustrative"><Card
         title={role.title}
         subtitle={role.persona}
         right={
@@ -118,10 +119,10 @@ function InterviewPanel({ role, onComplete }: { role: InterviewRole; onComplete:
             </motion.div>
           )}
         </AnimatePresence>
-      </Card>
+      </Card></Provenance>
 
       <div>
-        <Card dataTour="intake-claims" title="Extracted claims" subtitle="Testimony is capped at Yellow — never Green">
+        <Provenance tier="illustrative"><Card dataTour="intake-claims" title="Extracted claims" subtitle="Testimony is capped at Yellow — never Green">
           <div className="space-y-2.5">
             {role.claims.slice(0, claimsVisible).map((claim, i) => (
               <motion.div
@@ -146,7 +147,7 @@ function InterviewPanel({ role, onComplete }: { role: InterviewRole; onComplete:
               <p className="text-sm text-slate-400">Claims appear here as the interview progresses.</p>
             )}
           </div>
-        </Card>
+        </Card></Provenance>
       </div>
     </div>
   );
@@ -196,13 +197,13 @@ function BundlePanel() {
 
   return (
     <div className="space-y-5">
-      <Card
+      <Provenance tier="illustrative"><Card
         title="Evidence intake"
         subtitle={`${filled} of ${slots.length} artifact slots filled · ${controlsEvidenced} controls evidenced · est. coverage ${covEstimate}%`}
         right={
-          <Button dataTour="bundle-upload" onClick={run} disabled={stage >= 0 && !done}>
+          <Provenance tier="planned" as="span" className="inline-block"><Button dataTour="bundle-upload" onClick={run} disabled={stage >= 0 && !done}>
             <UploadCloud size={13} /> {done ? 'Bundle processed' : 'Simulate collector bundle upload (fills 14)'}
-          </Button>
+          </Button></Provenance>
         }
       >
         {lastFeedback && (
@@ -239,10 +240,10 @@ function BundlePanel() {
         <div className="mt-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
           Other evidence — drop anything not listed above. Simulated; no file is parsed.
         </div>
-      </Card>
+      </Card></Provenance>
 
       {stage >= 0 && (
-        <Card title="Ingestion" subtitle={`${BUNDLE_MANIFEST.collector} · signature ${BUNDLE_MANIFEST.signatureAlg}`}>
+        <Provenance tier="planned"><Card title="Ingestion" subtitle={`${BUNDLE_MANIFEST.collector} · signature ${BUNDLE_MANIFEST.signatureAlg}`}>
           <ol className="space-y-1.5">
             {bundleStages.map((s, i) => {
               const state = i < stage ? 'done' : i === stage ? 'running' : 'pending';
@@ -268,12 +269,12 @@ function BundlePanel() {
               );
             })}
           </ol>
-        </Card>
+        </Card></Provenance>
       )}
 
       {done && (
         <>
-          <Card dataTour="module-ledger" title="Module execution ledger" subtitle="Which collector modules ran, and with what result">
+          <Provenance tier="illustrative"><Card dataTour="module-ledger" title="Module execution ledger" subtitle="Which collector modules ran, and with what result">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -319,7 +320,7 @@ function BundlePanel() {
                 failure.
               </span>
             </div>
-          </Card>
+          </Card></Provenance>
 
           <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4">
             <div>
@@ -418,7 +419,7 @@ function InterviewList({ onOpen, done }: { onOpen: (id: string) => void; done: s
 
   return (
     <div className="space-y-5">
-      <div data-tour="intake-roles" className="grid gap-4 sm:grid-cols-3">
+      <Provenance tier="illustrative"><div data-tour="intake-roles" className="grid gap-4 sm:grid-cols-3">
         {interviews.map((r) => {
           const link = links[r.id];
           return (
@@ -435,7 +436,7 @@ function InterviewList({ onOpen, done }: { onOpen: (id: string) => void; done: s
                   <Pill tone="slate">not started</Pill>
                 )}
               </div>
-              <div className="mt-3 border-t border-slate-100 pt-3">
+              <Provenance tier="planned"><div className="mt-3 border-t border-slate-100 pt-3">
                 {link ? (
                   <div className="text-[11px]">
                     <code className="block truncate rounded bg-slate-100 px-2 py-1 font-mono text-slate-600">
@@ -463,13 +464,13 @@ function InterviewList({ onOpen, done }: { onOpen: (id: string) => void; done: s
                     <Link2 size={11} /> Generate scoped link
                   </button>
                 )}
-              </div>
+              </div></Provenance>
             </div>
           );
         })}
-      </div>
+      </div></Provenance>
 
-      <Card title="Review queue" subtitle="who is answering what, and where it stands">
+      <Provenance tier="illustrative"><Card title="Review queue" subtitle="who is answering what, and where it stands">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -507,7 +508,7 @@ function InterviewList({ onOpen, done }: { onOpen: (id: string) => void; done: s
             </tbody>
           </table>
         </div>
-      </Card>
+      </Card></Provenance>
     </div>
   );
 }

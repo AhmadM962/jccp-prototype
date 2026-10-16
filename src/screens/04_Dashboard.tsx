@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import { AlertTriangle, Info, ArrowUpRight, ShieldAlert, TrendingUp, Scale } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import ScoreInterval from '../components/ScoreInterval';
 import { useAssessment } from '../store/useAssessment';
 import { capabilities, TOTALS } from '../data/capabilities';
@@ -46,7 +47,7 @@ function ExecutiveDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-        <Card title="Compliance interval" subtitle="Executive summary — the band, not a number">
+        <Provenance tier="illustrative"><Card title="Compliance interval" subtitle="Executive summary — the band, not a number">
           <div className="py-3">
             <ScoreInterval
               lower={eff.lowerPct}
@@ -57,8 +58,8 @@ function ExecutiveDashboard() {
               subline={`Assurance ${uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented'}. ${cs.unevidenced} controls still unevidenced.`}
             />
           </div>
-        </Card>
-        <Card title="Trend" subtitle="last four collection cycles">
+        </Card></Provenance>
+        <Provenance tier="illustrative"><Card title="Trend" subtitle="last four collection cycles">
           <div className="flex items-end gap-3">
             {[
               { q: 'Q4-25', lo: 41, hi: 92 },
@@ -77,10 +78,10 @@ function ExecutiveDashboard() {
           <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-emerald-700">
             <TrendingUp size={12} /> band narrowing as coverage improves
           </p>
-        </Card>
+        </Card></Provenance>
       </div>
 
-      <Card title="Top 3 risks" subtitle="what to escalate">
+      <Provenance tier="illustrative"><Card title="Top 3 risks" subtitle="what to escalate">
         <ol className="space-y-2">
           {TOP_RISKS.map((r, i) => (
             <li key={r.id}>
@@ -94,9 +95,9 @@ function ExecutiveDashboard() {
             </li>
           ))}
         </ol>
-      </Card>
+      </Card></Provenance>
 
-      <div className="rounded-xl border-2 border-slate-300 bg-white p-5">
+      <Provenance tier="illustrative"><div className="rounded-xl border-2 border-slate-300 bg-white p-5">
         <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
           <Info size={14} /> Completeness statement
         </div>
@@ -114,7 +115,7 @@ function ExecutiveDashboard() {
             regulatory obligation.
           </p>
         )}
-      </div>
+      </div></Provenance>
 
       <p className="text-[11px] text-slate-400">
         Executive view — evidence excerpts, personal data and per-control detail are not shown. Switch role
@@ -215,7 +216,7 @@ export default function Dashboard() {
 
       {/* Top row: three cards */}
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr_1fr]">
-        <Card dataTour="dash-interval" title="Compliance Interval" subtitle="Never a single percentage — the band is the cost of missing evidence">
+        <Provenance tier="illustrative"><Card dataTour="dash-interval" title="Compliance Interval" subtitle="Never a single percentage — the band is the cost of missing evidence">
           <p className="text-center text-[11px] text-slate-400">
             The <Term k="compliance interval">compliance interval</Term>: true compliance lies somewhere in
             this band. Its width is what the assessment could not establish.
@@ -242,9 +243,9 @@ export default function Dashboard() {
               </p>
             )}
           </div>
-        </Card>
+        </Card></Provenance>
 
-        <Card dataTour="dash-coverage" title="Coverage" subtitle={`${cs.covered} of ${cs.applicable} applicable controls`}>
+        <Provenance tier="illustrative"><Card dataTour="dash-coverage" title="Coverage" subtitle={`${cs.covered} of ${cs.applicable} applicable controls`}>
           <div className="h-[190px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -278,9 +279,9 @@ export default function Dashboard() {
               {EVIDENCE_FRESHNESS.approachingStaleness} controls approaching staleness · assessed {ASSESSMENT_DATE}
             </p>
           )}
-        </Card>
+        </Card></Provenance>
 
-        <Card dataTour="dash-assurance" title="Assurance level" subtitle="How the evidence was established">
+        <Provenance tier="illustrative"><Card dataTour="dash-assurance" title="Assurance level" subtitle="How the evidence was established">
           <ol className="space-y-2">
             {ASSURANCE_LEVELS.map((l) => {
               const active = l.id === currentAssurance;
@@ -308,11 +309,11 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-        </Card>
+        </Card></Provenance>
       </div>
 
       {/* Per-capability rows */}
-      <Card dataTour="dash-capabilities" title="By capability" subtitle="Each capability carries its own interval and coverage figure">
+      <Provenance tier="illustrative"><Card dataTour="dash-capabilities" title="By capability" subtitle="Each capability carries its own interval and coverage figure">
         <div className="divide-y divide-slate-100">
           {capabilities.map((c) => {
             if (!c.organisationallyAssessable) {
@@ -350,10 +351,10 @@ export default function Dashboard() {
             );
           })}
         </div>
-      </Card>
+      </Card></Provenance>
 
       {/* Risk weighting — additive disclosure, never replaces the bounded interval above */}
-      <Card
+      <Provenance tier="illustrative"><Card
         title="Risk weighting"
         subtitle="Derived from NIST SP 800-53B baselines — an additive view, not a replacement for the interval above"
         right={
@@ -420,11 +421,11 @@ export default function Dashboard() {
             <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">{RISK_WEIGHTING_EXPLAINER}</p>
           </div>
         )}
-      </Card>
+      </Card></Provenance>
 
       {/* Completeness + scope exclusions, side by side */}
       <div className="grid gap-5 lg:grid-cols-2">
-        <div data-tour="dash-completeness" className="rounded-xl border-2 border-slate-300 bg-white p-5">
+        <Provenance tier="illustrative"><div data-tour="dash-completeness" className="rounded-xl border-2 border-slate-300 bg-white p-5">
           <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
             <Info size={14} /> Completeness statement — cannot be dismissed
           </div>
@@ -445,9 +446,9 @@ export default function Dashboard() {
               regulatory obligation.
             </p>
           )}
-        </div>
+        </div></Provenance>
 
-        <div className="rounded-xl border-2 border-amber-300 bg-amber-50/60 p-5">
+        <Provenance tier="illustrative"><div className="rounded-xl border-2 border-amber-300 bg-amber-50/60 p-5">
           <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700">
             <AlertTriangle size={14} /> Scope exclusions — {TOTALS.notApplicable} of {TOTALS.totalControls} controls
           </div>
@@ -472,11 +473,11 @@ export default function Dashboard() {
           >
             Review all {TOTALS.notApplicable} exclusions →
           </button>
-        </div>
+        </div></Provenance>
       </div>
 
       {/* Gap-reason breakdown */}
-      <Card
+      <Provenance tier="illustrative"><Card
         title="Why controls are unevidenced"
         subtitle={
           uploaded
@@ -518,7 +519,7 @@ export default function Dashboard() {
             conclusive path at all — each such control's detail page states the limit.
           </span>
         </div>
-      </Card>
+      </Card></Provenance>
 
       {uploaded && (
         <div className="flex justify-end">

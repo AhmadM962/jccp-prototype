@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Check, Minus, ShieldHalf } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 
 // RBAC is itself an implementation of several JNCSF access-control requirements — this
 // panel makes that explicit. It is a defence artifact, not decoration.
@@ -105,7 +106,7 @@ export default function Admin() {
         </div>
       </Card>
 
-      <Card title="RBAC matrix" subtitle="feature × role, with the control each boundary implements">
+      <Provenance tier="illustrative"><Card title="RBAC matrix" subtitle="feature × role, with the control each boundary implements">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -143,7 +144,7 @@ export default function Admin() {
           <span className="font-semibold text-amber-600">scoped</span> partial / own-records only ·{' '}
           <Minus size={11} className="inline text-slate-300" /> none
         </p>
-      </Card>
+      </Card></Provenance>
     </div>
   );
 }

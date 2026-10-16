@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { CheckCircle2, Clock, AlertCircle, Upload } from 'lucide-react';
 import { Card, Pill, Button } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
 import { contributorTasks } from '../data/collaboration';
 import { requestPlan } from '../data/scenario';
@@ -25,7 +26,7 @@ export default function Tasks() {
   const todo = tasks.filter((t) => t.status === 'to do' || t.status === 'changes requested').length;
 
   return (
-    <div className="space-y-5">
+    <Provenance tier="illustrative" className="space-y-5">
       <Card>
         <h2 className="text-lg font-bold text-slate-900">My tasks</h2>
         <p className="mt-1 text-sm text-slate-500">
@@ -67,6 +68,6 @@ export default function Tasks() {
           );
         })}
       </div>
-    </div>
+    </Provenance>
   );
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Wrench, ArrowRight, Check, FileSearch, ShieldCheck } from 'lucide-react';
 import { Card, Button, Pill, CodeBlock } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import ScoreInterval from '../components/ScoreInterval';
 import { useAssessment } from '../store/useAssessment';
 import { remediationPlan, evidenceRequests } from '../data/remediation';
@@ -279,7 +280,9 @@ export default function Remediation() {
         ))}
       </div>
 
-      {tab === 'all' ? <AllActionsTab /> : tab === 'plan' ? <RemediationTab /> : <RequestsTab />}
+      <Provenance tier="illustrative">
+        {tab === 'all' ? <AllActionsTab /> : tab === 'plan' ? <RemediationTab /> : <RequestsTab />}
+      </Provenance>
 
       <div className="flex justify-end">
         <Link to="/export" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">

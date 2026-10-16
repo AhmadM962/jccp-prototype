@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Users, Clock, X, ShieldCheck, ShieldQuestion } from 'lucide-react';
 import { Card, Pill, Button, SectionLabel } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import StateBadge, { STATE_META } from '../components/StateBadge';
 import EvidenceTrail from '../components/EvidenceTrail';
 import AttackExposure from '../components/AttackExposure';
@@ -115,7 +116,7 @@ export default function ControlDetail() {
   };
 
   return (
-    <div className="space-y-5">
+    <Provenance tier="illustrative" className="space-y-5">
       <Link to="/gap-matrix" className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
         <ArrowLeft size={15} /> Gap Matrix
       </Link>
@@ -353,6 +354,6 @@ export default function ControlDetail() {
           }}
         />
       )}
-    </div>
+    </Provenance>
   );
 }

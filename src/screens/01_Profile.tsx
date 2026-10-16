@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, ArrowRight, HelpCircle, ShieldAlert, CheckCircle2, Info } from 'lucide-react';
 import { Card, Button, SectionLabel, Pill } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
 import { ROLE_LABEL } from '../store/useAssessment';
 import {
@@ -94,7 +95,7 @@ export default function Profile() {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div className="space-y-6">
-        <Card dataTour="profile-header" title="Organisation profile" subtitle="Scoping inputs — these set which of the 576 JNCSF controls apply">
+        <Provenance tier="illustrative"><Card dataTour="profile-header" title="Organisation profile" subtitle="Scoping inputs — these set which of the 576 JNCSF controls apply">
           <div data-tour="profile-identity" className="grid gap-4 sm:grid-cols-2">
             <label className="block">
               <SectionLabel>Sector</SectionLabel>
@@ -227,7 +228,7 @@ export default function Profile() {
               </label>
             ))}
           </div>
-        </Card>
+        </Card></Provenance>
 
         {/* Stage 2 — hard contradiction, post-upload */}
         <AnimatePresence>
@@ -336,7 +337,7 @@ export default function Profile() {
       </div>
 
       <div className="lg:sticky lg:top-2 lg:self-start">
-        <Card dataTour="profile-applicable" title="Live scoping">
+        <Provenance tier="illustrative"><Card dataTour="profile-applicable" title="Live scoping">
           <div className="text-center">
             <div className="tnum text-4xl font-bold text-slate-900">{applicable}</div>
             <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -379,7 +380,7 @@ export default function Profile() {
           {role !== 'owner' && role !== 'analyst' && (
             <Pill tone="slate">Viewing as {ROLE_LABEL[role]} — read only</Pill>
           )}
-        </Card>
+        </Card></Provenance>
       </div>
     </div>
   );

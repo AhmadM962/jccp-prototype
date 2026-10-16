@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { EXCLUSIONS, EXCLUSION_COUNTS, EXCLUSION_TRIGGERS, SECTOR_BASELINE } from '../data/exclusions';
@@ -38,7 +39,7 @@ export default function Exclusions() {
         <ArrowLeft size={15} /> Dashboard
       </Link>
 
-      <Card title="Scope exclusion register" subtitle={`${TOTALS.notApplicable} of ${TOTALS.totalControls} JNCSF controls excluded from this assessment`}>
+      <Provenance tier="illustrative"><Card title="Scope exclusion register" subtitle={`${TOTALS.notApplicable} of ${TOTALS.totalControls} JNCSF controls excluded from this assessment`}>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <div className="tnum text-2xl font-bold text-slate-900">{fmt1(naRate)}%</div>
@@ -56,10 +57,10 @@ export default function Exclusions() {
             <div className="text-[11px] text-slate-500">without recorded justification</div>
           </div>
         </div>
-      </Card>
+      </Card></Provenance>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card title="Excluded by capability">
+        <Provenance tier="illustrative"><Card title="Excluded by capability">
           <ul className="space-y-1.5 text-sm">
             {(Object.keys(EXCLUSION_COUNTS) as (keyof typeof EXCLUSION_COUNTS)[]).map((k) => (
               <li key={k} className="flex items-center justify-between">
@@ -77,8 +78,8 @@ export default function Exclusions() {
               <span className="tnum">—</span>
             </li>
           </ul>
-        </Card>
-        <Card title="Excluded by triggering fact">
+        </Card></Provenance>
+        <Provenance tier="illustrative"><Card title="Excluded by triggering fact">
           <ul className="space-y-1.5 text-sm">
             {EXCLUSION_TRIGGERS.map((t) => (
               <li key={t.fact} className="flex items-center justify-between">
@@ -87,10 +88,10 @@ export default function Exclusions() {
               </li>
             ))}
           </ul>
-        </Card>
+        </Card></Provenance>
       </div>
 
-      <Card
+      <Provenance tier="illustrative"><Card
         title={`Exclusions — ${rows.length} shown of ${EXCLUSIONS.length} seeded`}
         right={
           <div className="flex flex-wrap items-center gap-2">
@@ -149,7 +150,7 @@ export default function Exclusions() {
           Showing all {EXCLUSIONS.length} of {TOTALS.notApplicable} exclusions — the full register for this
           organisation, not a sample.
         </p>
-      </Card>
+      </Card></Provenance>
     </div>
   );
 }

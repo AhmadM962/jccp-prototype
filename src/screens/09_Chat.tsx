@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Send, Lock, Ban, FileText } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
+import { Provenance } from '../components/Provenance';
 
 interface Citation {
   label: string;
@@ -123,7 +124,7 @@ export default function Chat() {
   const asked = new Set(thread.filter((m) => m.role === 'user').map((m) => m.text));
 
   return (
-    <div className="flex h-[calc(100vh-140px)] flex-col">
+    <Provenance tier="planned" className="flex h-[calc(100vh-140px)] flex-col">
       <Card className="flex min-h-0 flex-1 flex-col" title="Compliance chat" subtitle="Grounded Q&A over the pinned catalogue and this assessment — every answer carries citations">
         <div ref={scrollRef} className="scroll-slim min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           {thread.length === 0 && <p className="text-sm text-slate-400">Pick a question below to start.</p>}
@@ -182,6 +183,6 @@ export default function Chat() {
         <span className="text-slate-500">cannot access the internet</span>
         <span className="text-slate-500">cannot see other organisations' data</span>
       </div>
-    </div>
+    </Provenance>
   );
 }
