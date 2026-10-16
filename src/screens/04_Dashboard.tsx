@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Bar,
@@ -12,11 +11,12 @@ import {
   YAxis,
   LabelList,
 } from 'recharts';
-import { AlertTriangle, Info, ArrowUpRight, ShieldAlert, TrendingUp, Scale } from 'lucide-react';
+import { AlertTriangle, Info, ArrowUpRight, ShieldAlert, TrendingUp } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
 import { Provenance } from '../components/Provenance';
 import ScoreInterval from '../components/ScoreInterval';
 import WidthDecomposition from '../components/WidthDecomposition';
+import FourViews from '../components/FourViews';
 import { useAssessment } from '../store/useAssessment';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { ASSURANCE_LEVELS, bandFloorPts } from '../lib/scoring';
@@ -27,7 +27,6 @@ import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDE
 import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
 import { EXCLUSIONS, SECTOR_BASELINE } from '../data/exclusions';
 import { sectorById, regulatorDisplay } from '../data/sectors';
-import { RISK_WEIGHT_TABLE, RISK_WEIGHTED_TOTALS, weightedWidthPts, UNDERIVED_SHARE_PCT, RISK_WEIGHTING_EXPLAINER } from '../data/riskWeighting';
 import { Term } from '../tour/Term';
 
 const fmt1 = (n: number) => n.toFixed(1);
@@ -167,7 +166,6 @@ export default function Dashboard() {
   const profile = useAssessment((s) => s.profile);
   const challenge = useAssessment((s) => s.profileChallenge);
   const role = useAssessment((s) => s.role);
-  const [weighted, setWeighted] = useState(false);
 
   if (role === 'executive') return <ExecutiveDashboard />;
 
@@ -392,75 +390,10 @@ export default function Dashboard() {
         </div>
       </Card></Provenance>
 
-      {/* Risk weighting — additive disclosure, never replaces the bounded interval above */}
-      <Provenance tier="illustrative"><Card
-        title="Risk weighting"
-        subtitle="Derived from NIST SP 800-53B baselines — an additive view, not a replacement for the interval above"
-        right={
-          <button
-            onClick={() => setWeighted((v) => !v)}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-              weighted ? 'border-accent bg-accent/10 text-accent' : 'border-slate-300 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <Scale size={13} /> {weighted ? 'Weighted' : 'Unweighted (default)'}
-          </button>
-        }
-      >
-        {!weighted ? (
-          <p className="text-sm text-slate-500">
-            Showing the unweighted interval — every control counts equally. Switch on to see the same
-            assessment scored by NIST-baseline risk weight.
-          </p>
-        ) : (
-          <div className="space-y-4">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400">
-                    <th className="py-2 pr-4">Basis</th>
-                    <th className="py-2 pr-4 text-right">Controls</th>
-                    <th className="py-2 text-right">Weight</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {RISK_WEIGHT_TABLE.map((r) => (
-                    <tr key={r.basis} className={`border-b border-slate-100 ${r.underived ? 'bg-amber-50/50' : ''}`}>
-                      <td className="py-2 pr-4 text-slate-700">
-                        {r.basis}
-                        {r.underived && <span className="ml-1.5 text-[10px] text-amber-700">({UNDERIVED_SHARE_PCT}% of applicable controls)</span>}
-                      </td>
-                      <td className="tnum py-2 pr-4 text-right font-semibold text-slate-800">{r.controls}</td>
-                      <td className="tnum py-2 text-right text-slate-600">{r.weight.toFixed(1)}{r.underived ? ' (conservative default)' : ''}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 p-3">
-                <div className="text-[11px] uppercase tracking-wide text-slate-400">Derived-only</div>
-                <div className="tnum text-xl font-bold text-slate-900">{RISK_WEIGHTED_TOTALS.derivedOnly}</div>
-              </div>
-              <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
-                <div className="text-[11px] uppercase tracking-wide text-amber-700">Including underived</div>
-                <div className="tnum text-xl font-bold text-slate-900">{RISK_WEIGHTED_TOTALS.includingUnderived}</div>
-              </div>
-            </div>
-            <p className="text-[11px] leading-relaxed text-slate-500">
-              Both totals are shown together — never one derived from the other. The{' '}
-              <span className="tnum font-semibold text-slate-700">{RISK_WEIGHTED_TOTALS.gap}</span>-control gap
-              between them is real uncertainty about weight, not noise to average away. Under weighting, band
-              width is also independent of coverage — an unknown high-weight control widens the interval more
-              than a low-weight one; this profile's weighted width is currently{' '}
-              <span className="tnum font-semibold text-slate-700">{fmt1(weightedWidthPts(uploaded))} pts</span>, which is not
-              derivable from the {fmt1(eff.coveragePct)}% coverage figure above.
-            </p>
-            <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">{RISK_WEIGHTING_EXPLAINER}</p>
-          </div>
-        )}
-      </Card></Provenance>
+      {/* The four published views of the one assessment; the weights that explain two of them sit inside */}
+      <Provenance tier="illustrative">
+        <FourViews uploaded={uploaded} effective={eff} overridesActive={view.overridesActive} />
+      </Provenance>
 
       {/* Completeness + scope exclusions, side by side */}
       <div className="grid gap-5 lg:grid-cols-2">

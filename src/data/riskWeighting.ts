@@ -47,11 +47,16 @@ export const RISK_WEIGHTED_TOTALS = {
   },
 };
 
-/** Weighted width of the band (including underived), in points, for the state being shown. Under weighting
- *  an unknown high-weight control widens the band more than a low-weight one, so this is not 100 − coverage. */
-export const weightedWidthPts = (uploaded: boolean): number => {
-  const v = (uploaded ? MINISTRY.after : MINISTRY.before).views.weighted_including_underived;
-  return ((v.upper[0] * v.lower[1] - v.lower[0] * v.upper[1]) * 100) / (v.upper[1] * v.lower[1]);
+// The same weights over every control in the framework, before the not-applicable ones are set aside: a
+// different population from the totals above, not a different answer. Weights in tenths to stay exact.
+const tenths = (o: typeof C.framework) =>
+  o.nist_baseline_low * 10 + o.nist_baseline_moderate * 7 + o.nist_baseline_high * 5 + o.nist_no_baseline * 5;
+export const FRAMEWORK_WEIGHTED_TOTALS = {
+  controls: sum(C.framework),
+  excluded: sum(C.excluded),
+  underived: C.framework.underived,
+  derivedOnly: tenths(C.framework) / 10,
+  includingUnderived: (tenths(C.framework) + C.framework.underived * 10) / 10,
 };
 
 export const RISK_WEIGHTING_EXPLAINER =
