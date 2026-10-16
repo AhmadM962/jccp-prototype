@@ -41,7 +41,9 @@ export function Provenance({
         <span
           data-tier-chip={tier}
           title={TIER_MEANING[tier]}
-          className="absolute -top-2.5 right-3 z-[1] inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-px text-[10px] font-medium leading-4 text-slate-600 shadow-sm"
+          className={`${
+            as === 'span' ? 'mr-1.5 align-middle' : 'absolute -top-2.5 right-3 z-[1]'
+          } inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-px text-[10px] font-medium leading-4 text-slate-600 shadow-sm`}
         >
           <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${DOT[tier]}`} />
           {tier}
