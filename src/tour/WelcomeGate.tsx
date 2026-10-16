@@ -67,7 +67,7 @@ export default function WelcomeGate() {
         </p>
         <p className="mt-2 text-sm leading-relaxed text-slate-700">
           Everything you see is demonstration data for a fictional organisation, the Ministry of Digital
-          Services. Nothing you do here is saved or transmitted.
+          Services. Nothing you do here is transmitted. Your progress is saved in this browser so you can pick up where you left off.
         </p>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">

@@ -2,16 +2,31 @@
 
 export const WEIGHTS = { green: 1.0, red: 0.0 } as const;
 
-// Yellow partial-credit quartiles by deployment share.
+// Yellow partial-credit quartiles by deployment share (a fraction of the estate, 0–1).
 export const YELLOW_QUARTILE = { q1: 0.85, q2: 0.5, q3: 0.25, q4: 0.1 };
-// q1: share >= 75%, q2: 50-75%, q3: 25-50%, q4: < 25%
+// q1: share >= 0.75, q2: >= 0.5, q3: >= 0.25, q4: >= 0
 
-export function yellowWeightForShare(sharePct: number | undefined): number {
-  if (sharePct === undefined) return 0.5;
-  if (sharePct >= 75) return YELLOW_QUARTILE.q1;
-  if (sharePct >= 50) return YELLOW_QUARTILE.q2;
-  if (sharePct >= 25) return YELLOW_QUARTILE.q3;
-  return YELLOW_QUARTILE.q4;
+export const YELLOW_QUARTILE_NAME = {
+  1: 'top quartile',
+  2: 'second quartile',
+  3: 'third quartile',
+  4: 'bottom quartile',
+} as const;
+
+export function yellowQuartileForShare(share: number): 1 | 2 | 3 | 4 {
+  if (share >= 0.75) return 1;
+  if (share >= 0.5) return 2;
+  if (share >= 0.25) return 3;
+  return 4;
+}
+
+/** Partial credit a Yellow control earns for its deployment share. A share that rests on
+ *  testimony alone is capped at the second quartile however high the claim. An unknown
+ *  share keeps the flat 0.5. */
+export function yellowWeightForShare(share: number | undefined, testimonyOnly = false): number {
+  if (share === undefined) return 0.5;
+  const credit = YELLOW_QUARTILE[`q${yellowQuartileForShare(share)}` as keyof typeof YELLOW_QUARTILE];
+  return testimonyOnly ? Math.min(credit, YELLOW_QUARTILE.q2) : credit;
 }
 
 export interface BoundedScore {
@@ -20,6 +35,14 @@ export interface BoundedScore {
   coverage: number;
   width: number;
   confidence: number;
+}
+
+/** An interval whose lower bound exceeds its upper bound is impossible. A wrong number that
+ *  renders is worse than a crash in a demo of a measurement tool, so this throws. */
+export function assertInterval(lower: number, upper: number, where: string): void {
+  if (lower > upper) {
+    throw new Error(`Impossible interval in ${where}: lower ${lower} > upper ${upper}`);
+  }
 }
 
 export function boundedScore(
@@ -31,9 +54,12 @@ export function boundedScore(
   yellowWeight = 0.5,
 ): BoundedScore {
   const numerator = green * WEIGHTS.green + yellow * yellowWeight + red * WEIGHTS.red;
+  const lower = numerator / applicable; // all unknowns fail
+  const upper = (numerator + unknown) / applicable; // all unknowns pass
+  assertInterval(lower, upper, 'boundedScore');
   return {
-    lower: numerator / applicable, // all unknowns fail
-    upper: (numerator + unknown) / applicable, // all unknowns pass
+    lower,
+    upper,
     coverage: (applicable - unknown) / applicable,
     width: unknown / applicable,
     confidence: 1 - unknown / applicable,
@@ -59,11 +85,17 @@ export function projectProvision(
   yellow: number,
   unknown: number,
   controlsUnlocked: number,
+  uncollectable = 0,
   yellowWeight = 0.5,
 ) {
-  const n = Math.min(controlsUnlocked, unknown);
+  // Only collectable Unknowns can be resolved by providing artifacts; the uncollectable ones
+  // stay Unknown whatever is provided.
+  const collectable = Math.max(0, unknown - uncollectable);
+  const n = Math.min(controlsUnlocked, collectable);
   const num = green * WEIGHTS.green + yellow * yellowWeight;
   const remainingUnknown = unknown - n;
+  assertInterval((num + n) / applicable, (num + n + remainingUnknown) / applicable, 'projectProvision best case');
+  assertInterval(num / applicable, (num + remainingUnknown) / applicable, 'projectProvision worst case');
   return {
     resolved: n,
     widthReductionPts: (n / applicable) * 100,
@@ -78,6 +110,11 @@ export function projectProvision(
     },
   };
 }
+
+/** The narrowest the band can ever get: the uncollectable controls stay Unknown, so the band
+ *  keeps at least `uncollectable / applicable` of width. In percentage points. */
+export const bandFloorPts = (applicable: number, uncollectable: number) =>
+  (uncollectable / applicable) * 100;
 
 /**
  * Apply a set of analyst overrides to a bucket of aggregate counts and return the

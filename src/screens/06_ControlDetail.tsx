@@ -20,6 +20,7 @@ import {
   type ControlState,
 } from '../data/controls';
 import { capabilityById } from '../data/capabilities';
+import { YELLOW_QUARTILE_NAME, yellowQuartileForShare, yellowWeightForShare } from '../lib/scoring';
 import { attackBridge } from '../data/attack';
 import { evidenceFor, ageDays, ASSESSMENT_DATE } from '../data/evidence';
 import { requestPlan } from '../data/scenario';
@@ -105,6 +106,24 @@ export default function ControlDetail() {
 
   const oldest = evItems.reduce((m, it) => Math.max(m, ageDays(it.timestamp)), 0);
   const stale = oldest > control.maxAgeDays;
+
+  // Partial credit this control's deployment share earns (src/lib/scoring.ts). A share that rests
+  // on testimony alone — the evidence in effect for this control is testimony or nothing — is
+  // capped at the second quartile. The aggregate on the dashboard does not use this (flat 0.5).
+  let shareCreditText: string | undefined;
+  if (control.deploymentSharePct !== undefined) {
+    const share = control.deploymentSharePct / 100;
+    const testimonyOnly = effectiveClass === 'testimonial' || effectiveClass === 'none';
+    const credit = yellowWeightForShare(share, testimonyOnly);
+    const capped = credit < yellowWeightForShare(share);
+    const quartile = capped
+      ? `${YELLOW_QUARTILE_NAME[2]}; capped because the share rests on testimony alone`
+      : YELLOW_QUARTILE_NAME[yellowQuartileForShare(share)];
+    shareCreditText =
+      effectiveState === 'yellow'
+        ? `Deployment share ${control.deploymentSharePct}% — partial credit ${credit} (${quartile}) for this control.`
+        : `Deployment share ${control.deploymentSharePct}% — would earn partial credit ${credit} (${quartile}) if Partial; this control is currently ${STATE_META[effectiveState].label}, so none applies.`;
+  }
 
   const related = controls
     .filter((c) => c.id !== control.id && c.capability === control.capability)
@@ -248,12 +267,7 @@ export default function ControlDetail() {
                 <span>{control.populationNote}</span>
               </div>
             )}
-            {control.deploymentSharePct !== undefined && (
-              <div className="tnum">
-                Deployment share: <strong>{control.deploymentSharePct}%</strong> — partial-credit quartile
-                applied to the Yellow weighting.
-              </div>
-            )}
+            {shareCreditText && <div className="tnum">{shareCreditText}</div>}
             {control.exceptionPopulation && (
               <div className="rounded-md bg-red-50 px-3 py-2 text-[13px] text-red-700">
                 Named exception retained: {control.exceptionPopulation}

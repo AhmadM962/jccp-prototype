@@ -153,7 +153,7 @@ export default function ExportScreen() {
               regulator sees the interval — not a bare number.
             </p>
             <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-emerald-700">
-              <BadgeCheck size={14} /> Validates against OSCAL 1.1.2 · 5 models · 557 control implementations · 0 errors
+              <BadgeCheck size={14} /> OSCAL 1.1.2 · 5 models · 557 control implementations. Validation runs in the assessment engine, not in this preview.
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">

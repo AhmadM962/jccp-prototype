@@ -18,10 +18,10 @@ import { Provenance } from '../components/Provenance';
 import ScoreInterval from '../components/ScoreInterval';
 import { useAssessment } from '../store/useAssessment';
 import { capabilities, TOTALS } from '../data/capabilities';
-import { ASSURANCE_LEVELS } from '../lib/scoring';
+import { ASSURANCE_LEVELS, bandFloorPts } from '../lib/scoring';
 import { coverageBreakdown, completenessStatement } from '../lib/coverage';
 import { dashboardView } from '../lib/derive';
-import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
+import { GAP_REASON_BREAKDOWN, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS, UNCOLLECTABLE_COUNT } from '../data/controls';
 import { EVIDENCE_FRESHNESS, ASSESSMENT_DATE } from '../data/evidence';
 import { EXCLUSIONS, SECTOR_BASELINE } from '../data/exclusions';
 import { sectorById, regulatorDisplay } from '../data/sectors';
@@ -58,6 +58,11 @@ function ExecutiveDashboard() {
               subline={`Assurance ${uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented'}. ${cs.unevidenced} controls still unevidenced.`}
             />
           </div>
+          <Provenance tier="illustrative" className="mt-3">
+            <p className="text-center text-[11px] text-slate-500">
+              The aggregate here applies a flat 0.5 to every Partial. Per-control quartile credit is shown on each control's page.
+            </p>
+          </Provenance>
         </Card></Provenance>
         <Provenance tier="illustrative"><Card title="Trend" subtitle="last four collection cycles">
           <div className="flex items-end gap-3">
@@ -239,10 +244,15 @@ export default function Dashboard() {
                 <Link to="/remediation" className="underline hover:text-slate-600">
                   Provide 5 more artifacts
                 </Link>{' '}
-                to narrow this toward ~10 points.
+                to narrow this toward {fmt1(bandFloorPts(TOTALS.applicable, UNCOLLECTABLE_COUNT))} points.
               </p>
             )}
           </div>
+          <Provenance tier="illustrative" className="mt-3">
+            <p className="text-center text-[11px] text-slate-500">
+              The aggregate here applies a flat 0.5 to every Partial. Per-control quartile credit is shown on each control's page.
+            </p>
+          </Provenance>
         </Card></Provenance>
 
         <Provenance tier="illustrative"><Card dataTour="dash-coverage" title="Coverage" subtitle={`${cs.covered} of ${cs.applicable} applicable controls`}>
