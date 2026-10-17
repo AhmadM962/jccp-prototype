@@ -6,6 +6,7 @@ import { Provenance, StateProvenance, TierLegend } from '../components/Provenanc
 import { PROFILES, PROFILE_ORDER, setActiveProfile, type ProfileData } from '../data/profiles';
 import TopBar from '../components/layout/TopBar';
 import { useAssessment } from '../store/useAssessment';
+import { CURRENT } from '../data/current';
 import Profile from '../screens/01_Profile';
 import RequestPlan from '../screens/02_RequestPlan';
 import Intake from '../screens/03_Intake';
@@ -199,24 +200,36 @@ describe('measured is used, and only where the figure traces to the assessment f
     }
   });
 
-  it('the invented material stays illustrative or planned: the trend, the top risks, the evidence dates, the chat, the collector', () => {
+  it('what was invented stays illustrative or planned, and what was invented and contradicted the engine is gone', () => {
     useAssessment.setState({ evidenceUploaded: true });
     const dash = renderAt('/dashboard', <Dashboard />);
-    expect(dash.getByTestId('evidence-freshness').closest('[data-tier]')!.getAttribute('data-tier')).toBe('illustrative');
+    // the freshness line is now the engine's own count of unusable evidence, not worked-example dates
+    const fresh = dash.getByTestId('evidence-freshness').closest('[data-tier]')!;
+    expect(fresh.getAttribute('data-tier')).toBe('measured');
+    expect(fresh.getAttribute('data-source')).toBe('assurance.checks');
+    expect(dash.container.textContent).not.toContain('Oldest evidence');
+    expect(fresh.textContent).toContain(CURRENT.assurance.checks.find((c) => c.cause === 'unusable_evidence_proportion')!.detail);
     dash.unmount();
     useAssessment.setState({ role: 'executive' });
     const exec = renderAt('/dashboard', <Dashboard />);
     const tierOf = (text: string) =>
       Array.from(exec.container.querySelectorAll('*')).find((e) => e.children.length === 0 && e.textContent === text)?.closest('[data-tier]')?.getAttribute('data-tier');
-    expect(tierOf('Trend')).toBe('illustrative');
-    expect(tierOf('Top 3 risks')).toBe('illustrative');
+    expect(exec.container.textContent).not.toContain('Top 3 risks');
+    expect(exec.container.textContent).not.toContain('last four collection cycles');
+    expect(tierOf('Prioritisation')).toBe('measured');
+    expect(tierOf('This assessment')).toBe('measured');
     exec.unmount();
     useAssessment.setState({ role: 'owner' });
     const chat = renderAt('/chat', <Chat />);
     expect(chat.container.querySelector('[data-tier="measured"]')).toBeNull();
     chat.unmount();
     const intake = renderAt('/intake', <Intake />);
-    expect(intake.container.querySelector('[data-tier="measured"]')).toBeNull();
+    for (const b of intake.getAllByText('Generate scoped link')) expect(b.closest('[data-tier]')!.getAttribute('data-tier')).toBe('planned');
+    expect(intake.getByTestId('respondent-compliance-officer').closest('[data-tier]')!.getAttribute('data-tier')).toBe('measured');
+    intake.unmount();
+    useAssessment.setState({ evidenceUploaded: false });
+    const before = renderAt('/intake', <Intake />);
+    expect(before.container.querySelector('[data-tier="measured"]')).toBeNull();
   });
 
   it('rule R\u2019s provenance is visible: the before-upload Dashboard says what its figures are', () => {

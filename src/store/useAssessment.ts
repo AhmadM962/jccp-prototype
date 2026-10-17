@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ControlState } from '../data/controls';
-import { defaultProfile, type OrgProfile } from '../data/scenario';
+import type { OrgProfile } from '../data/scenario';
 import { DEFAULT_PROFILE, isProfileId, setActiveProfile, type ProfileId } from '../data/profiles';
 import { orgProfileFor } from '../data/orgProfiles';
 
@@ -91,7 +91,7 @@ interface AssessmentState {
 const initial = {
   phase: 'profile' as Phase,
   role: 'owner' as Role,
-  profile: defaultProfile,
+  profile: orgProfileFor(DEFAULT_PROFILE),
   profileId: DEFAULT_PROFILE,
   evidenceUploaded: false,
   interviewsCompleted: [] as string[],
@@ -179,10 +179,10 @@ export const useAssessment = create<AssessmentState>()(
       clearProfileChallenge: () => set({ profileChallenge: null }),
     }),
     // Storage key carries a version suffix: the profile shape changed (sector is now an id,
-    // regulator is derived, CICSC toggle added), so stale earlier data is ignored.
+    // regulator is derived, CICSC toggle added; v4: an applicability variable may be `unrecorded`), so stale earlier data is ignored.
     // Tour state is ephemeral and never persisted.
     {
-      name: 'jccp-assessment-v3',
+      name: 'jccp-assessment-v4',
       partialize: ({ tourActive, tourStep, navOpen, ...rest }) => rest,
       // The data layer holds the active assessment outside the store; put it back to what was saved.
       onRehydrateStorage: () => (state) => {

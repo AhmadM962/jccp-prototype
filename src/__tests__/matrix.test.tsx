@@ -141,18 +141,17 @@ describe('Task 2: the control data is the active profile’s, whichever it is', 
 });
 
 describe('Task 2: a page that mixes tiers says which is which, on the element', () => {
-  it('the measured panel is measured, the worked-example evidence is illustrative and says it is not the evidence behind the verdict', () => {
+  it('the measured panel is measured, and no invented evidence sits beside it to contradict it', () => {
     useAssessment.setState({ evidenceUploaded: true });
     const { container } = renderAt('/control/JNCSF-102', <ControlDetail />, '/control/:id');
     const tierOf = (testid: string) => container.querySelector(`[data-testid="${testid}"]`)!.closest('[data-tier]')!.getAttribute('data-tier');
     expect(tierOf('measured-panel')).toBe('measured');
     expect(tierOf('measured-state')).toBe('measured');
-    const trail = Array.from(container.querySelectorAll('[data-tier="illustrative"]')).find((e) => e.textContent?.includes('Evidence trail (worked example)'))!;
-    expect(trail).toBeTruthy();
-    expect(trail.textContent).toContain('It is not the evidence behind the measured verdict above');
-    // the measured verdict beside it is the engine's, not the worked example's
     expect(container.querySelector('[data-testid="measured-state"]')!.textContent).toContain('Compliant');
     expect(controlById('JNCSF-102')!.after.state).toBe('green');
+    // Round 4: the worked-example evidence, ATT&CK chain, population and signals that used to sit here are gone
+    expect(container.textContent).not.toMatch(/worked example|Worked-example|Evidence trail/i);
+    expect(container.querySelector('[data-testid="evidence-trail"]')).toBeNull();
   });
   it('a control the engine ranks shows the engine’s ATT&CK exposure as measured, with what it suppressed', () => {
     useAssessment.setState({ evidenceUploaded: true });
@@ -163,11 +162,12 @@ describe('Task 2: a page that mixes tiers says which is which, on the element', 
     expect(el.textContent).toContain(it.attack.exposure);
     expect(el.textContent).toContain(`${it.attack.suppressedCount} suppressed`);
   });
-  it('a control with no worked example shows none: no invented evidence, ATT&CK chain or population', () => {
+  it('no control page carries worked-example material, whichever control it is', () => {
     useAssessment.setState({ evidenceUploaded: true });
-    const plain = controls().find((c) => !c.example && c.authored && c.after.state !== 'unknown')!;
-    const { container } = renderAt(`/control/${plain.id}`, <ControlDetail />, '/control/:id');
-    expect(container.textContent).not.toContain('worked example');
-    expect(container.textContent).not.toContain('Worked-example');
+    for (const id of ['JNCSF-102', 'JNCSF-100', 'JNCSF-435', 'JNCSF-7', 'JNCSF-394']) {
+      const { container, unmount } = renderAt(`/control/${id}`, <ControlDetail />, '/control/:id');
+      expect(container.textContent, id).not.toMatch(/worked example|Worked-example|Evidence trail|Population data|ATT&CK exposure \(worked/i);
+      unmount();
+    }
   });
 });

@@ -11,7 +11,7 @@ import {
   YAxis,
   LabelList,
 } from 'recharts';
-import { AlertTriangle, Info, ArrowUpRight, ShieldAlert, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Info, ArrowUpRight, ShieldAlert, Layers } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
 import { Provenance, StateProvenance } from '../components/Provenance';
 import ScoreInterval from '../components/ScoreInterval';
@@ -27,7 +27,7 @@ import { assuranceMeasurement, heldLevelReading, levelDefinition } from '../lib/
 import DemotionChecks from '../components/DemotionChecks';
 import { dashboardView } from '../lib/derive';
 import { gapReasonBreakdown, GAP_REASON_LABEL, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
-import { EVIDENCE_FRESHNESS } from '../data/evidence';
+import { capitalise, topTie } from '../lib/narrative';
 import { sectorById, regulatorDisplay } from '../data/sectors';
 import { Term } from '../tour/Term';
 
@@ -62,11 +62,51 @@ function PartialCreditNote({ uploaded }: { uploaded: boolean }) {
   );
 }
 
-const TOP_RISKS = [
-  { id: 'JNCSF-307', label: 'Vulnerability scanning not established', why: '22 servers overdue for patches · exposes T1190', to: '/control/JNCSF-307' },
-  { id: 'JNCSF-102', label: 'Least privilege not enforced', why: '43 privileged accounts without MFA · exposes T1078', to: '/control/JNCSF-102' },
-  { id: 'JNCSF-30', label: 'Audit records incomplete', why: '3 of 9 audit subcategories off · reduces detection', to: '/control/JNCSF-30' },
-];
+/** What the engine ranked first. Several actions of equal magnitude share a rank, and the engine does not order them: so the
+ *  summary says that, instead of naming three risks the engine did not rank. */
+function Prioritisation({ uploaded }: { uploaded: boolean }) {
+  const tie = uploaded ? topTie() : undefined;
+  if (!uploaded) {
+    return (
+      <Provenance tier="illustrative" note="A ranking is derived from an assessment; before the upload there is none.">
+        <Card title="Prioritisation" subtitle="what to escalate">
+          <p data-testid="prioritisation" className="text-sm text-slate-700">
+            A ranking is derived from an assessment, so before one exists there is nothing to rank.
+          </p>
+        </Card>
+      </Provenance>
+    );
+  }
+  if (!tie) {
+    return (
+      <StateProvenance uploaded={uploaded} from="ranking.items">
+        <Card title="Prioritisation" subtitle="what to escalate">
+          <p data-testid="prioritisation" className="text-sm text-slate-700">The engine ranked no action for this assessment.</p>
+        </Card>
+      </StateProvenance>
+    );
+  }
+  return (
+    <StateProvenance uploaded={uploaded} from="ranking.items">
+      <Card title="Prioritisation" subtitle="what to escalate">
+        <div className="flex items-start gap-3">
+          <Layers size={18} className="mt-0.5 shrink-0 text-slate-400" />
+          <div data-testid="prioritisation" data-tie-size={tie.size} className="text-sm leading-relaxed text-slate-700">
+            <p className="font-semibold text-slate-900">
+              {tie.size} actions share the highest rank, all of equal magnitude. The engine does not break a tie it cannot justify.
+            </p>
+            <p className="mt-1 text-[12px] text-slate-500">
+              {tie.fixes.length} {tie.fixes.length === 1 ? 'is a fix' : 'are fixes'} for a Gap
+              {tie.fixes.length > 0 && <> ({tie.fixes.map((f, i) => <span key={f.controlId}>{i > 0 && ', '}<Link to={`/control/${f.controlId}`} className="font-mono text-accent hover:underline">{f.controlId}</Link></span>)})</>}
+              ; {tie.requests.length} {tie.requests.length === 1 ? 'is a request' : 'are requests'} for evidence. {capitalise(tie.note)}.{' '}
+              <Link to="/remediation" className="font-semibold text-accent hover:underline">All {tie.size} on the Remediation screen</Link>.
+            </p>
+          </div>
+        </div>
+      </Card>
+    </StateProvenance>
+  );
+}
 
 function ExecutiveDashboard() {
   const uploaded = useAssessment((s) => s.evidenceUploaded);
@@ -92,43 +132,19 @@ function ExecutiveDashboard() {
           <WidthBreakdown uploaded={uploaded} eff={eff} overridesActive={view.overridesActive} />
           <PartialCreditNote uploaded={uploaded} />
         </Card></StateProvenance>
-        <Provenance tier="illustrative"><Card title="Trend" subtitle="last four collection cycles">
-          <div className="flex items-end gap-3">
-            {[
-              { q: 'Q4-25', lo: 41, hi: 92 },
-              { q: 'Q1-26', lo: 46, hi: 90 },
-              { q: 'Q2-26', lo: TOTALS.before.interval[0], hi: TOTALS.before.interval[1] },
-              { q: uploaded ? 'now' : 'Q3-26', lo: uploaded ? eff.lowerPct : TOTALS.before.interval[0], hi: uploaded ? eff.upperPct : TOTALS.before.interval[1] },
-            ].map((p) => (
-              <div key={p.q} className="flex flex-1 flex-col items-center gap-1">
-                <div className="relative h-24 w-3 rounded bg-slate-100">
-                  <div className="absolute w-full rounded bg-accent/40" style={{ bottom: `${p.lo}%`, height: `${p.hi - p.lo}%` }} />
-                </div>
-                <span className="text-[10px] text-slate-400">{p.q}</span>
-              </div>
+        <Provenance tier="measured" from="parameters"><Card title="This assessment" subtitle="the parameters the engine disclosed">
+          <dl data-testid="disclosed-parameters" className="space-y-1 text-[12px]">
+            <div className="flex justify-between gap-3"><dt className="text-slate-400">framework</dt><dd className="font-mono text-slate-700">{CURRENT.framework.name} {CURRENT.framework.version}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-slate-400">as of</dt><dd className="font-mono text-slate-700">{CURRENT.asOf.slice(0, 10)}</dd></div>
+            {Object.entries(CURRENT.parameters).map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-3"><dt className="text-slate-400">{k}</dt><dd className="font-mono text-slate-700">{String(v)}</dd></div>
             ))}
-          </div>
-          <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-emerald-700">
-            <TrendingUp size={12} /> band narrowing as coverage improves
-          </p>
+          </dl>
+          <p className="mt-2 text-[11px] text-slate-400">Disclosed on every result, so a reader can see what the figures depend on.</p>
         </Card></Provenance>
       </div>
 
-      <Provenance tier="illustrative"><Card title="Top 3 risks" subtitle="what to escalate">
-        <ol className="space-y-2">
-          {TOP_RISKS.map((r, i) => (
-            <li key={r.id}>
-              <Link to={r.to} className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 hover:border-accent">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-700">{i + 1}</span>
-                <span>
-                  <span className="text-sm font-semibold text-slate-800">{r.label}</span>
-                  <span className="block text-[12px] text-slate-500">{r.why}</span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ol>
-      </Card></Provenance>
+      <Prioritisation uploaded={uploaded} />
 
       <StateProvenance uploaded={uploaded} from="after.views.unweighted"><div className="rounded-xl border-2 border-slate-300 bg-white p-5">
         <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -187,6 +203,7 @@ export default function Dashboard() {
   ];
 
   const currentAssurance = (uploaded ? TOTALS.after : TOTALS.before).assurance;
+  const unusableCheck = CURRENT.assurance.checks.find((c) => c.cause === 'unusable_evidence_proportion' && c.status !== 'not_assessed');
   const assurance = assuranceMeasurement();
   const before = heldLevelReading('before');
 
@@ -314,12 +331,10 @@ export default function Dashboard() {
           <p className="mt-1.5 text-[10px] text-slate-400">
             <Term k="coverage">Coverage</Term> is the share of applicable controls with evidence.
           </p>
-          {uploaded && (
-            <Provenance tier="illustrative" note="Worked-example dates: the assessment file carries no evidence dates." className="mt-2 border-t border-slate-100 pt-2">
+          {uploaded && unusableCheck && (
+            <Provenance tier="measured" from="assurance.checks" className="mt-2 border-t border-slate-100 pt-2">
               <p data-testid="evidence-freshness" className="text-[11px] text-slate-500">
-                Oldest evidence: <span className="tnum font-semibold">{EVIDENCE_FRESHNESS.oldestDays} days</span>{' '}
-                (<Link to={`/control/${EVIDENCE_FRESHNESS.oldestControl}`} className="text-accent hover:underline">{EVIDENCE_FRESHNESS.oldestControl}</Link>) ·{' '}
-                {EVIDENCE_FRESHNESS.approachingStaleness} controls approaching staleness
+                Unusable evidence, as the engine counted it: {unusableCheck.detail}.
               </p>
             </Provenance>
           )}

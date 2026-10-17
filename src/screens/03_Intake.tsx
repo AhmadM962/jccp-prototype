@@ -1,169 +1,140 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import {
-  Play,
-  SkipForward,
-  Check,
-  AlertTriangle,
-  XCircle,
-  Ban,
-  UploadCloud,
-  ArrowRight,
-  ShieldQuestion,
-  Link2,
-  Upload,
-} from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Check, AlertTriangle, XCircle, Ban, UploadCloud, ArrowRight, ShieldQuestion, Link2, Upload, KeyRound } from 'lucide-react';
 import { Card, Button, Pill } from '../components/ui';
-import { Provenance } from '../components/Provenance';
+import { Provenance, StateProvenance } from '../components/Provenance';
+import StateBadge from '../components/StateBadge';
 import { useAssessment } from '../store/useAssessment';
-import { interviews, type InterviewRole } from '../data/interviews';
-import { bundleStages, moduleLedger, BUNDLE_MANIFEST, requestPlan, type ModuleStatus } from '../data/scenario';
-import { reviewQueue, CONFLICT_FLAG, scopedLinkFor, type ScopedLink } from '../data/collaboration';
+import { scopedLinkFor, type ScopedLink } from '../data/collaboration';
 import { movedOutOfUnknown, outsideScopeSentence, unknownResolvedByUpload } from '../lib/coverage';
 import { assuranceMeasurement } from '../lib/assurance';
 import { CURRENT } from '../data/current';
 import { viewPercents } from '../lib/views';
+import { planSignals, collectionLedger, REASON_WORDS, type FamilyRow } from '../lib/plan';
+import { capitalise, respondentRoles, roleSlug, stanceWords, testimonyWeighed, type Testimony } from '../lib/narrative';
 
-/* ─── Tab A: Interviews ─────────────────────────────────────────────────────── */
+/* ─── Tab A: Testimony ──────────────────────────────────────────────────────── */
 
-function InterviewPanel({ role, onComplete }: { role: InterviewRole; onComplete: () => void }) {
-  const [shown, setShown] = useState(0); // number of turns revealed
-  const [playing, setPlaying] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!playing) return;
-    if (shown >= role.turns.length) {
-      setPlaying(false);
-      onComplete();
-      return;
-    }
-    const t = setTimeout(() => setShown((n) => n + 1), 650);
-    return () => clearTimeout(t);
-  }, [playing, shown, role.turns.length, onComplete]);
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [shown]);
-
-  const skip = () => {
-    setShown(role.turns.length);
-    setPlaying(false);
-    onComplete();
-  };
-
-  const claimsVisible = Math.round((shown / role.turns.length) * role.claims.length);
-  const showFallacy = role.coverageFallacy && shown >= 2;
-
+/** The answers one respondent role gave that the engine weighed, and what it did with each. The assessment file holds the
+ *  engine's record of an answer (where it sits, what it claimed, the outcome); the transcript itself is not in it. */
+function TestimonyPanel({ role, items, uploaded }: { role: string; items: Testimony[]; uploaded: boolean }) {
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-      <Provenance tier="illustrative"><Card
-        title={role.title}
-        subtitle={role.persona}
-        right={
-          <div className="flex gap-2">
-            <Button dataTour="intake-play" variant="outline" onClick={() => setPlaying(true)} disabled={playing || shown >= role.turns.length}>
-              <Play size={13} /> Play
-            </Button>
-            <Button dataTour="intake-skip" variant="ghost" onClick={skip} disabled={shown >= role.turns.length}>
-              <SkipForward size={13} /> Skip
-            </Button>
-          </div>
-        }
+    <StateProvenance uploaded={uploaded} from="claims">
+      <Card
+        title={capitalise(role)}
+        subtitle={`${items.length} answer${items.length === 1 ? '' : 's'} the engine weighed against the evidence`}
       >
-        <div ref={scrollRef} data-tour="intake-transcript" className="scroll-slim max-h-[420px] space-y-3 overflow-y-auto pr-1">
-          {role.turns.slice(0, shown).map((turn, i) => (
+        <div data-tour="intake-transcript" className="space-y-3">
+          {items.map((t, i) => (
             <motion.div
-              key={i}
+              key={t.sourceRef + t.controlId}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex ${turn.who === 'user' ? 'justify-end' : 'justify-start'}`}
+              data-testid={`testimony-${t.controlId}`}
+              data-tour={i === 0 ? 'intake-testimony' : undefined}
+              className="rounded-lg border border-slate-200 p-3"
             >
-              <div
-                className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm ${
-                  turn.who === 'user'
-                    ? 'bg-accent text-white'
-                    : 'bg-slate-100 text-slate-800'
-                }`}
-              >
-                <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-60">
-                  {turn.who === 'user' ? 'Interviewee' : 'JCCP agent'}
-                </div>
-                {turn.text}
+              <div className="flex flex-wrap items-center gap-2">
+                <RouterLink to={`/control/${t.controlId}`} className="font-mono text-[12px] font-semibold text-accent hover:underline">{t.controlId}</RouterLink>
+                <StateBadge state={t.state} size="sm" />
+                <Pill tone="amber">testimony {stanceWords(t.stance)}</Pill>
+                <span className="font-mono text-[11px] text-slate-400">{t.signalKey}</span>
               </div>
+              <p data-testid="testimony-outcome" className="mt-2 text-[13px] text-slate-800">{capitalise(t.contradictedBy)}.</p>
+              <p className="mt-1 font-mono text-[11px] text-slate-400">
+                {t.basis} · {t.locator}
+              </p>
             </motion.div>
           ))}
-          {playing && shown < role.turns.length && (
-            <div className="text-xs text-slate-400">typing…</div>
-          )}
-          {shown === 0 && <div className="text-sm text-slate-400">Press Play to run the scripted interview.</div>}
         </div>
+        <p className="mt-3 text-[11px] text-slate-500">
+          The transcript is not in the assessment file. The engine records where each answer sits (the locator) and what it did with it; testimony alone never makes a
+          control Compliant, and an answer that supports a control is kept even when the evidence goes against it.
+        </p>
+      </Card>
+    </StateProvenance>
+  );
+}
 
-        <AnimatePresence>
-          {showFallacy && role.coverageFallacy && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mt-4 overflow-hidden rounded-lg border border-amber-200 bg-amber-50 p-3"
-            >
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                <AlertTriangle size={13} /> Coverage fallacy defeated
-              </div>
-              <p className="mt-1 text-[12px] text-amber-800 line-through decoration-red-400">
-                {role.coverageFallacy.naive}
-              </p>
-              <ul className="mt-1 space-y-0.5">
-                {role.coverageFallacy.refined.map((r) => (
-                  <li key={r} className="flex items-start gap-1.5 text-[12px] text-amber-900">
-                    <Check size={12} className="mt-0.5 shrink-0" /> {r}
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Card></Provenance>
-
-      <div>
-        <Provenance tier="illustrative"><Card dataTour="intake-claims" title="Extracted claims" subtitle="Testimony is capped at Yellow — never Green">
-          <div className="space-y-2.5">
-            {role.claims.slice(0, claimsVisible).map((claim, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="rounded-lg border border-slate-200 p-3"
-              >
-                <p className="text-[13px] text-slate-800">{claim.text}</p>
-                {claim.note && <p className="mt-1 text-[11px] text-slate-500">{claim.note}</p>}
-                <div className="mt-2 flex items-center justify-between">
-                  <span data-tour={i === 0 ? 'intake-testimony' : undefined}>
-                    <Pill tone="amber">Testimony only — capped at Yellow</Pill>
-                  </span>
-                  <span className="tnum text-[11px] text-slate-400">
-                    conf {claim.confidence.toFixed(2)}
-                  </span>
-                </div>
-              </motion.div>
-            ))}
-            {claimsVisible === 0 && (
-              <p className="text-sm text-slate-400">Claims appear here as the interview progresses.</p>
-            )}
-          </div>
-        </Card></Provenance>
-      </div>
-    </div>
+/** What the engine did with the answers it weighed, by the ground it recorded. */
+function WhatTheEngineDid({ all, uploaded }: { all: Testimony[]; uploaded: boolean }) {
+  const byBasis = [...new Set(all.map((t) => t.basis))].map((b) => ({ basis: b, items: all.filter((t) => t.basis === b) }));
+  return (
+    <StateProvenance uploaded={uploaded} from="claims">
+      <Card title="What the engine did with the answers" subtitle="by the ground it recorded">
+        <div className="overflow-x-auto">
+          <table data-testid="testimony-bases" className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400">
+                <th className="py-2 pr-4">Ground</th>
+                <th className="py-2 pr-4 text-right">Answers</th>
+                <th className="py-2">Controls</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byBasis.map((b) => (
+                <tr key={b.basis} className="border-b border-slate-100">
+                  <td className="py-2.5 pr-4 font-mono text-xs font-semibold text-slate-700">{b.basis}</td>
+                  <td className="py-2.5 pr-4 text-right tnum">{b.items.length}</td>
+                  <td className="py-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {b.items.map((t) => (
+                        <span key={t.controlId + t.sourceRef} className="inline-flex items-center gap-1">
+                          <RouterLink to={`/control/${t.controlId}`} className="font-mono text-[11px] text-accent hover:underline">{t.controlId}</RouterLink>
+                          <StateBadge state={t.state} size="sm" showLabel={false} />
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {byBasis.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="py-2.5 text-[12px] text-slate-500">The engine recorded no answer it had to weigh against the evidence in this assessment.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </StateProvenance>
   );
 }
 
 /* ─── Tab B: Evidence bundle ────────────────────────────────────────────────── */
 
-const statusMeta: Record<ModuleStatus, { icon: typeof Check; tone: 'green' | 'amber' | 'red' | 'slate'; label: string }> = {
-  success: { icon: Check, tone: 'green', label: 'success' },
-  partial: { icon: AlertTriangle, tone: 'amber', label: 'partial' },
-  failed: { icon: XCircle, tone: 'red', label: 'failed' },
-  declined: { icon: Ban, tone: 'slate', label: 'declined' },
+type Stage = { label: string; result: 'ok' | 'warn' | 'error'; detail: string };
+
+/** The ingestion stages, from the assessment: what was read, what was not provided and why (the engine's reasons). */
+function ingestionStages(): Stage[] {
+  const sigs = planSignals();
+  const families = new Set(sigs.map((s) => s.family)).size;
+  const provided = sigs.filter((s) => s.status === 'provided').length;
+  const reasons = new Map<string, number>();
+  for (const s of sigs) if (s.status !== 'provided') reasons.set(s.status, (reasons.get(s.status) ?? 0) + 1);
+  const stages: Stage[] = [
+    { label: 'Verifying signature', result: 'ok', detail: 'simulated: the collector and its signing are not built yet' },
+    { label: 'Reading the collection ledger', result: 'ok', detail: `${families} signal families recorded` },
+    { label: 'Reading provided signals', result: 'ok', detail: `${provided} of ${sigs.length} signals provided` },
+  ];
+  for (const [reason, n] of reasons) {
+    stages.push({
+      label: `Signals ${REASON_WORDS[reason as keyof typeof REASON_WORDS] ?? reason}`,
+      result: reason === 'module_failed' ? 'error' : 'warn',
+      detail: `${n} signal${n === 1 ? '' : 's'}${reason === 'module_failed' ? ': a failed module proves nothing, so its controls stay Unknown' : ''}`,
+    });
+  }
+  const w = testimonyWeighed().length;
+  stages.push({ label: 'Weighing testimony', result: 'ok', detail: `${w} answer${w === 1 ? '' : 's'} weighed against the evidence` });
+  return stages;
+}
+
+const ledgerStatus = (r: FamilyRow): { tone: 'green' | 'amber' | 'red' | 'slate'; label: string } => {
+  if (r.provided === r.required) return { tone: 'green', label: 'complete' };
+  if (r.byReason.module_failed) return { tone: 'red', label: 'failed' };
+  if (r.provided === 0 && r.byReason.declined === r.required) return { tone: 'slate', label: 'declined' };
+  return { tone: 'amber', label: 'partial' };
 };
 
 function BundlePanel() {
@@ -176,165 +147,160 @@ function BundlePanel() {
   const [stage, setStage] = useState(-1); // -1 idle, 0..n running, n done
   const [done, setDone] = useState(uploaded);
   const [lastFeedback, setLastFeedback] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  const slots = useMemo(() => planSignals(), []);
+  const stages = useMemo(() => ingestionStages(), []);
+  const providedByBundle = slots.filter((s) => s.status === 'provided');
 
   const run = () => {
-    uploadSlotsBulk(requestPlan.filter((r) => r.method === 'automated').map((r) => r.artifact));
+    uploadSlotsBulk(providedByBundle.map((s) => s.signal));
     setStage(0);
   };
 
   useEffect(() => {
     if (stage < 0) return;
-    if (stage >= bundleStages.length) {
+    if (stage >= stages.length) {
       setDone(true);
       uploadEvidence();
       return;
     }
     const t = setTimeout(() => setStage((s) => s + 1), 300);
     return () => clearTimeout(t);
-  }, [stage, uploadEvidence]);
+  }, [stage, stages.length, uploadEvidence]);
 
-  const slots = requestPlan;
-  const filled = slots.filter((s) => uploadedSlots[s.artifact]).length;
-  // The artifacts' unlock counts overlap, so their sum is not a count of controls: it is capped at what can
-  // be resolved at all (the Unknowns that have an authored requirement). Coverage starts from the
-  // pre-upload figure and cannot pass the plan's projection.
-  const before = CURRENT.before.views;
-  const controlsEvidenced = Math.min(
-    slots.filter((s) => uploadedSlots[s.artifact]).reduce((a, s) => a + s.controlsUnlocked, 0),
-    before.authored_scope.unknown,
-  );
+  const filled = slots.filter((s) => uploadedSlots[s.signal]).length;
+  const pending = slots.filter((s) => !uploadedSlots[s.signal]);
+  const shown = showAll ? pending : pending.slice(0, 12);
   const fmt1 = (n: number) => n.toFixed(1);
   const viewsBefore = viewPercents(CURRENT.before.views.unweighted);
   const viewsAfter = viewPercents(CURRENT.after.views.unweighted);
   const assurance = assuranceMeasurement();
-  const covEstimate = (((before.unweighted.known + controlsEvidenced) * 100) / before.unweighted.applicable).toFixed(1);
+  const ledger = collectionLedger();
+  const failed = ledger.filter((r) => r.byReason.module_failed);
 
   return (
     <div className="space-y-5">
-      <Provenance tier="illustrative"><Card
-        title="Evidence intake"
-        subtitle={`${filled} of ${slots.length} artifact slots filled · ${controlsEvidenced} controls evidenced · est. coverage ${covEstimate}%`}
-        right={
-          <Provenance tier="planned" as="span" className="inline-block"><Button dataTour="bundle-upload" onClick={run} disabled={stage >= 0 && !done}>
-            <UploadCloud size={13} /> {done ? 'Bundle processed' : 'Simulate collector bundle upload (fills 14)'}
-          </Button></Provenance>
-        }
-      >
-        {lastFeedback && (
-          <div className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">{lastFeedback}</div>
-        )}
-        <div className="grid gap-2 sm:grid-cols-2">
-          {slots.map((s) => {
-            const up = uploadedSlots[s.artifact];
-            return (
-              <div key={s.artifact} className={`rounded-lg border px-3 py-2.5 ${up ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200'}`}>
+      <StateProvenance uploaded={uploaded} from="coverage">
+        <Card
+          title="Evidence intake"
+          subtitle={`${filled} of ${slots.length} signals provided`}
+          right={
+            <Provenance tier="planned" as="span" className="inline-block">
+              <Button dataTour="bundle-upload" onClick={run} disabled={stage >= 0 && !done}>
+                <UploadCloud size={13} /> {done ? 'Bundle processed' : `Simulate collector bundle upload (provides ${providedByBundle.length})`}
+              </Button>
+            </Provenance>
+          }
+        >
+          {lastFeedback && <div className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">{lastFeedback}</div>}
+          <div data-testid="intake-slots" className="grid gap-2 sm:grid-cols-2">
+            {shown.map((s) => (
+              <div key={s.signal} data-testid={`slot-${s.signal}`} className="rounded-lg border border-slate-200 px-3 py-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-[13px] font-medium text-slate-800">{s.artifact}</div>
-                    <div className="text-[11px] text-slate-400">{s.source} · unlocks {s.controlsUnlocked} · {s.formatHint}</div>
+                    <div className="truncate font-mono text-[12px] font-medium text-slate-800">{s.signal}</div>
+                    <div className="text-[11px] text-slate-400">
+                      named by {s.controls.length} control{s.controls.length === 1 ? '' : 's'}
+                      {done && s.status !== 'provided' && <> · <span className="text-orange-700">{REASON_WORDS[s.status] ?? s.status}</span></>}
+                    </div>
                   </div>
-                  {up ? (
-                    <Pill tone="green"><Check size={10} /> accepted</Pill>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        uploadSlot(s.artifact);
-                        setLastFeedback(`${s.artifact} accepted — ${s.controlsUnlocked} controls now evidenced.`);
-                      }}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
-                    >
-                      <Upload size={10} /> Upload
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      uploadSlot(s.signal);
+                      setLastFeedback(`${s.signal} accepted: ${s.controls.length} control${s.controls.length === 1 ? '' : 's'} name it in their evidence requirement.`);
+                    }}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    <Upload size={10} /> Upload
+                  </button>
                 </div>
               </div>
-            );
-          })}
-        </div>
-        <div className="mt-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-          Other evidence — drop anything not listed above. Simulated; no file is parsed.
-        </div>
-      </Card></Provenance>
+            ))}
+          </div>
+          {pending.length > 12 && (
+            <button onClick={() => setShowAll((v) => !v)} className="mt-2 text-xs font-semibold text-accent hover:underline">
+              {showAll ? 'Show fewer' : `Show all ${pending.length} signals not yet provided`}
+            </button>
+          )}
+          {pending.length === 0 && <p className="text-[12px] text-slate-500">Every signal the plan asks for has been provided.</p>}
+          <div className="mt-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+            Other evidence — drop anything not listed above. Simulated; no file is parsed.
+          </div>
+        </Card>
+      </StateProvenance>
 
       {stage >= 0 && (
-        <Provenance tier="planned"><Card title="Ingestion" subtitle={`${BUNDLE_MANIFEST.collector} · signature ${BUNDLE_MANIFEST.signatureAlg}`}>
-          <ol className="space-y-1.5">
-            {bundleStages.map((s, i) => {
-              const state = i < stage ? 'done' : i === stage ? 'running' : 'pending';
-              const Icon =
-                s.result === 'ok' ? Check : s.result === 'warn' ? AlertTriangle : XCircle;
-              const colour =
-                state === 'pending'
-                  ? 'text-slate-300'
-                  : s.result === 'ok'
-                  ? 'text-emerald-600'
-                  : s.result === 'warn'
-                  ? 'text-amber-600'
-                  : 'text-red-600';
-              return (
-                <li key={i} className="flex items-start gap-2.5 text-sm">
-                  <Icon size={15} className={`mt-0.5 shrink-0 ${colour}`} />
-                  <div className={state === 'pending' ? 'text-slate-300' : 'text-slate-700'}>
-                    <span className="font-medium">{s.label}</span>
-                    {state !== 'pending' && <span className="text-slate-500"> — {s.detail}</span>}
-                    {state === 'running' && <span className="ml-1 text-slate-400">…</span>}
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </Card></Provenance>
+        <Provenance tier="planned">
+          <Card title="Ingestion" subtitle="what was read from the bundle, and what was not provided">
+            <ol className="space-y-1.5">
+              {stages.map((s, i) => {
+                const state = i < stage ? 'done' : i === stage ? 'running' : 'pending';
+                const Icon = s.result === 'ok' ? Check : s.result === 'warn' ? AlertTriangle : XCircle;
+                const colour = state === 'pending' ? 'text-slate-300' : s.result === 'ok' ? 'text-emerald-600' : s.result === 'warn' ? 'text-amber-600' : 'text-red-600';
+                return (
+                  <li key={i} className="flex items-start gap-2.5 text-sm">
+                    <Icon size={15} className={`mt-0.5 shrink-0 ${colour}`} />
+                    <div className={state === 'pending' ? 'text-slate-300' : 'text-slate-700'}>
+                      <span className="font-medium">{s.label}</span>
+                      {state !== 'pending' && <span className="text-slate-500"> — {s.detail}</span>}
+                      {state === 'running' && <span className="ml-1 text-slate-400">…</span>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </Card>
+        </Provenance>
       )}
 
       {done && (
         <>
-          <Provenance tier="illustrative"><Card dataTour="module-ledger" title="Module execution ledger" subtitle="Which collector modules ran, and with what result">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400">
-                    <th className="py-2 pr-4">Module</th>
-                    <th className="py-2 pr-4">Status</th>
-                    <th className="py-2 pr-4">Detail</th>
-                    <th className="py-2">Negative-capable</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {moduleLedger.map((m) => {
-                    const meta = statusMeta[m.status];
-                    const Icon = meta.icon;
-                    return (
-                      <tr key={m.module} className="border-b border-slate-100">
-                        <td className="py-2.5 pr-4 font-mono text-xs font-semibold text-slate-700">{m.module}</td>
-                        <td className="py-2.5 pr-4">
-                          <Pill tone={meta.tone}>
-                            <Icon size={11} /> {meta.label}
-                          </Pill>
-                        </td>
-                        <td className="py-2.5 pr-4 text-slate-600">{m.detail}</td>
-                        <td className="py-2.5">
-                          {m.negativeCapable ? (
-                            <span className="text-emerald-700">yes</span>
-                          ) : (
-                            <span className="text-slate-400">no</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-3 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-[12px] text-slate-700">
-              <ShieldQuestion size={15} className="mt-0.5 shrink-0 text-slate-400" />
-              <span>
-                Only modules with status <code className="font-mono">success</code> may produce a negative
-                finding. The <code className="font-mono">logging</code> module failed, so its controls remain{' '}
-                <strong>Unknown</strong>, not Gap. A permission error must never manufacture a confident
-                failure.
-              </span>
-            </div>
-          </Card></Provenance>
+          <StateProvenance uploaded={uploaded} from="coverage">
+            <Card dataTour="module-ledger" title="Collection ledger" subtitle="how the collection went, by signal family">
+              <div className="overflow-x-auto">
+                <table data-testid="collection-ledger" className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400">
+                      <th className="py-2 pr-4">Family</th>
+                      <th className="py-2 pr-4">Status</th>
+                      <th className="py-2 pr-4 text-right">Provided</th>
+                      <th className="py-2">Not provided</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ledger.map((r) => {
+                      const st = ledgerStatus(r);
+                      return (
+                        <tr key={r.family} data-testid={`ledger-${r.family}`} data-status={st.label} className="border-b border-slate-100">
+                          <td className="py-2.5 pr-4 font-mono text-xs font-semibold text-slate-700">{r.family}</td>
+                          <td className="py-2.5 pr-4">
+                            <Pill tone={st.tone}>{st.label}</Pill>
+                          </td>
+                          <td className="py-2.5 pr-4 text-right tnum text-slate-700">{r.provided} of {r.required}</td>
+                          <td className="py-2.5 text-slate-600">
+                            {Object.entries(r.byReason).length === 0
+                              ? <span className="text-slate-400">—</span>
+                              : Object.entries(r.byReason).map(([k, n]) => `${n} ${REASON_WORDS[k as keyof typeof REASON_WORDS] ?? k}`).join(' · ')}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-[12px] text-slate-700">
+                <ShieldQuestion size={15} className="mt-0.5 shrink-0 text-slate-400" />
+                <span>
+                  Only a module that ran successfully may produce a negative finding.
+                  {failed.length > 0
+                    ? <> Collection failed for {failed.map((f) => <code key={f.family} className="font-mono">{f.family}</code>).reduce<React.ReactNode[]>((a, c, i) => (i ? [...a, ', ', c] : [c]), [])}, so the controls that depend on it remain <strong>Unknown</strong>, not Gap.</>
+                    : ' No collection failed in this assessment.'}{' '}
+                  A permission error must never manufacture a confident failure.
+                </span>
+              </div>
+            </Card>
+          </StateProvenance>
 
           <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4">
             <div>
@@ -362,11 +328,10 @@ function BundlePanel() {
 export default function Intake() {
   const [tab, setTab] = useState<'interviews' | 'bundle'>('interviews');
   const [activeRole, setActiveRole] = useState<string | null>(null);
-  const completeInterview = useAssessment((s) => s.completeInterview);
-  const done = useAssessment((s) => s.interviewsCompleted);
   const uploaded = useAssessment((s) => s.evidenceUploaded);
   const profile = useAssessment((s) => s.profile);
-  const role = interviews.find((r) => r.id === activeRole);
+  const all = useMemo(() => testimonyWeighed(uploaded), [uploaded]);
+  const role = respondentRoles(uploaded).find((r) => roleSlug(r) === activeRole);
   const contradiction = uploaded && profile.usesCloud === 'no';
 
   return (
@@ -394,9 +359,7 @@ export default function Intake() {
             key={id}
             data-tour={id === 'bundle' ? 'intake-tab-bundle' : 'intake-tab-interviews'}
             onClick={() => setTab(id)}
-            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-              tab === id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-            }`}
+            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-semibold transition ${tab === id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
           >
             {label}
           </button>
@@ -406,16 +369,13 @@ export default function Intake() {
       {tab === 'interviews' &&
         (role ? (
           <div className="space-y-4">
-            <button
-              onClick={() => setActiveRole(null)}
-              className="text-sm font-semibold text-accent hover:underline"
-            >
-              ← All roles
+            <button onClick={() => setActiveRole(null)} className="text-sm font-semibold text-accent hover:underline">
+              ← All respondents
             </button>
-            <InterviewPanel role={role} onComplete={() => completeInterview(role.id)} />
+            <TestimonyPanel role={role} uploaded={uploaded} items={all.filter((t) => t.respondentRole === role)} />
           </div>
         ) : (
-          <InterviewList onOpen={setActiveRole} done={done} />
+          <RespondentList all={all} uploaded={uploaded} onOpen={setActiveRole} />
         ))}
 
       {tab === 'bundle' && <BundlePanel />}
@@ -423,110 +383,75 @@ export default function Intake() {
   );
 }
 
-/* ─── Interview list + scoped links + review queue (2.2) ────────────────────── */
+/* ─── Respondents + scoped links ────────────────────────────────────────────── */
 
-const SCOPE_LABEL: Record<string, string> = {
-  operator: 'Infrastructure / Operator questions only',
-  exec: 'Executive / Compliance questions only',
-  defender: 'Defender / SOC questions only',
-};
-
-function InterviewList({ onOpen, done }: { onOpen: (id: string) => void; done: string[] }) {
+function RespondentList({ all, uploaded, onOpen }: { all: Testimony[]; uploaded: boolean; onOpen: (slug: string) => void }) {
   const [links, setLinks] = useState<Record<string, ScopedLink>>({});
   const [sent, setSent] = useState<string[]>([]);
+  const roles = respondentRoles(uploaded);
 
   return (
     <div className="space-y-5">
-      <Provenance tier="illustrative"><div data-tour="intake-roles" className="grid gap-4 sm:grid-cols-3">
-        {interviews.map((r) => {
-          const link = links[r.id];
-          return (
-            <div key={r.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <button data-tour={`intake-role-${r.id}`} onClick={() => onOpen(r.id)} className="text-left">
-                <div className="text-sm font-bold text-slate-900 hover:text-accent">{r.title}</div>
-                <div className="mt-0.5 text-xs text-slate-500">{r.persona}</div>
-              </button>
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">{r.turns.length} turns · {r.claims.length} claims</span>
-                {done.includes(r.id) ? (
-                  <Pill tone="green"><Check size={11} /> done</Pill>
-                ) : (
-                  <Pill tone="slate">not started</Pill>
-                )}
-              </div>
-              <Provenance tier="planned"><div className="mt-3 border-t border-slate-100 pt-3">
-                {link ? (
-                  <div className="text-[11px]">
-                    <code className="block truncate rounded bg-slate-100 px-2 py-1 font-mono text-slate-600">
-                      https://jccp.ministry.local/respond/{link.token}
-                    </code>
-                    <div className="mt-1 text-slate-500">
-                      expires in {link.expiresInDays} days · {link.scopeLabel}
-                    </div>
-                    <div className="mt-1 flex gap-2">
-                      <button onClick={() => navigator.clipboard?.writeText(`https://jccp.ministry.local/respond/${link.token}`)} className="font-semibold text-accent hover:underline">Copy</button>
+      <StateProvenance uploaded={uploaded} from="claims">
+        <div data-tour="intake-roles" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {roles.map((r) => {
+            const n = all.filter((t) => t.respondentRole === r).length;
+            const slug = roleSlug(r);
+            const link = links[slug];
+            return (
+              <div key={r} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <button data-tour={`intake-role-${slug}`} data-testid={`respondent-${slug}`} onClick={() => onOpen(slug)} className="text-left">
+                  <div className="text-sm font-bold text-slate-900 hover:text-accent">{capitalise(r)}</div>
+                  <div className="mt-0.5 text-xs text-slate-500">{n} answer{n === 1 ? '' : 's'} weighed</div>
+                </button>
+                <Provenance tier="planned">
+                  <div className="mt-3 border-t border-slate-100 pt-3">
+                    {link ? (
+                      <div className="text-[11px]">
+                        <code className="block truncate rounded bg-slate-100 px-2 py-1 font-mono text-slate-600">https://jccp.ministry.local/respond/{link.token}</code>
+                        <div className="mt-1 text-slate-500">expires in {link.expiresInDays} days · {link.scopeLabel}</div>
+                        <div className="mt-1 flex gap-2">
+                          <button onClick={() => navigator.clipboard?.writeText(`https://jccp.ministry.local/respond/${link.token}`)} className="font-semibold text-accent hover:underline">Copy</button>
+                          <button onClick={() => setSent((s) => (s.includes(slug) ? s : [...s, slug]))} className="font-semibold text-accent hover:underline">
+                            {sent.includes(slug) ? 'Sent ✓' : 'Mark as sent'}
+                          </button>
+                        </div>
+                        <div className="mt-1 text-[10px] text-slate-400">Internal network only — this link does not traverse the internet</div>
+                      </div>
+                    ) : (
                       <button
-                        onClick={() => setSent((s) => (s.includes(r.id) ? s : [...s, r.id]))}
-                        className="font-semibold text-accent hover:underline"
+                        onClick={() => setLinks((l) => ({ ...l, [slug]: scopedLinkFor(slug, `${capitalise(r)} questions only`) }))}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-accent hover:underline"
                       >
-                        {sent.includes(r.id) ? 'Sent ✓' : 'Mark as sent'}
+                        <Link2 size={11} /> Generate scoped link
                       </button>
-                    </div>
-                    <div className="mt-1 text-[10px] text-slate-400">Internal network only — this link does not traverse the internet</div>
+                    )}
                   </div>
-                ) : (
-                  <button
-                    onClick={() => setLinks((l) => ({ ...l, [r.id]: scopedLinkFor(r.id, SCOPE_LABEL[r.id]) }))}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-accent hover:underline"
-                  >
-                    <Link2 size={11} /> Generate scoped link
-                  </button>
-                )}
-              </div></Provenance>
-            </div>
-          );
-        })}
-      </div></Provenance>
-
-      <Provenance tier="illustrative"><Card title="Review queue" subtitle="who is answering what, and where it stands">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400">
-                <th className="py-2 pr-4">Role</th>
-                <th className="py-2 pr-4">Assignee</th>
-                <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4">Submitted</th>
-                <th className="py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reviewQueue.map((row) => (
-                <tr key={row.roleId} className="border-b border-slate-100">
-                  <td className="py-2.5 pr-4 text-slate-700">{row.roleTitle}</td>
-                  <td className="py-2.5 pr-4 text-slate-600">{row.assignee}</td>
-                  <td className="py-2.5 pr-4">
-                    <Pill tone={row.status === 'accepted' ? 'green' : row.status === 'under review' ? 'amber' : row.status === 'submitted' ? 'blue' : 'slate'}>
-                      {row.status}
-                    </Pill>
-                  </td>
-                  <td className="py-2.5 pr-4 tnum text-slate-500">{row.submittedAt ?? '—'}</td>
-                  <td className="py-2.5 text-[12px] text-accent">
-                    <button className="hover:underline">Review</button> · <button className="hover:underline">Reopen</button> · <button className="hover:underline">Nudge</button>
-                  </td>
-                </tr>
-              ))}
-              <tr className="bg-amber-50">
-                <td colSpan={5} className="py-2.5 px-1 text-[12px] text-amber-800">
-                  <AlertTriangle size={12} className="mr-1 inline" />
-                  <strong>Conflict:</strong> {CONFLICT_FLAG.summary} — operator wins on configuration per trust
-                  ordering. <button className="font-semibold underline">Review</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </Provenance>
+              </div>
+            );
+          })}
+          {roles.length === 0 && <p className="text-sm text-slate-500">The engine recorded no testimony it had to weigh in this assessment.</p>}
         </div>
-      </Card></Provenance>
+      </StateProvenance>
+
+      <WhatTheEngineDid all={all} uploaded={uploaded} />
+
+      {all.some((t) => t.basis === 'admission') && (
+        <div data-testid="testimony-conflict" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-900">
+          <KeyRound size={12} className="mr-1 inline" />
+          <strong>Two answers disagree:</strong>{' '}
+          {all
+            .filter((t) => t.basis === 'admission')
+            .map((t) => (
+              <span key={t.controlId}>
+                <RouterLink to={`/control/${t.controlId}`} className="font-mono font-semibold underline">{t.controlId}</RouterLink>: {t.contradictedBy}.{' '}
+              </span>
+            ))}
+          <Ban size={11} className="mr-1 inline text-amber-700" />
+          Testimony that admits non-enforcement prevails over testimony that supports it; the supporting answer is retained, not outvoted.
+        </div>
+      )}
     </div>
   );
 }

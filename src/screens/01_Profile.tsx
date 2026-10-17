@@ -13,6 +13,7 @@ import {
   unknownScopedControls,
   TOTAL_CONTROLS,
   HOSTING_LABEL,
+  type Declared,
   type OrgProfile,
   type Ternary,
 } from '../data/scenario';
@@ -35,7 +36,7 @@ const TOGGLES: { key: keyof OrgProfile; label: string; hint: string }[] = [
 const TRI: Ternary[] = ['yes', 'no', 'unknown'];
 const TRI_LABEL: Record<Ternary, string> = { yes: 'Yes', no: 'No', unknown: "Don't know" };
 
-function TriToggle({ value, onChange, label, hint, dataTour }: { value: Ternary; onChange: (v: Ternary) => void; label: string; hint: string; dataTour?: string }) {
+function TriToggle({ value, onChange, label, hint, dataTour }: { value: Declared; onChange: (v: Ternary) => void; label: string; hint: string; dataTour?: string }) {
   return (
     <div data-tour={dataTour} className="rounded-lg border border-slate-200 px-3 py-2.5">
       <div className="flex items-center justify-between gap-3">
@@ -43,6 +44,9 @@ function TriToggle({ value, onChange, label, hint, dataTour }: { value: Ternary;
           <div className="text-sm font-medium text-slate-800">{label}</div>
           <div className="text-[11px] text-slate-400">{hint}</div>
         </div>
+        {value === 'unrecorded' && (
+          <span data-testid="unrecorded" className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">in scope — not recorded as declined</span>
+        )}
         <div className="flex shrink-0 overflow-hidden rounded-md border border-slate-300 text-[11px] font-semibold">
           {TRI.map((t) => (
             <button
@@ -192,7 +196,7 @@ export default function Profile() {
                 key={t.key}
                 label={t.label}
                 hint={t.hint}
-                value={profile[t.key] as Ternary}
+                value={profile[t.key] as Declared}
                 onChange={(v) => setProfile({ [t.key]: v } as Partial<OrgProfile>)}
               />
             ))}

@@ -13,7 +13,7 @@ import { toPct } from '../lib/frac';
 import { evidenceArtifacts } from '../lib/ranking';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { RISK_WEIGHT_TABLE, RISK_WEIGHTED_TOTALS, FRAMEWORK_WEIGHTED_TOTALS } from '../data/riskWeighting';
-import { REQUEST_PLAN_SUMMARY } from '../data/scenario';
+import { planSummary, planSignals } from '../lib/plan';
 import { TOUR_STEPS } from '../tour/steps';
 import { toNumber } from '../lib/frac';
 
@@ -108,7 +108,7 @@ describe('choosing an assessment on the Profile screen changes the whole app', (
 
   it('the choice survives a reload: the stored assessment is put back as the active one', async () => {
     pick('utility');
-    expect(JSON.parse(localStorage.getItem('jccp-assessment-v3')!).state.profileId).toBe('utility');
+    expect(JSON.parse(localStorage.getItem('jccp-assessment-v4')!).state.profileId).toBe('utility');
     act(() => {
       // simulate a fresh page: the data layer is back at its default, the store is rehydrated from storage
       useAssessment.getState().resetDemo();
@@ -136,9 +136,9 @@ describe('the organisation profile each assessment corresponds to is derived fro
   });
   it('the utility declared three variables "no" and the bank none, as its exclusions say', () => {
     const u = orgProfileFor('utility');
-    expect([u.inHouseDevelopment, u.outsourcedDevelopment, u.wirelessNetwork, u.mobileDevices, u.remoteAccess]).toEqual(['no', 'no', 'no', 'yes', 'yes']);
+    expect([u.inHouseDevelopment, u.outsourcedDevelopment, u.wirelessNetwork, u.mobileDevices, u.remoteAccess]).toEqual(['no', 'no', 'no', 'unrecorded', 'unrecorded']);
     const b = orgProfileFor('bank');
-    expect([b.inHouseDevelopment, b.outsourcedDevelopment, b.wirelessNetwork, b.mobileDevices, b.remoteAccess]).toEqual(['yes', 'yes', 'yes', 'yes', 'yes']);
+    expect([b.inHouseDevelopment, b.outsourcedDevelopment, b.wirelessNetwork, b.mobileDevices, b.remoteAccess]).toEqual(['unrecorded', 'unrecorded', 'unrecorded', 'unrecorded', 'unrecorded']);
   });
 });
 
@@ -253,7 +253,7 @@ describe('no module holds an assessment\'s figures in a constant fixed at import
 });
 
 describe('the values built once per assessment follow the active one, in both directions', () => {
-  it('TOTALS, the capability table, the weights, the request-plan summary and the tour text are each the active assessment\'s', () => {
+  it('TOTALS, the capability table, the weights, the plan and the tour text are each the active assessment\'s', () => {
     for (const id of [...PROFILE_ORDER, 'ministry', 'utility', 'bank'] as ProfileId[]) {
       pick(id);
       const p = PROFILES[id];
@@ -266,8 +266,9 @@ describe('the values built once per assessment follow the active one, in both di
       expect(RISK_WEIGHT_TABLE.reduce((n, r) => n + r.controls, 0), id).toBe(p.totals.applicable);
       expect(RISK_WEIGHTED_TOTALS.derivedOnly, id).toBe(toNumber(p.after.views.weighted_derived_only.totalWeight));
       expect(FRAMEWORK_WEIGHTED_TOTALS.excluded, id).toBe(p.totals.excluded);
-      expect(REQUEST_PLAN_SUMMARY.applicable, id).toBe(p.totals.applicable);
-      expect(REQUEST_PLAN_SUMMARY.unauthored, id).toBe(p.after.unknownUnauthored);
+      expect(planSummary().applicable, id).toBe(p.totals.applicable);
+      expect(planSummary().unauthored, id).toBe(p.after.unknownUnauthored);
+      expect(planSignals().length, id).toBe(p.coverage.required.length);
       expect(TOUR_STEPS.find((s) => s.target === 'profile-applicable')!.body, id).toContain(`${p.totals.applicable} of ${p.totals.framework} controls apply here`);
     }
     expect(new Set(PROFILE_ORDER.map((id) => { pick(id); return TOTALS.applicable; })).size).toBe(3);
