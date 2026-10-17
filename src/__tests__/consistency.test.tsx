@@ -9,7 +9,6 @@ import Exclusions from '../screens/10_Exclusions';
 import { useAssessment } from '../store/useAssessment';
 import { TOTALS } from '../data/capabilities';
 import { gapReasonBreakdown, controls } from '../data/controls';
-import { APPLICABLE_CONTROLS } from '../data/figures';
 import { CURRENT } from '../data/current';
 import { movedOutOfUnknown } from '../lib/coverage';
 import { evidenceArtifacts, resolvedBy } from '../lib/ranking';
@@ -177,9 +176,9 @@ describe('regression: the per-artifact unlock counts are derived, so they cannot
     const unresolvable = after.unknownUnauthored + after.views.unweighted.width.uncollectable[0];
     const { pool, artifacts } = pools('ministry');
     expect(pool).toBe(14);
-    const p = projectFromNumerator(APPLICABLE_CONTROLS, after.creditNumerator[0] / after.creditNumerator[1], after.unknown, unresolvable, resolvedBy(artifacts.map((a) => a.signal)).length);
+    const p = projectFromNumerator(CURRENT.totals.applicable, after.creditNumerator[0] / after.creditNumerator[1], after.unknown, unresolvable, resolvedBy(artifacts.map((a) => a.signal)).length);
     expect(p.resolved).toBe(pool);
-    expect(p.resultingWidthPts).toBeCloseTo(bandFloorPts(APPLICABLE_CONTROLS, unresolvable), 10);
+    expect(p.resultingWidthPts).toBeCloseTo(bandFloorPts(CURRENT.totals.applicable, unresolvable), 10);
   });
   it('resolvedBy is an intersection: a control asking for two signals is counted once, and only when both are in', () => {
     const base = CURRENT.ranking.items.find((i) => i.actionType === 'evidence_request')!;

@@ -71,7 +71,6 @@ const TOP_RISKS = [
 function ExecutiveDashboard() {
   const uploaded = useAssessment((s) => s.evidenceUploaded);
   const overrides = useAssessment((s) => s.overriddenControls);
-  const operatesCI = useAssessment((s) => s.profile.operatesCriticalInfrastructure);
   const view = dashboardView(uploaded, overrides);
   const eff = view.effective;
   const cs = completenessStatement(uploaded);
@@ -142,8 +141,8 @@ function ExecutiveDashboard() {
           limitation of the tool) and <strong className="tnum">{cs.unevidenced}</strong> because evidence was not
           provided. Compliance is reported as an interval because a point estimate would conceal what was not established.
         </p>
-        {operatesCI && (
-          <p className="mt-2 border-t border-slate-200 pt-2 text-sm leading-relaxed text-slate-700">
+        {CURRENT.cicsc.applies && (
+          <p data-testid="cicsc-notice" className="mt-2 border-t border-slate-200 pt-2 text-sm leading-relaxed text-slate-700">
             This organisation operates critical infrastructure and is subject to the Critical Infrastructure
             Cyber Security Controls (405 controls, three implementation levels) in addition to the Jordan
             National Cybersecurity Framework. This assessment does not evaluate CICSC compliance, and a
@@ -429,8 +428,8 @@ export default function Dashboard() {
             <Term k="assurance level">Assurance level</Term>: <strong>{cs.assurance}</strong>. Compliance is
             reported as an interval because a point estimate would conceal what was not established.
           </p>
-          {profile.operatesCriticalInfrastructure && (
-            <p className="mt-2 border-t border-slate-200 pt-2 text-sm leading-relaxed text-slate-700">
+          {CURRENT.cicsc.applies && (
+            <p data-testid="cicsc-notice" className="mt-2 border-t border-slate-200 pt-2 text-sm leading-relaxed text-slate-700">
               This organisation operates critical infrastructure and is subject to the Critical Infrastructure
               Cyber Security Controls (405 controls, three implementation levels) in addition to the Jordan
               National Cybersecurity Framework. This assessment does not evaluate CICSC compliance, and a

@@ -2,6 +2,7 @@
 
 import { DEFAULT_SECTOR_ID } from './sectors';
 import { CURRENT } from './current';
+import { lazyByProfile } from '../lib/lazyByProfile';
 
 /** Architecture toggles are tri-state. Ambiguity must never shrink the denominator:
  *  'unknown' is treated exactly like 'yes' for scoping, and the affected controls are
@@ -166,20 +167,22 @@ export const requestPlan: RequestArtifact[] = [
 
 // What the plan can and cannot establish. The plan asks for evidence for controls that have an authored
 // evidence requirement; the rest cannot be asked about, so they bound what providing everything achieves.
-const planAfter = CURRENT.after;
-export const REQUEST_PLAN_SUMMARY = {
-  artifactCount: requestPlan.length, // 22
-  systemCount: new Set(requestPlan.map((r) => r.source)).size, // 8
-  automatedCount: requestPlan.filter((r) => r.method === 'automated').length, // 14
-  manualCount: requestPlan.filter((r) => r.method === 'manual').length, // 8
-  applicable: planAfter.views.unweighted.applicable,
-  /** applicable controls with at least one authored evidence path: what the plan can ask about */
-  authoredScope: planAfter.views.authored_scope.applicable,
-  /** Unknown because no evidence requirement is authored: stay Unknown unless an artifact collected for another control shows one unmet */
-  unauthored: planAfter.unknownUnauthored,
-  /** coverage if every artifact were provided: every control except the unauthored Unknowns */
-  projectedCoveragePct: +(((planAfter.views.unweighted.applicable - planAfter.unknownUnauthored) * 100) / planAfter.views.unweighted.applicable).toFixed(1),
-};
+export const REQUEST_PLAN_SUMMARY = lazyByProfile(() => {
+  const planAfter = CURRENT.after;
+  return {
+    artifactCount: requestPlan.length, // 22
+    systemCount: new Set(requestPlan.map((r) => r.source)).size, // 8
+    automatedCount: requestPlan.filter((r) => r.method === 'automated').length, // 14
+    manualCount: requestPlan.filter((r) => r.method === 'manual').length, // 8
+    applicable: planAfter.views.unweighted.applicable,
+    /** applicable controls with at least one authored evidence path: what the plan can ask about */
+    authoredScope: planAfter.views.authored_scope.applicable,
+    /** Unknown because no evidence requirement is authored: stay Unknown unless an artifact collected for another control shows one unmet */
+    unauthored: planAfter.unknownUnauthored,
+    /** coverage if every artifact were provided: every control except the unauthored Unknowns */
+    projectedCoveragePct: +(((planAfter.views.unweighted.applicable - planAfter.unknownUnauthored) * 100) / planAfter.views.unweighted.applicable).toFixed(1),
+  };
+});
 
 // ─── Module execution ledger (brief §7.3) ─────────────────────────────────────
 

@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ControlState } from '../data/controls';
 import { defaultProfile, type OrgProfile } from '../data/scenario';
+import { DEFAULT_PROFILE, isProfileId, setActiveProfile, type ProfileId } from '../data/profiles';
+import { orgProfileFor } from '../data/orgProfiles';
 
 export type Phase = 'profile' | 'planning' | 'intake' | 'assessed';
 
@@ -42,6 +44,8 @@ interface AssessmentState {
   phase: Phase;
   role: Role;
   profile: OrgProfile;
+  /** which of the engine's three assessments the whole app is showing */
+  profileId: ProfileId;
   /** the single flag that flips the whole before/after transformation */
   evidenceUploaded: boolean;
   interviewsCompleted: string[]; // role ids
@@ -66,6 +70,8 @@ interface AssessmentState {
   endTour: () => void;
   tourGoto: (n: number) => void;
   setNavOpen: (v: boolean) => void;
+  /** choose the assessment to show. Everything held against the previous one (overrides, provided artifacts, the scoping decision) is dropped with it. */
+  selectProfile: (id: ProfileId) => void;
   setProfile: (patch: Partial<OrgProfile>) => void;
   setPdpl: (patch: Partial<OrgProfile['pdplHoldings']>) => void;
   uploadEvidence: () => void;
@@ -86,6 +92,7 @@ const initial = {
   phase: 'profile' as Phase,
   role: 'owner' as Role,
   profile: defaultProfile,
+  profileId: DEFAULT_PROFILE,
   evidenceUploaded: false,
   interviewsCompleted: [] as string[],
   interviewStatus: {} as AssessmentState['interviewStatus'],
@@ -123,7 +130,14 @@ export const useAssessment = create<AssessmentState>()(
         set((s) => ({ profile: { ...s.profile, pdplHoldings: { ...s.profile.pdplHoldings, ...patch } } })),
       uploadEvidence: () => set({ evidenceUploaded: true, phase: 'assessed' }),
       resetEvidence: () => set({ evidenceUploaded: false }),
-      resetDemo: () => set({ ...initial }),
+      resetDemo: () => {
+        setActiveProfile(DEFAULT_PROFILE);
+        set({ ...initial });
+      },
+      selectProfile: (id) => {
+        setActiveProfile(id);
+        set({ profileId: id, profile: orgProfileFor(id), providedRequests: [], overriddenControls: {}, profileChallenge: null, reviewedExclusions: [] });
+      },
       completeInterview: (id) =>
         set((s) => ({
           interviewsCompleted: s.interviewsCompleted.includes(id)
@@ -170,6 +184,10 @@ export const useAssessment = create<AssessmentState>()(
     {
       name: 'jccp-assessment-v3',
       partialize: ({ tourActive, tourStep, navOpen, ...rest }) => rest,
+      // The data layer holds the active assessment outside the store; put it back to what was saved.
+      onRehydrateStorage: () => (state) => {
+        setActiveProfile(state && isProfileId(state.profileId) ? state.profileId : DEFAULT_PROFILE);
+      },
     },
   ),
 );

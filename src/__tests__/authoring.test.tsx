@@ -8,7 +8,7 @@ import { useAssessment, type Role } from '../store/useAssessment';
 import { navForRole } from '../components/layout/nav';
 import { CURRENT } from '../data/current';
 import { controls, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
-import { EXCLUDED_COUNT, TOTAL_CONTROLS, APPLICABLE_CONTROLS } from '../data/figures';
+import { TOTAL_CONTROLS } from '../data/figures';
 import {
   AUTHORED_BY_CAPABILITY,
   AUTHORED_CONTROLS,
@@ -82,10 +82,10 @@ describe('Task 5: the authoring figures (taken from the engine\'s reports, then 
   });
   it('ties to the assessment: 510 unauthored across the framework is 492 that apply, of which 491 are Unknown and one has a verdict', () => {
     const scope = CURRENT.after.views.authored_scope.applicable;
-    const unauthoredExcluded = EXCLUDED_COUNT - (AUTHORED_CONTROLS - scope); // one authored control is excluded
+    const unauthoredExcluded = CURRENT.totals.excluded - (AUTHORED_CONTROLS - scope); // one authored control is excluded
     expect(unauthoredExcluded).toBe(18);
-    expect(UNAUTHORED_CONTROLS - unauthoredExcluded).toBe(APPLICABLE_CONTROLS - scope);
-    expect(APPLICABLE_CONTROLS - scope).toBe(492);
+    expect(UNAUTHORED_CONTROLS - unauthoredExcluded).toBe(CURRENT.totals.applicable - scope);
+    expect(CURRENT.totals.applicable - scope).toBe(492);
     expect(492 - CURRENT.after.unknownUnauthored).toBe(1);
   });
   it('the ministry\'s authored counts per capability never exceed the framework\'s', () => {

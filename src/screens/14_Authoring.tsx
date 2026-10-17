@@ -5,7 +5,7 @@ import { useAssessment } from '../store/useAssessment';
 import { stateFor } from '../lib/views';
 import { Provenance } from '../components/Provenance';
 import { CURRENT } from '../data/current';
-import { EXCLUDED_COUNT, TOTAL_CONTROLS } from '../data/figures';
+import { TOTAL_CONTROLS } from '../data/figures';
 import {
   AUTHORED_CONTROLS,
   AUTHORING,
@@ -39,9 +39,9 @@ export default function Authoring() {
   const scope = CURRENT.after.views.authored_scope;
 
   // Unauthored controls that apply to this organisation: the framework's unauthored controls less the
-  // unauthored ones among the excluded. One authored control is excluded, so 18 of the 19 exclusions are unauthored.
+  // unauthored ones among the excluded. The number of authored controls among the exclusions is computed below.
   const authoredExcluded = AUTHORED_CONTROLS - scope.applicable;
-  const unauthoredExcluded = EXCLUDED_COUNT - authoredExcluded;
+  const unauthoredExcluded = CURRENT.totals.excluded - authoredExcluded;
   const unauthoredApplicable = UNAUTHORED_CONTROLS - unauthoredExcluded;
   const withVerdict = unauthoredApplicable - CURRENT.after.unknownUnauthored;
 
@@ -83,7 +83,7 @@ export default function Authoring() {
         </Stat>
         <Stat label="Unauthored" value={UNAUTHORED_CONTROLS} testid="stat-unauthored">
           Across the framework. In this assessment <span className="tnum font-semibold">{unauthoredApplicable}</span> of them apply
-          ({EXCLUDED_COUNT} controls are excluded as not applicable); <span className="tnum font-semibold">{CURRENT.after.unknownUnauthored}</span> are Unknown
+          ({CURRENT.totals.excluded} controls are excluded as not applicable); <span className="tnum font-semibold">{CURRENT.after.unknownUnauthored}</span> are Unknown
           and {withVerdict} carries a verdict. That share of the width is the tool's limitation —{' '}
           <Link to="/dashboard" className="font-semibold text-accent hover:underline">see the Dashboard</Link>.
         </Stat>

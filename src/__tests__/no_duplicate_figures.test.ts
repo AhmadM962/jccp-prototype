@@ -35,8 +35,6 @@ const ALLOW: Record<string, Partial<Record<Lit, number>>> = {
   // TODO round 3: use TOTAL_CONTROLS
   'src/tour/glossary.ts': { '576': 2 },
   'src/tour/helpContent.ts': { '576': 1 },
-  // TODO round 3: use APPLICABLE_CONTROLS, TOTAL_CONTROLS
-  'src/tour/steps.ts': { '557': 2, '576': 2 },
 };
 
 const sources = import.meta.glob('/src/**/*.{ts,tsx}', {

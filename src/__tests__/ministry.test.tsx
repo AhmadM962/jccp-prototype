@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import Dashboard from '../screens/04_Dashboard';
 import { useAssessment, type OverrideRecord } from '../store/useAssessment';
 import { CURRENT, type StateFigures, type ViewId } from '../data/current';
-import { APPLICABLE_CONTROLS, EXCLUDED_COUNT, TOTAL_CONTROLS } from '../data/figures';
+import { TOTAL_CONTROLS } from '../data/figures';
 import { capabilities, TOTALS } from '../data/capabilities';
 import { gapReasonBreakdown, controls } from '../data/controls';
 import { add, eq, fmtPct, frac, mul, sub, sum, toPct } from '../lib/frac';
@@ -34,12 +34,12 @@ describe('Task 2: the per-state counts, derived from per-control data (see docs/
   it('assessed state: 21 Compliant, 25 Partial, 6 Gap, 505 Unknown = 557', () => {
     const a = CURRENT.after;
     expect([a.green, a.yellow, a.red, a.unknown]).toEqual([21, 25, 6, 505]);
-    expect(a.green + a.yellow + a.red + a.unknown).toBe(APPLICABLE_CONTROLS);
+    expect(a.green + a.yellow + a.red + a.unknown).toBe(CURRENT.totals.applicable);
   });
   it('pre-upload state (engine data under rule R): 0 / 14 / 1 / 542 = 557', () => {
     const b = CURRENT.before;
     expect([b.green, b.yellow, b.red, b.unknown]).toEqual([0, 14, 1, 542]);
-    expect(b.green + b.yellow + b.red + b.unknown).toBe(APPLICABLE_CONTROLS);
+    expect(b.green + b.yellow + b.red + b.unknown).toBe(CURRENT.totals.applicable);
   });
   it('52 carry a verdict unweighted and 51 over the authored scope of 65: both are right, they differ by one control outside the scope', () => {
     const u = CURRENT.after.views.unweighted;
@@ -48,9 +48,9 @@ describe('Task 2: the per-state counts, derived from per-control data (see docs/
     expect(s.applicable).toBe(65);
     expect(s.known).toBe(51);
     // the controls outside the scope: 492 = 557 − 65. 491 are Unknown for want of a requirement; one has a verdict.
-    expect(APPLICABLE_CONTROLS - s.applicable).toBe(492);
+    expect(CURRENT.totals.applicable - s.applicable).toBe(492);
     expect(CURRENT.after.unknownUnauthored).toBe(491);
-    expect(u.known - s.known).toBe(APPLICABLE_CONTROLS - s.applicable - CURRENT.after.unknownUnauthored);
+    expect(u.known - s.known).toBe(CURRENT.totals.applicable - s.applicable - CURRENT.after.unknownUnauthored);
     expect(u.known - s.known).toBe(1);
   });
 });
@@ -62,7 +62,7 @@ describe('Task 2: every published view matches the engine table', () => {
     expect([pct(A.unweighted.lower), pct(A.unweighted.upper)]).toEqual(['4.87', '95.54']);
     expect(A.unweighted.applicable).toBe(557);
     expect(pct(A.unweighted.coverage)).toBe('9.34');
-    expect(A.unweighted.coverage).toEqual([52, APPLICABLE_CONTROLS]);
+    expect(A.unweighted.coverage).toEqual([52, CURRENT.totals.applicable]);
     expect(A.unweighted.unknown).toBe(505);
     expect(pct(widthOf(A.unweighted))).toBe('90.66');
   });
@@ -81,8 +81,8 @@ describe('Task 2: every published view matches the engine table', () => {
     expect(A.authored_scope.unknown).toBe(14);
   });
   it('framework: 576 total, 557 applicable, 19 excluded', () => {
-    expect([TOTAL_CONTROLS, APPLICABLE_CONTROLS, EXCLUDED_COUNT]).toEqual([576, 557, 19]);
-    expect(TOTAL_CONTROLS - APPLICABLE_CONTROLS).toBe(EXCLUDED_COUNT);
+    expect([TOTAL_CONTROLS, CURRENT.totals.applicable, CURRENT.totals.excluded]).toEqual([576, 557, 19]);
+    expect(TOTAL_CONTROLS - CURRENT.totals.applicable).toBe(CURRENT.totals.excluded);
   });
 });
 
@@ -90,9 +90,9 @@ describe('Task 2: the width decomposition', () => {
   const U = CURRENT.after.views.unweighted;
   it('unauthored 88.15 points (491 controls), unevidenced 2.51 (14), uncollectable 0.00', () => {
     expect(fmtPct(U.width.unauthored)).toBe('88.15');
-    expect(U.width.unauthored).toEqual([491, APPLICABLE_CONTROLS]);
+    expect(U.width.unauthored).toEqual([491, CURRENT.totals.applicable]);
     expect(fmtPct(U.width.unevidenced)).toBe('2.51');
-    expect(U.width.unevidenced).toEqual([14, APPLICABLE_CONTROLS]);
+    expect(U.width.unevidenced).toEqual([14, CURRENT.totals.applicable]);
     expect(fmtPct(U.width.uncollectable)).toBe('0.00');
   });
   it.each(['before', 'after'] as const)('the three components sum EXACTLY to the width, in every view (%s)', (when) => {
@@ -103,7 +103,7 @@ describe('Task 2: the width decomposition', () => {
     }
   });
   it('the sum assertion is not vacuous: a corrupted view throws the consistency error', () => {
-    const bad = { ...U, width: { ...U.width, unevidenced: [15, APPLICABLE_CONTROLS] as const } };
+    const bad = { ...U, width: { ...U.width, unevidenced: [15, CURRENT.totals.applicable] as const } };
     expect(() => assertWidthSums(bad, 'test')).toThrow(IntervalConsistencyError);
   });
   it('unevidenced reasons: not_provided 5, declined 3, insufficient_permission 3, module_failed 2, stale 1 = 14', () => {
@@ -111,7 +111,7 @@ describe('Task 2: the width decomposition', () => {
     const rows = unevidencedRows(CURRENT.after);
     expect(rows.reduce((n, r) => n + r.count, 0)).toBe(14);
     // and they add up, as fractions of the 557, to the unevidenced width
-    expect(eq(sum(rows.map((r) => frac(r.count, APPLICABLE_CONTROLS))), U.width.unevidenced)).toBe(true);
+    expect(eq(sum(rows.map((r) => frac(r.count, CURRENT.totals.applicable))), U.width.unevidenced)).toBe(true);
   });
   it('before the upload every unevidenced authored control is not_provided: 50, so the upload resolves 36', () => {
     expect(CURRENT.before.unevidencedByReason).toEqual({ not_provided: 50 });
@@ -139,8 +139,8 @@ describe('Task 2: the upload moves a control outside the authored scope only by 
     // the authored-scope view holds no unauthored control, so the observation cannot touch it
     expect(CURRENT.before.views.authored_scope.width.unauthored).toEqual(CURRENT.after.views.authored_scope.width.unauthored);
     const u = (s: typeof CURRENT.before) => s.views.unweighted.width.unauthored;
-    expect(u(CURRENT.before)).toEqual([492, APPLICABLE_CONTROLS]);
-    expect(u(CURRENT.after)).toEqual([491, APPLICABLE_CONTROLS]);
+    expect(u(CURRENT.before)).toEqual([492, CURRENT.totals.applicable]);
+    expect(u(CURRENT.after)).toEqual([491, CURRENT.totals.applicable]);
   });
   it('inside the authored scope the rest is as before; outside it, Unknown falls by that one control and no more', () => {
     const outsideUnknown = (s: typeof CURRENT.before) => s.views.unweighted.unknown - s.views.authored_scope.unknown;
@@ -193,7 +193,7 @@ describe('Task 2: weights (the brief\'s "mismatch" is two populations, not an er
   it('the two populations reconcile through the 19 excluded controls', () => {
     const E = CURRENT.weightBasisCounts.excluded;
     const F = CURRENT.weightBasisCounts.framework;
-    expect(sumOf(E)).toBe(EXCLUDED_COUNT);
+    expect(sumOf(E)).toBe(CURRENT.totals.excluded);
     for (const k of Object.keys(F) as (keyof typeof F)[]) expect(F[k], k).toBe(A[k] + E[k]);
     expect(E.underived).toBe(6);
   });
@@ -204,7 +204,7 @@ describe('Task 2: the portfolio and the capability rows reconcile exactly', () =
     const s: StateFigures = STATES[when];
     const caps = Object.values(s.capabilities);
     const total = (k: 'applicable' | 'green' | 'yellow' | 'red' | 'unknown' | 'unknownUnauthored') => caps.reduce((n, c) => n + c[k], 0);
-    expect(total('applicable')).toBe(APPLICABLE_CONTROLS);
+    expect(total('applicable')).toBe(CURRENT.totals.applicable);
     expect(total('green')).toBe(s.green);
     expect(total('yellow')).toBe(s.yellow);
     expect(total('red')).toBe(s.red);

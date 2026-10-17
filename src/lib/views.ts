@@ -3,7 +3,6 @@
 
 import { CURRENT, type Frac, type StateFigures, type ViewFigures, type ViewId, type WidthParts } from '../data/current';
 import type { GapReason } from '../data/controls';
-import { APPLICABLE_CONTROLS } from '../data/figures';
 import { add, eq, sub, toPct } from './frac';
 import { IntervalConsistencyError } from './scoring';
 
@@ -85,5 +84,5 @@ export function unevidencedRows(state: StateFigures): ReasonRow[] {
   return (Object.entries(state.unevidencedByReason) as [GapReason, number][])
     .filter(([, n]) => n > 0)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([reason, count]) => ({ reason, count, pts: (count * 100) / APPLICABLE_CONTROLS }));
+    .map(([reason, count]) => ({ reason, count, pts: (count * 100) / CURRENT.totals.applicable }));
 }

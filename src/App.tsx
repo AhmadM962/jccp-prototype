@@ -55,8 +55,11 @@ function ScreenBoundary({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
+  // The data layer holds the active assessment outside React; keying the tree on it re-renders every screen, the
+  // sidebar and the top bar from the newly chosen assessment (and drops any state a screen held about the old one).
+  const profileId = useAssessment((s) => s.profileId);
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div key={profileId} className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />

@@ -9,7 +9,6 @@ import Remediation from '../screens/07_Remediation';
 import Chat from '../screens/09_Chat';
 import { useAssessment } from '../store/useAssessment';
 import { controls } from '../data/controls';
-import { APPLICABLE_CONTROLS } from '../data/figures';
 import { CURRENT } from '../data/current';
 import { PROFILES, PROFILE_ORDER } from '../data/profiles';
 import { dashboardView } from '../lib/derive';
@@ -153,7 +152,7 @@ describe('3.3 the OSCAL validation claim', () => {
 describe('3.4 projection floor, pool and invariant', () => {
   const after = CURRENT.after;
   const unresolvable = after.unknownUnauthored + after.views.unweighted.width.uncollectable[0];
-  const FLOOR = bandFloorPts(APPLICABLE_CONTROLS, unresolvable);
+  const FLOOR = bandFloorPts(CURRENT.totals.applicable, unresolvable);
   const numerator = after.creditNumerator[0] / after.creditNumerator[1];
   it('the floor is the share of controls no evidence can resolve: 491 of 557, 88.15 points', () => {
     expect(unresolvable).toBe(491);
@@ -165,7 +164,7 @@ describe('3.4 projection floor, pool and invariant', () => {
     expect(() => boundedScore(10, 5, 0, 0, -1)).toThrow(/Impossible interval/);
   });
   it('projectFromNumerator draws only from the collectable Unknowns (the 14 with an authored requirement)', () => {
-    const p = projectFromNumerator(APPLICABLE_CONTROLS, numerator, after.unknown, unresolvable, evidenceArtifacts().reduce((n, a) => n + a.controls.length, 0));
+    const p = projectFromNumerator(CURRENT.totals.applicable, numerator, after.unknown, unresolvable, evidenceArtifacts().reduce((n, a) => n + a.controls.length, 0));
     expect(p.resolved).toBe(after.unknown - unresolvable);
     expect(p.resolved).toBe(14);
     expect(p.resultingWidthPts).toBeCloseTo(FLOOR, 10);
@@ -173,10 +172,10 @@ describe('3.4 projection floor, pool and invariant', () => {
   });
   it('the dashboard (before the upload) and the projection card (from the post-upload verdict) each quote their own floor, and they differ by exactly the control observed from the bundle', () => {
     const before = CURRENT.before;
-    const FLOOR_BEFORE = bandFloorPts(APPLICABLE_CONTROLS, before.unknownUnauthored + before.views.unweighted.width.uncollectable[0]);
+    const FLOOR_BEFORE = bandFloorPts(CURRENT.totals.applicable, before.unknownUnauthored + before.views.unweighted.width.uncollectable[0]);
     expect(FLOOR_BEFORE).toBeCloseTo((492 / 557) * 100, 10);
     expect(FLOOR_BEFORE.toFixed(1)).toBe('88.3');
-    expect(((FLOOR_BEFORE - FLOOR) * APPLICABLE_CONTROLS) / 100).toBeCloseTo(1, 10);
+    expect(((FLOOR_BEFORE - FLOOR) * CURRENT.totals.applicable) / 100).toBeCloseTo(1, 10);
     const dash = renderAt('/dashboard', <Dashboard />);
     expect(dash.container.textContent).toContain(`by the evidence the plan asks for, at best to ${FLOOR_BEFORE.toFixed(1)} points`);
     dash.unmount();
