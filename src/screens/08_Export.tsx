@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileJson, ShieldCheck, X, Download, Info, Eye } from 'lucide-react';
+import { FileJson, FileText, ShieldCheck, X, Download, Info, Eye } from 'lucide-react';
 import { Card, Pill, Button } from '../components/ui';
-import { Provenance } from '../components/Provenance';
+import { Provenance, StateProvenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
 import { TOTALS } from '../data/capabilities';
 import { CURRENT } from '../data/current';
 import { CICSC_CONTROLS } from '../data/figures';
 import { controls, snapshotFor } from '../data/controls';
 import { assuranceLabel } from '../lib/assurance';
+import { sectorById } from '../data/sectors';
 
 const HASH = 'e7c1 9a02 44bd 8f10 55ce 7731 a9b0 2d4f 88e0 1c6a 90ff 43d2';
 const SIGNING = { alg: 'Ed25519', identity: 'JCCP Appliance — MoDS-JCCP-01', at: '2026-09-08T10:04:00+03:00' };
@@ -43,6 +44,8 @@ function oscalDoc(model: string, uploaded: boolean, overrideCount: number) {
     uuid: '0b9d5f2c-8a41-4e77-9c1e-6f2b3a5d7e10',
     metadata: {
       title: `JNCSF Assessment — ${useAssessment.getState().profile.orgName} — ${model}`,
+      'entity-name': useAssessment.getState().profile.orgName,
+      sector: sectorById(useAssessment.getState().profile.sector).label,
       'last-modified': SIGNING.at,
       version: '1.0.0',
       'oscal-version': '1.1.2',
@@ -163,6 +166,60 @@ function ReviewModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (re
   );
 }
 
+/** The Word report: a real .docx generated in the browser from the active assessment. The `docx` library is loaded when the
+ *  button is clicked, not before. Every sentence is a template filled from the result. */
+function WordReport() {
+  const uploaded = useAssessment((s) => s.evidenceUploaded);
+  const orgName = useAssessment((s) => s.profile.orgName);
+  const sector = useAssessment((s) => s.profile.sector);
+  const [state, setState] = useState<'idle' | 'working' | 'done' | 'error'>('idle');
+
+  const generate = async () => {
+    setState('working');
+    try {
+      const { generateReportBlob, reportFileName } = await import('../lib/report');
+      const blob = await generateReportBlob({ organisation: orgName, entity: orgName, sector: sectorById(sector).label });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = reportFileName();
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setState('done');
+    } catch {
+      setState('error');
+    }
+  };
+
+  return (
+    <StateProvenance uploaded={uploaded} from="after.views" note="Every figure is the engine's; every sentence is a template.">
+      <Card>
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 text-accent">
+            <FileText size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-bold text-slate-900">Word report</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              A real .docx for this assessment: the interval and whose limitation its width is, the four views, the exclusions, the completeness statement, the ranked
+              actions with their tie group, the assurance level and its demotion checks, and a provenance appendix naming the source file and its SHA-256. No prose in
+              it is written by a model.
+            </p>
+            {!uploaded && <p className="mt-1 text-[12px] text-slate-400">A report is made from an assessment: run the evidence bundle on the Intake screen first.</p>}
+            {state === 'error' && <p className="mt-1 text-[12px] text-red-700">The report could not be generated.</p>}
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <Button variant="primary" disabled={!uploaded || state === 'working'} onClick={generate} dataTour="word-report">
+              <Download size={14} /> {state === 'working' ? 'Generating…' : 'Generate Word report (.docx)'}
+            </Button>
+            {state === 'done' && <span className="text-[11px] text-emerald-600">Generated in your browser; nothing was sent anywhere.</span>}
+          </div>
+        </div>
+      </Card>
+    </StateProvenance>
+  );
+}
+
 export default function ExportScreen() {
   const [open, setOpen] = useState<string | null>(null);
   const [review, setReview] = useState(false);
@@ -170,6 +227,7 @@ export default function ExportScreen() {
 
   return (
     <div className="space-y-6">
+      <WordReport />
       <Provenance tier="planned"><Card>
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 text-accent">

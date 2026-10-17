@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { NAV } from './nav';
 import { useAssessment, ROLE_LABEL, type Role } from '../../store/useAssessment';
 import { sectorById, regulatorDisplay } from '../../data/sectors';
+import { isRealEntity } from '../../data/entities';
 import { TierLegend } from '../Provenance';
 
 const ROLE_NOTE: Record<Role, string> = {
@@ -39,7 +40,7 @@ export default function TopBar() {
         <div className="min-w-0">
           <h1 data-tour="page-title" className="truncate text-sm font-semibold text-slate-900 sm:text-base">{title}</h1>
           <p className="hidden truncate text-xs text-slate-500 sm:block">
-            {profile.orgName} · {sectorById(profile.sector).label} · Regulator: {regulatorDisplay(profile.sector)}
+            {!isRealEntity(profile.entity) ? profile.orgName : profile.entityName || 'Unnamed organisation'} · {sectorById(profile.sector).label} · Regulator: {regulatorDisplay(profile.sector)}
           </p>
         </div>
       </div>

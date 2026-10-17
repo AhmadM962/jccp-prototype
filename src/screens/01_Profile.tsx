@@ -18,6 +18,7 @@ import {
   type Ternary,
 } from '../data/scenario';
 import { SECTORS, sectorById, regulatorDisplay } from '../data/sectors';
+import { DEMO_ENTITY, OTHER_ENTITY, entitiesFor, isRealEntity } from '../data/entities';
 import { SECTOR_BASELINE } from '../data/exclusions';
 import { Term } from '../tour/Term';
 
@@ -135,7 +136,7 @@ export default function Profile() {
           <div data-tour="profile-identity" className="grid gap-4 sm:grid-cols-2">
             <label className="block">
               <SectionLabel>Sector</SectionLabel>
-              <select value={profile.sector} onChange={(e) => setProfile({ sector: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+              <select value={profile.sector} onChange={(e) => setProfile({ sector: e.target.value, entity: DEMO_ENTITY, entityName: '' })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 {SECTORS.map((s) => (
                   <option key={s.id} value={s.id} title={s.arabicLabel}>{s.label}</option>
                 ))}
@@ -145,6 +146,41 @@ export default function Profile() {
                 Regulator: {regulatorDisplay(profile.sector)}
               </span>
             </label>
+            <div className="block" data-testid="entity-field">
+              <SectionLabel>Entity</SectionLabel>
+              <select
+                aria-label="Entity"
+                value={profile.entity ?? DEMO_ENTITY}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setProfile({ entity: id, entityName: entitiesFor(profile.sector).find((x) => x.id === id)?.name ?? '' });
+                }}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value={DEMO_ENTITY}>{profile.orgName} (demonstration organisation — assessable)</option>
+                {entitiesFor(profile.sector).map((x) => (
+                  <option key={x.id} value={x.id}>{x.name}</option>
+                ))}
+                <option value={OTHER_ENTITY}>Other — enter a name</option>
+              </select>
+              {profile.entity === OTHER_ENTITY && (
+                <input
+                  aria-label="Entity name"
+                  value={profile.entityName}
+                  onChange={(e) => setProfile({ entityName: e.target.value })}
+                  placeholder="Organisation name"
+                  className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              )}
+              <span className="mt-1 block text-[11px] text-slate-400">
+                The sector alone does not identify the entity. The list is illustrative; the assessable entity is the demonstration organisation.
+              </span>
+              {isRealEntity(profile.entity) && (
+                <span data-testid="entity-note" className="mt-1 block rounded bg-slate-100 px-2 py-1 text-[11px] text-slate-700">
+                  No assessment has been run for this organisation. Its sector and scoping are shown here; no assessment is shown anywhere else.
+                </span>
+              )}
+            </div>
             <label className="block">
               <SectionLabel>Size band</SectionLabel>
               <select value={profile.sizeBand} onChange={(e) => setProfile({ sizeBand: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">

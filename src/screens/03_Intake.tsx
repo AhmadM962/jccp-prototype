@@ -12,6 +12,7 @@ import { assuranceMeasurement } from '../lib/assurance';
 import { CURRENT } from '../data/current';
 import { viewPercents } from '../lib/views';
 import { planSignals, collectionLedger, REASON_WORDS, type FamilyRow } from '../lib/plan';
+import CollectorTranscript from '../components/CollectorTranscript';
 import { capitalise, respondentRoles, roleSlug, stanceWords, testimonyWeighed, type Testimony } from '../lib/narrative';
 
 /* ─── Tab A: Testimony ──────────────────────────────────────────────────────── */
@@ -104,32 +105,6 @@ function WhatTheEngineDid({ all, uploaded }: { all: Testimony[]; uploaded: boole
 
 /* ─── Tab B: Evidence bundle ────────────────────────────────────────────────── */
 
-type Stage = { label: string; result: 'ok' | 'warn' | 'error'; detail: string };
-
-/** The ingestion stages, from the assessment: what was read, what was not provided and why (the engine's reasons). */
-function ingestionStages(): Stage[] {
-  const sigs = planSignals();
-  const families = new Set(sigs.map((s) => s.family)).size;
-  const provided = sigs.filter((s) => s.status === 'provided').length;
-  const reasons = new Map<string, number>();
-  for (const s of sigs) if (s.status !== 'provided') reasons.set(s.status, (reasons.get(s.status) ?? 0) + 1);
-  const stages: Stage[] = [
-    { label: 'Verifying signature', result: 'ok', detail: 'simulated: the collector and its signing are not built yet' },
-    { label: 'Reading the collection ledger', result: 'ok', detail: `${families} signal families recorded` },
-    { label: 'Reading provided signals', result: 'ok', detail: `${provided} of ${sigs.length} signals provided` },
-  ];
-  for (const [reason, n] of reasons) {
-    stages.push({
-      label: `Signals ${REASON_WORDS[reason as keyof typeof REASON_WORDS] ?? reason}`,
-      result: reason === 'module_failed' ? 'error' : 'warn',
-      detail: `${n} signal${n === 1 ? '' : 's'}${reason === 'module_failed' ? ': a failed module proves nothing, so its controls stay Unknown' : ''}`,
-    });
-  }
-  const w = testimonyWeighed().length;
-  stages.push({ label: 'Weighing testimony', result: 'ok', detail: `${w} answer${w === 1 ? '' : 's'} weighed against the evidence` });
-  return stages;
-}
-
 const ledgerStatus = (r: FamilyRow): { tone: 'green' | 'amber' | 'red' | 'slate'; label: string } => {
   if (r.provided === r.required) return { tone: 'green', label: 'complete' };
   if (r.byReason.module_failed) return { tone: 'red', label: 'failed' };
@@ -144,30 +119,27 @@ function BundlePanel() {
   const uploadedSlots = useAssessment((s) => s.uploadedSlots);
   const uploadSlot = useAssessment((s) => s.uploadSlot);
   const uploadSlotsBulk = useAssessment((s) => s.uploadSlotsBulk);
-  const [stage, setStage] = useState(-1); // -1 idle, 0..n running, n done
+  const [running, setRunning] = useState(false);
   const [done, setDone] = useState(uploaded);
   const [lastFeedback, setLastFeedback] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
 
   const slots = useMemo(() => planSignals(), []);
-  const stages = useMemo(() => ingestionStages(), []);
   const providedByBundle = slots.filter((s) => s.status === 'provided');
 
   const run = () => {
     uploadSlotsBulk(providedByBundle.map((s) => s.signal));
-    setStage(0);
+    setRunning(true);
   };
 
   useEffect(() => {
-    if (stage < 0) return;
-    if (stage >= stages.length) {
+    if (!running) return;
+    const t = setTimeout(() => {
       setDone(true);
       uploadEvidence();
-      return;
-    }
-    const t = setTimeout(() => setStage((s) => s + 1), 300);
+    }, 600);
     return () => clearTimeout(t);
-  }, [stage, stages.length, uploadEvidence]);
+  }, [running, uploadEvidence]);
 
   const filled = slots.filter((s) => uploadedSlots[s.signal]).length;
   const pending = slots.filter((s) => !uploadedSlots[s.signal]);
@@ -187,7 +159,7 @@ function BundlePanel() {
           subtitle={`${filled} of ${slots.length} signals provided`}
           right={
             <Provenance tier="planned" as="span" className="inline-block">
-              <Button dataTour="bundle-upload" onClick={run} disabled={stage >= 0 && !done}>
+              <Button dataTour="bundle-upload" onClick={run} disabled={running && !done}>
                 <UploadCloud size={13} /> {done ? 'Bundle processed' : `Simulate collector bundle upload (provides ${providedByBundle.length})`}
               </Button>
             </Provenance>
@@ -230,29 +202,7 @@ function BundlePanel() {
         </Card>
       </StateProvenance>
 
-      {stage >= 0 && (
-        <Provenance tier="planned">
-          <Card title="Ingestion" subtitle="what was read from the bundle, and what was not provided">
-            <ol className="space-y-1.5">
-              {stages.map((s, i) => {
-                const state = i < stage ? 'done' : i === stage ? 'running' : 'pending';
-                const Icon = s.result === 'ok' ? Check : s.result === 'warn' ? AlertTriangle : XCircle;
-                const colour = state === 'pending' ? 'text-slate-300' : s.result === 'ok' ? 'text-emerald-600' : s.result === 'warn' ? 'text-amber-600' : 'text-red-600';
-                return (
-                  <li key={i} className="flex items-start gap-2.5 text-sm">
-                    <Icon size={15} className={`mt-0.5 shrink-0 ${colour}`} />
-                    <div className={state === 'pending' ? 'text-slate-300' : 'text-slate-700'}>
-                      <span className="font-medium">{s.label}</span>
-                      {state !== 'pending' && <span className="text-slate-500"> — {s.detail}</span>}
-                      {state === 'running' && <span className="ml-1 text-slate-400">…</span>}
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </Card>
-        </Provenance>
-      )}
+      <CollectorTranscript />
 
       {done && (
         <>
