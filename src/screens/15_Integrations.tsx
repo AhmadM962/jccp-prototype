@@ -47,7 +47,7 @@ export default function Integrations() {
         <span className="text-[12px] text-slate-500">what the platform will expose, and what will cross the boundary. Nothing here is built; both payloads are filled from {CURRENT.source.file}.</span>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_auto_1fr]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         {/* inside */}
         <div data-testid="half-inside" className="space-y-3">
           <Card title="Inside the organisation" subtitle="the appliance's local REST surface — raw evidence lives here and only here">
