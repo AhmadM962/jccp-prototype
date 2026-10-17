@@ -173,7 +173,7 @@ export default function Profile() {
                 />
               )}
               <span className="mt-1 block text-[11px] text-slate-400">
-                The sector alone does not identify the entity. The list is illustrative; the assessable entity is the demonstration organisation.
+                The sector alone does not identify the entity. The list is illustrative and not confirmed with NCSC; the assessable entity is the demonstration organisation.
               </span>
               {isRealEntity(profile.entity) && (
                 <span data-testid="entity-note" className="mt-1 block rounded bg-slate-100 px-2 py-1 text-[11px] text-slate-700">

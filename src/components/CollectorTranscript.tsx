@@ -35,6 +35,7 @@ export default function CollectorTranscript() {
                   <div>
                     <dt className="inline text-slate-400">query → signal → controls: </dt>
                     <dd className="inline">
+                      <span data-testid="mapping-proposed" className="mr-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">proposed mapping — not yet authored</span>
                       <code className="font-mono">{s.id}</code> → <code className="font-mono">{s.engineSignal}</code> →{' '}
                       {controls.length === 0 ? 'no control in this assessment names it' : controls.map((c) => (
                         <Link key={c} to={`/control/${c}`} className="mr-1.5 font-mono text-accent hover:underline">{c}</Link>
@@ -49,7 +50,7 @@ export default function CollectorTranscript() {
         </ol>
         <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-700">{FAILURE_RULE}</p>
         <p className="mt-2 text-[11px] text-slate-500">
-          The mapping from each query to the engine&rsquo;s signal is a proposal for the owner to confirm. The collector has not been run against a live domain, and the
+          Each mapping from a query to the engine&rsquo;s signal is a proposed mapping, not yet authored: authoring is the owner&rsquo;s. The collector has not been run against a live domain, and the
           bundle in this prototype did not come from it.
         </p>
         <button

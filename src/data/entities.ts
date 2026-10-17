@@ -1,7 +1,7 @@
 // Organisations within each sector, so the Profile screen can show how a sector is constituted: the sector alone does not
 // identify the entity (the Water Authority of Jordan sits above separate distribution companies with separate estates).
 //
-// ILLUSTRATIVE. The list is curated by the prototype and has not been checked by NCSC. Listing a real organisation is not
+// ILLUSTRATIVE. The list is curated by the prototype and has not been confirmed with NCSC. Listing a real organisation is not
 // a statement about it, and NO ASSESSMENT EXISTS for any of them: the assessable entity in this prototype is the fictional
 // demonstration organisation, and choosing a real one shows an empty assessment state, never a figure.
 

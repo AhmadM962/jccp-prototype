@@ -51,7 +51,10 @@
     Where to write the two files. Defaults to a new timestamped folder under the current directory.
 
 .PARAMETER StaleDays
-    An account with no logon for this many days is "stale". Default 90.
+    An account with no logon for this many days is "stale". Default 90. The stale-accounts query reads
+    lastLogonTimestamp, which Active Directory replicates lazily: by default it can be up to 14 days behind
+    the account's real last logon. A result is therefore only as fresh as that lag allows, and StaleDays
+    should be well above 14; an account near the window's edge may be reported either way.
 
 .PARAMETER PrivilegedGroups
     The groups whose members are "privileged". Defaults to the four below.
