@@ -20,6 +20,7 @@ import Admin from './screens/11_Admin';
 import Tasks from './screens/12_Tasks';
 import Rollup from './screens/13_Rollup';
 import Authoring from './screens/14_Authoring';
+import Integrations from './screens/15_Integrations';
 import Tour from './tour/Tour';
 import WelcomeGate from './tour/WelcomeGate';
 import HelpPanel from './tour/HelpPanel';
@@ -87,6 +88,7 @@ export default function App() {
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/rollup" element={<Rollup />} />
                 <Route path="/authoring" element={<Authoring />} />
+                <Route path="/integrations" element={<Integrations />} />
                 <Route path="*" element={<Navigate to="/profile" replace />} />
               </Routes>
               </ScreenBoundary>
