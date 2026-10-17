@@ -13,6 +13,7 @@ import { APPLICABLE_CONTROLS } from '../data/figures';
 import { CURRENT } from '../data/current';
 import { PROFILES, PROFILE_ORDER } from '../data/profiles';
 import { dashboardView } from '../lib/derive';
+import { evidenceArtifacts } from '../lib/ranking';
 import { bandFloorPts, boundedScore, projectFromNumerator, yellowWeightForShare } from '../lib/scoring';
 
 // Source text of every non-test file, to assert strings that must not come back.
@@ -164,7 +165,7 @@ describe('3.4 projection floor, pool and invariant', () => {
     expect(() => boundedScore(10, 5, 0, 0, -1)).toThrow(/Impossible interval/);
   });
   it('projectFromNumerator draws only from the collectable Unknowns (the 14 with an authored requirement)', () => {
-    const p = projectFromNumerator(APPLICABLE_CONTROLS, numerator, after.unknown, unresolvable, 49);
+    const p = projectFromNumerator(APPLICABLE_CONTROLS, numerator, after.unknown, unresolvable, evidenceArtifacts().reduce((n, a) => n + a.controls.length, 0));
     expect(p.resolved).toBe(after.unknown - unresolvable);
     expect(p.resolved).toBe(14);
     expect(p.resultingWidthPts).toBeCloseTo(FLOOR, 10);
@@ -179,12 +180,13 @@ describe('3.4 projection floor, pool and invariant', () => {
     const dash = renderAt('/dashboard', <Dashboard />);
     expect(dash.container.textContent).toContain(`by the evidence the plan asks for, at best to ${FLOOR_BEFORE.toFixed(1)} points`);
     dash.unmount();
+    useAssessment.setState({ evidenceUploaded: true });
     const rem = renderAt('/remediation', <Remediation />);
     fireEvent.click(rem.getByText("What you didn't provide"));
     expect(rem.container.textContent).toContain(`the band cannot fall below ${FLOOR.toFixed(1)} pts of width`);
   });
   it('providing everything lands exactly on the floor', () => {
-    useAssessment.setState({ providedRequests: ['req-siem', 'req-linux', 'req-priv', 'req-backup', 'req-lms'] });
+    useAssessment.setState({ evidenceUploaded: true, providedRequests: evidenceArtifacts().map((a) => a.signal) });
     const { container, getByText } = renderAt('/remediation', <Remediation />);
     fireEvent.click(getByText("What you didn't provide"));
     expect(container.textContent).toContain(`width ${FLOOR.toFixed(1)} points`);

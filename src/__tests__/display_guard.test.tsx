@@ -29,6 +29,7 @@ describe('Remediation reaches the screen only through the guard', () => {
   // The hero lives on the "What you didn't provide" tab, so open it — drawing the default tab would
   // pass whatever the numbers were.
   const draw = () => {
+    useAssessment.setState({ evidenceUploaded: true }); // the ranking is the assessed state's, shown after the upload
     const r = render(
       <MemoryRouter>
         <Remediation />

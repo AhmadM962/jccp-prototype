@@ -12,7 +12,8 @@ import { gapReasonBreakdown, controls } from '../data/controls';
 import { APPLICABLE_CONTROLS } from '../data/figures';
 import { CURRENT } from '../data/current';
 import { movedOutOfUnknown } from '../lib/coverage';
-import { evidenceRequests } from '../data/remediation';
+import { evidenceArtifacts, resolvedBy } from '../lib/ranking';
+import { PROFILES, PROFILE_ORDER } from '../data/profiles';
 import { bandFloorPts, projectFromNumerator } from '../lib/scoring';
 
 const raw = import.meta.glob('/src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
@@ -153,25 +154,42 @@ describe('the Unknowns after the upload, by reason, are the controls themselves 
   });
 });
 
-describe('fixture: the five Remediation artifacts claim more than the Unknown pool they draw from', () => {
-  // 49 = sum of controlsUnlocked over the five evidenceRequests (src/data/remediation.ts).
-  // 14 = the Unknowns evidence can resolve: those with an authored requirement (505 − 491 unauthored − 0
-  // uncollectable). Round 1 had 20 (59 − 39); the Round 2 restructure moved the pool to 14 and the floor
-  // from 7.0 to 88.15 points. The per-artifact counts overlap or are overstated; they cannot be added. The
-  // cap in projectFromNumerator keeps the projection honest; the fixture itself is replaced in Round 3.
-  const claimed = evidenceRequests.reduce((s, r) => s + r.controlsUnlocked, 0);
-  const after = CURRENT.after;
-  const unresolvable = after.unknownUnauthored + after.views.unweighted.width.uncollectable[0];
-  const pool = after.unknown - unresolvable;
-  it('names both numbers', () => {
-    expect(claimed).toBe(49);
-    expect(pool).toBe(14);
-    expect(claimed).toBeGreaterThan(pool);
+describe('regression: the per-artifact unlock counts are derived, so they cannot exceed the pool they draw from', () => {
+  // Round 1 hand-entered five artifacts whose counts summed to 49 against a pool of 20 (then 14). Round 3 derives them from
+  // the engine's evidence requests. In all three assessments every request names exactly one signal, so the per-artifact
+  // counts partition the pool and sum to it; the 49-vs-14 overlap cannot arise from this data. It could arise from another
+  // framework's, where one control asks for two signals, so `resolvedBy` is an intersection and is tested as one below.
+  const pools = (id: (typeof PROFILE_ORDER)[number]) => {
+    const p = PROFILES[id];
+    return {
+      pool: p.after.unknown - (p.after.unknownUnauthored + p.after.views.unweighted.width.uncollectable[0]),
+      artifacts: evidenceArtifacts(p.ranking.items),
+    };
+  };
+  it.each(PROFILE_ORDER)('%s: the per-artifact counts sum to the pool, which is the distinct controls requested', (id) => {
+    const { pool, artifacts } = pools(id);
+    expect(artifacts.reduce((n, a) => n + a.controls.length, 0)).toBe(pool);
+    expect(new Set(artifacts.flatMap((a) => a.controls)).size).toBe(pool);
+    expect(resolvedBy(artifacts.map((a) => a.signal), PROFILES[id].ranking.items).length).toBe(pool);
   });
-  it('providing all five resolves exactly the pool, and the band stops at the floor', () => {
-    const p = projectFromNumerator(APPLICABLE_CONTROLS, after.creditNumerator[0] / after.creditNumerator[1], after.unknown, unresolvable, claimed);
+  it('ministry: the pool is 14, and providing every artifact stops the band at the floor', () => {
+    const after = CURRENT.after;
+    const unresolvable = after.unknownUnauthored + after.views.unweighted.width.uncollectable[0];
+    const { pool, artifacts } = pools('ministry');
+    expect(pool).toBe(14);
+    const p = projectFromNumerator(APPLICABLE_CONTROLS, after.creditNumerator[0] / after.creditNumerator[1], after.unknown, unresolvable, resolvedBy(artifacts.map((a) => a.signal)).length);
     expect(p.resolved).toBe(pool);
     expect(p.resultingWidthPts).toBeCloseTo(bandFloorPts(APPLICABLE_CONTROLS, unresolvable), 10);
+  });
+  it('resolvedBy is an intersection: a control asking for two signals is counted once, and only when both are in', () => {
+    const base = CURRENT.ranking.items.find((i) => i.actionType === 'evidence_request')!;
+    const mk = (controlId: string, signalsRequested: string[]) => ({ ...base, controlId, signalsRequested });
+    const items = [mk('A', ['s1', 's2']), mk('B', ['s2']), mk('C', ['s1', 's2'])];
+    const arts = evidenceArtifacts(items);
+    expect(arts.reduce((n, a) => n + a.controls.length, 0)).toBe(5); // the per-artifact counts overlap: s1 has A and C, s2 has A, B and C
+    expect(resolvedBy(['s1'], items)).toEqual([]);
+    expect(resolvedBy(['s2'], items)).toEqual(['B']);
+    expect(resolvedBy(['s1', 's2'], items)).toEqual(['A', 'B', 'C']); // three controls, not five
   });
 });
 

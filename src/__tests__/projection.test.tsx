@@ -2,16 +2,18 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Remediation from '../screens/07_Remediation';
-import { evidenceRequests } from '../data/remediation';
+import { evidenceArtifacts } from '../lib/ranking';
 import { useAssessment } from '../store/useAssessment';
 
-// Property test over every subset of the five providable artifacts (2^5 = 32): what the
-// "What you didn't provide" card actually prints must be a possible interval, with one width.
+// Property test over every subset of the first five providable artifacts (2^5 = 32; the engine's evidence requests ask
+// for ten signals in all, and the full set is added as a last case): what the "What you didn't provide" card actually
+// prints must be a possible interval, with one width.
 
-const IDS = evidenceRequests.map((r) => r.id);
+const ALL = evidenceArtifacts().map((a) => a.signal);
+const IDS = ALL.slice(0, 5);
 
 function shown(subset: string[]) {
-  useAssessment.setState({ providedRequests: subset });
+  useAssessment.setState({ evidenceUploaded: true, providedRequests: subset });
   const { container, getByText, unmount } = render(
     <MemoryRouter>
       <Remediation />
@@ -38,11 +40,11 @@ beforeEach(() => {
   useAssessment.getState().resetDemo();
 });
 
-describe('projected interval, all 32 subsets of the five artifacts', () => {
+describe('projected interval, all 32 subsets of the first five artifacts, and all of them', () => {
   it('always shows lower ≤ upper, width ≥ 0, and the same width in hero and subline', () => {
     const failures: string[] = [];
-    for (let mask = 0; mask < 32; mask++) {
-      const subset = IDS.filter((_, i) => mask & (1 << i));
+    const subsets = [...Array.from({ length: 32 }, (_, mask) => IDS.filter((_, i) => mask & (1 << i))), ALL];
+    for (const subset of subsets) {
       const s = shown(subset);
       const label = `{${subset.join(',') || 'none'}}`;
       if (!(s.lower <= s.upper)) failures.push(`${label}: lower ${s.lower} > upper ${s.upper}`);

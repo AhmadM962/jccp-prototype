@@ -354,6 +354,7 @@ describe('no screen promises that an unauthored control stays Unknown', () => {
     const plan = renderAt('/request-plan', <RequestPlan />, '/request-plan');
     expect(plan.container.textContent).toContain('the plan cannot ask for anything that would establish that any of them is met. They stay Unknown unless an artifact collected for another control happens to show one unmet.');
     plan.unmount();
+    useAssessment.setState({ evidenceUploaded: true });
     const rem = renderAt('/remediation', <Remediation />, '/remediation');
     fireEvent.click(rem.getByText("What you didn't provide"));
     expect(rem.container.textContent).toContain('and stay Unknown unless an artifact collected for another control happens to show one unmet.');
