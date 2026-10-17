@@ -21,6 +21,7 @@ import {
 } from '../data/controls';
 import type { GapBasis, PartialBasis } from '../data/current';
 import { CURRENT } from '../data/current';
+import { exampleGap } from '../lib/narrative';
 
 // Worst *established* state for a capability — from the fixture aggregate, never from
 // visible rows. "Established" excludes Unknown: we do not know it's broken, so it does
@@ -88,6 +89,7 @@ export default function GapMatrix() {
   }, [uploaded, overrides, stateF, evF, gapF, gbF, pbF, q, onlyChanged, onlyOverrides]);
 
   const byCap = (capId: string) => rows.filter((r) => r.c.capability === capId);
+  const tourGapId = exampleGap('absence')?.id;
 
   return (
     <div className="space-y-5">
@@ -150,7 +152,11 @@ export default function GapMatrix() {
         {uploaded
           ? ' Every state, reason, basis, path and run on this screen is the engine\u2019s, read from the assessment file named above.'
           : ' Before the upload, which controls have a verdict is rule R\u2019s projection of the engine\u2019s data (illustrative); after it, the states are the engine\u2019s.'}{' '}
-        Control text is shown only for the controls the prototype holds it for.
+      </p>
+      <p data-testid="matrix-catalogue-note" className="text-[12px] leading-relaxed text-slate-500">
+        The control catalogue lives in the assessment engine, and this prototype does not need it to show you a verdict or the reasoning behind one. Each row
+        carries the id, the capability, the state, the basis and the reason, all of them the engine&rsquo;s; text is shown only where the prototype
+        already held it ({controls().filter((c) => c.description).length} of {controls().length}).
       </p>
 
       <StateProvenance uploaded={uploaded} overridesActive={Object.keys(overrides).length} from="claims" className="space-y-5">{capabilities.map((cap) => {
@@ -212,7 +218,7 @@ export default function GapMatrix() {
                           control={c}
                           snap={snap}
                           highlight={onlyChanged || (uploaded && c.changed)}
-                          dataTour={c.id === 'JNCSF-102' ? 'gm-row-102' : undefined}
+                          dataTour={c.id === tourGapId ? 'gm-row-tour' : undefined}
                         />
                       ))}
                     </div>

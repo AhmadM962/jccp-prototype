@@ -42,7 +42,7 @@ function oscalDoc(model: string, uploaded: boolean, overrideCount: number) {
   const common = {
     uuid: '0b9d5f2c-8a41-4e77-9c1e-6f2b3a5d7e10',
     metadata: {
-      title: `JNCSF Assessment — Ministry of Digital Services — ${model}`,
+      title: `JNCSF Assessment — ${useAssessment.getState().profile.orgName} — ${model}`,
       'last-modified': SIGNING.at,
       version: '1.0.0',
       'oscal-version': '1.1.2',

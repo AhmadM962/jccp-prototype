@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, Sparkles } from 'lucide-react';
 import StateBadge from './StateBadge';
 import { Pill } from './ui';
+import { capabilityById } from '../data/capabilities';
 import {
   EVIDENCE_CLASS_LABEL,
   GAP_REASON_LABEL,
@@ -13,7 +14,7 @@ const evTone = (c: string): 'slate' | 'blue' | 'green' | 'violet' =>
   c === 'artifact' ? 'green' : c === 'testimonial' ? 'blue' : c === 'analyst_signed' ? 'violet' : 'slate';
 
 /** One control of the active assessment. State, evidence class, reason, basis, path and run are the engine's (read from the
- *  golden file); the control text is shown only where the prototype holds it. The `data-` attributes carry the same values
+ *  golden file); the control text is shown only where the prototype holds it, and the Gap Matrix says once that it does not hold the rest. The `data-` attributes carry the same values
  *  the row shows, so a test can hold the screen to the data. */
 export default function ControlRow({
   control,
@@ -31,6 +32,7 @@ export default function ControlRow({
       data-tour={dataTour}
       data-testid={`control-row-${control.id}`}
       data-state={snap.state}
+      data-capability={control.capability}
       data-gap-reason={snap.gapReason ?? ''}
       data-gap-basis={snap.gapBasis ?? ''}
       data-partial-basis={snap.partialBasis ?? ''}
@@ -44,16 +46,10 @@ export default function ControlRow({
       </div>
       <div className="tnum w-24 shrink-0 font-mono text-xs font-semibold text-slate-500">{control.id}</div>
       <div className="min-w-0 flex-1">
-        {control.description ? (
-          <p className="truncate text-slate-800">{control.description}</p>
-        ) : (
-          <p className="truncate text-[12px] text-slate-400">
-            Control text is not held in this prototype
-            {snap.pathLabel ? <span className="text-slate-500"> · satisfied: {snap.pathLabel}</span> : null}
-          </p>
-        )}
-        {control.description && snap.pathLabel && <p className="truncate text-[11px] text-slate-500">satisfied: {snap.pathLabel}</p>}
+        {control.description && <p className="truncate text-slate-800">{control.description}</p>}
+        {snap.pathLabel && <p className="truncate text-[11px] text-slate-500">satisfied: {snap.pathLabel}</p>}
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <Pill tone="slate">{capabilityById(control.capability)?.shortName ?? control.capability}</Pill>
           <Pill tone={evTone(snap.evidenceClass)}>{EVIDENCE_CLASS_LABEL[snap.evidenceClass]}</Pill>
           {snap.state === 'unknown' && snap.gapReason && (
             <Pill tone={snap.gapReason === 'unauthored' ? 'orange' : 'violet'}>{GAP_REASON_LABEL[snap.gapReason]}</Pill>
@@ -66,7 +62,6 @@ export default function ControlRow({
               <Sparkles size={11} /> promoted
             </Pill>
           )}
-          {control.example && <Pill tone="amber">worked example on this control</Pill>}
         </div>
       </div>
       <ChevronRight size={16} className="shrink-0 text-slate-300" />

@@ -14,10 +14,6 @@ const LITERALS = ['576', '557', '405', '135', '39'] as const;
 type Lit = (typeof LITERALS)[number];
 
 const ALLOW: Record<string, Partial<Record<Lit, number>>> = {
-  // TODO round 3: use TOTAL_CONTROLS from figures.ts
-  'src/components/AttackExposure.tsx': { '576': 1 },
-  // TODO round 3: use CICSC_CONTROLS / TOTAL_CONTROLS from figures.ts
-  'src/data/attack.ts': { '405': 1, '576': 1 },
   // Round 3: the per-profile figures live in src/data/profiles/*.ts, GENERATED from the engine's golden outputs.
   // They are the single source of those numbers (the applicable count differs by profile), so they are exempt
   // from this scan (see SCANNED below); everything else is still scanned.

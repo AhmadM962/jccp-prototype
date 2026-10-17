@@ -3,12 +3,12 @@
 //
 // What the engine's output records is: the sector (by its Arabic name), whether CICSC applies, and which applicability
 // variables the organisation declared "no" (each exclusion names the flag that removed it). It does not record the
-// variables declared "yes" or "don't know"; a variable with no exclusion is shown as "yes" (its controls are in scope), which is
-// all the output says about it. The remaining fields (size, hosting, counts, cloud) are not in the engine's output and
+// variables declared "yes" or "don't know"; a variable with no exclusion is `unrecorded` — in scope, and not recorded as declined — which is
+// all the output says about it, and is shown as exactly that, not as a declaration of "yes". The remaining fields (size, hosting, counts, cloud) are not in the engine's output and
 // keep the prototype's illustrative defaults.
 
 import { PROFILES, PROFILE_LABEL, type ProfileId } from './profiles';
-import { defaultProfile, type OrgProfile, type Ternary } from './scenario';
+import { defaultProfile, type Declared, type OrgProfile } from './scenario';
 import { SECTORS } from './sectors';
 
 type Variable = 'inHouseDevelopment' | 'outsourcedDevelopment' | 'mobileDevices' | 'wirelessNetwork' | 'remoteAccess';
@@ -23,7 +23,7 @@ const FLAG_FIELD: Record<string, Variable> = {
 
 export function orgProfileFor(id: ProfileId): OrgProfile {
   const p = PROFILES[id];
-  const declared = Object.fromEntries(Object.values(FLAG_FIELD).map((f) => [f, 'yes'])) as Record<Variable, Ternary>;
+  const declared = Object.fromEntries(Object.values(FLAG_FIELD).map((f) => [f, 'unrecorded'])) as Record<Variable, Declared>;
   for (const e of p.exclusions) {
     const field = FLAG_FIELD[e.triggeringFlag];
     if (!field) throw new Error(`Exclusion ${e.controlId} names an applicability flag the prototype does not know: ${e.triggeringFlag}`);

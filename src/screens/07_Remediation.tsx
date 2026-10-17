@@ -81,8 +81,8 @@ function RankingTab({ types }: { types: readonly ActionType[] }) {
         ))}
         <span data-testid="ranking-count" className="tnum ml-auto text-slate-500">{total} actions in {groups.length} rank{groups.length === 1 ? '' : 's'}</span>
       </div>
-      {groups.map((g) => (
-        <section key={g.rank} data-testid={`rank-group-${g.rank}`} data-tie-size={g.tieGroupSize} data-shown={g.items.length}>
+      {groups.map((g, gi) => (
+        <section key={g.rank} data-tour={gi === 0 ? 'rem-first' : undefined} data-testid={`rank-group-${g.rank}`} data-tie-size={g.tieGroupSize} data-shown={g.items.length}>
           <div className="mb-1.5 flex flex-wrap items-center gap-2">
             <span className="flex h-7 min-w-7 items-center justify-center rounded-lg bg-accent/10 px-1.5 text-sm font-bold text-accent">{g.rank}</span>
             {g.tieGroupSize > 1 ? (

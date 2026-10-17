@@ -1,13 +1,17 @@
-// The demo organisation, evidence request plan, and module execution ledger (brief §6, §7.2, §7.3).
+// The demo organisation's profile inputs (brief §6). The evidence plan and the collection ledger are derived from the
+// engine's coverage record (src/lib/plan.ts); nothing about them is typed here.
 
 import { DEFAULT_SECTOR_ID } from './sectors';
-import { CURRENT } from './current';
-import { lazyByProfile } from '../lib/lazyByProfile';
 
 /** Architecture toggles are tri-state. Ambiguity must never shrink the denominator:
  *  'unknown' is treated exactly like 'yes' for scoping, and the affected controls are
  *  flagged for verification during collection. */
 export type Ternary = 'yes' | 'no' | 'unknown';
+
+/** What the assessment records about an applicability variable. The engine's output names the variables an organisation
+ *  declared "no" (each exclusion cites its flag) and nothing about the rest: those are `unrecorded` — in scope, and not
+ *  recorded as declined — rather than a declaration of "yes" the data does not carry. */
+export type Declared = Ternary | 'unrecorded';
 
 export interface OrgProfile {
   orgName: string;
@@ -20,11 +24,11 @@ export interface OrgProfile {
   hostingModel: 'gov-private-cloud' | 'own-datacentre' | 'third-party-jordan' | 'foreign-cloud';
   namedAttestation: string;
   /** The five measured JNCSF applicability variables (38 controls gated in total). */
-  inHouseDevelopment: Ternary;
-  outsourcedDevelopment: Ternary;
-  mobileDevices: Ternary;
-  wirelessNetwork: Ternary;
-  remoteAccess: Ternary;
+  inHouseDevelopment: Declared;
+  outsourcedDevelopment: Declared;
+  mobileDevices: Declared;
+  wirelessNetwork: Declared;
+  remoteAccess: Declared;
   /** NOT a JNCSF scoping condition — cloud is governed separately by the MoDEE cloud
    *  policy, so this never changes the applicable count. Kept only to drive the
    *  profile-challenge demo (a declaration the system cross-checks against evidence). */
@@ -52,10 +56,10 @@ export const defaultProfile: OrgProfile = {
   // A government ministry with no in-house software development: excludes exactly the
   // 19 in_house_development controls, and nothing else.
   inHouseDevelopment: 'no',
-  outsourcedDevelopment: 'yes',
-  mobileDevices: 'yes',
-  wirelessNetwork: 'yes',
-  remoteAccess: 'yes',
+  outsourcedDevelopment: 'unrecorded',
+  mobileDevices: 'unrecorded',
+  wirelessNetwork: 'unrecorded',
+  remoteAccess: 'unrecorded',
   usesCloud: 'yes',
   operatesCriticalInfrastructure: false,
   pdplHoldings: {
@@ -73,7 +77,7 @@ export const BASELINE_APPLICABLE = 576;
 export const TOTAL_CONTROLS = 576;
 
 /** in scope = 'yes' or 'unknown'; only an explicit 'no' can remove controls */
-const inScope = (t: Ternary) => t !== 'no';
+const inScope = (t: Declared) => t !== 'no';
 
 export interface ProfileDelta {
   key: keyof OrgProfile;
@@ -100,7 +104,7 @@ export const PROFILE_DELTAS: ProfileDelta[] = [
 export function computeApplicable(p: OrgProfile): number {
   let n = BASELINE_APPLICABLE;
   for (const d of PROFILE_DELTAS) {
-    const t = p[d.key] as Ternary;
+    const t = p[d.key] as Declared;
     n += inScope(t) ? d.inScopeDelta : d.noDelta;
   }
   return n;
@@ -121,108 +125,4 @@ export const HOSTING_LABEL: Record<OrgProfile['hostingModel'], string> = {
   'own-datacentre': 'Own data centre',
   'third-party-jordan': 'Third-party hosting in Jordan',
   'foreign-cloud': 'Foreign cloud',
-};
-
-// ─── Evidence Request Plan (brief §7.2) ────────────────────────────────────────
-
-export type CollectionMethod = 'automated' | 'manual';
-
-export interface RequestArtifact {
-  artifact: string;
-  source: string;
-  controlsUnlocked: number;
-  effort: string;
-  command: string;
-  method: CollectionMethod;
-  owner: string;
-  formatHint: string;
-  /** controls left permanently Unknown if this artifact is declined */
-  declineCost?: number;
-}
-
-export const requestPlan: RequestArtifact[] = [
-  { artifact: 'All accounts + state', source: 'Active Directory', controlsUnlocked: 22, effort: '3 min', method: 'automated', owner: 'Identity team', formatHint: 'CSV — SamAccountName, Enabled, PasswordLastSet, LastLogonDate', command: 'Get-ADUser -Filter * -Properties Enabled,PasswordLastSet,LastLogonDate | Export-Csv accounts.csv', declineCost: 8 },
-  { artifact: 'Linux hardening baseline', source: 'Linux servers', controlsUnlocked: 18, effort: '10 min', method: 'automated', owner: 'Server team', formatHint: 'OpenSCAP XCCDF results XML (CIS profile)', command: 'oscap xccdf eval --profile cis --results cis-results.xml /usr/share/xml/scap/ssg/content/ssg-rhel8-ds.xml', declineCost: 18 },
-  { artifact: 'Privileged group membership', source: 'Active Directory', controlsUnlocked: 14, effort: '2 min', method: 'automated', owner: 'Identity team', formatHint: 'CSV — one row per privileged group member, MFAEnforced column', command: 'Get-ADGroupMember "Domain Admins" | Export-Csv adm.csv', declineCost: 6 },
-  { artifact: 'GPO baseline export', source: 'Active Directory', controlsUnlocked: 12, effort: '4 min', method: 'automated', owner: 'Server team', formatHint: 'GPO report XML/HTML — all linked policies', command: 'Get-GPOReport -All -ReportType Xml -Path gpo-baseline.xml', declineCost: 12 },
-  { artifact: 'EDR agent inventory', source: 'EDR console', controlsUnlocked: 11, effort: '5 min', method: 'manual', owner: 'SOC', formatHint: 'CSV export — hostname, agent version, policy, last seen', command: 'Export agent list as CSV from the EDR console (Hosts → Manage → Export)', declineCost: 5 },
-  { artifact: 'Audit policy configuration', source: 'Windows servers', controlsUnlocked: 9, effort: '1 min', method: 'automated', owner: 'Server team', formatHint: 'auditpol.txt — category/subcategory settings', command: 'auditpol /get /category:* > auditpol.txt', declineCost: 9 },
-  { artifact: 'Local admin rights inventory', source: 'Windows endpoints', controlsUnlocked: 9, effort: '6 min', method: 'automated', owner: 'Endpoint team', formatHint: 'CSV — host, local administrators group membership', command: 'Collected by the endpoint module of the signed collector', declineCost: 4 },
-  { artifact: 'SIEM log source inventory', source: 'SIEM', controlsUnlocked: 8, effort: '5 min', method: 'manual', owner: 'SOC', formatHint: 'CSV — source name, type, alerting Y/N, retention days', command: 'Export source list + retention settings from the SIEM admin console', declineCost: 8 },
-  { artifact: 'Firewall rule base', source: 'SIEM', controlsUnlocked: 8, effort: '8 min', method: 'manual', owner: 'Network team', formatHint: 'Config export or CSV — rule, src, dst, service, action', command: 'Export the running configuration from the firewall management console', declineCost: 8 },
-  { artifact: 'Defender status', source: 'Windows endpoints', controlsUnlocked: 7, effort: '2 min', method: 'automated', owner: 'Endpoint team', formatHint: 'JSON — Get-MpComputerStatus per host, aggregated', command: 'Get-MpComputerStatus | Select-Object AMRunningMode,AntivirusSignatureAge,RealTimeProtectionEnabled', declineCost: 3 },
-  { artifact: 'Vulnerability scan results', source: 'SIEM', controlsUnlocked: 7, effort: '5 min', method: 'automated', owner: 'SOC', formatHint: 'CSV — host, plugin, severity, first seen, age', command: 'Export the latest authenticated scan as CSV', declineCost: 7 },
-  { artifact: 'Patch compliance report', source: 'Windows servers', controlsUnlocked: 6, effort: '4 min', method: 'automated', owner: 'Server team', formatHint: 'CSV — host, missing KBs, oldest missing patch age', command: 'Export the compliance summary from the patch console', declineCost: 6 },
-  { artifact: 'MFA registration report', source: 'Active Directory', controlsUnlocked: 6, effort: '3 min', method: 'automated', owner: 'Identity team', formatHint: 'CSV — user, MFA methods registered, enforced Y/N', command: 'Collected by the identity module of the signed collector', declineCost: 3 },
-  { artifact: 'Backup job report', source: 'Backup system', controlsUnlocked: 5, effort: '3 min', method: 'automated', owner: 'Infrastructure', formatHint: 'CSV/PDF — job name, last status, last success, target', command: 'Collected by the backup module of the signed collector', declineCost: 5 },
-  { artifact: 'Joiner/mover/leaver log', source: 'HR & LMS', controlsUnlocked: 5, effort: '7 min', method: 'manual', owner: 'HR', formatHint: 'CSV — employee id, event, effective date, processed date', command: 'Export the last 90 days of lifecycle events', declineCost: 5 },
-  { artifact: 'Encryption-at-rest inventory (servers)', source: 'Windows servers', controlsUnlocked: 5, effort: '6 min', method: 'manual', owner: 'Server team', formatHint: 'CSV — host, volume, encryption state, key custodian', command: 'Compile per-server disk encryption state', declineCost: 5 },
-  { artifact: 'BitLocker state', source: 'Windows endpoints', controlsUnlocked: 4, effort: '2 min', method: 'automated', owner: 'Endpoint team', formatHint: 'CSV — hostname, protection status, encryption %', command: 'manage-bde -status', declineCost: 2 },
-  { artifact: 'Security awareness completion', source: 'HR & LMS', controlsUnlocked: 4, effort: '3 min', method: 'manual', owner: 'HR / L&D', formatHint: 'CSV — user, course, completion date', command: 'Export completion CSV from the LMS reporting module', declineCost: 4 },
-  { artifact: 'Incident response plan + exercise record', source: 'SIEM', controlsUnlocked: 4, effort: '5 min', method: 'manual', owner: 'SOC', formatHint: 'PDF — IR plan, most recent tabletop record', command: 'Provide the current IR plan and the latest exercise after-action report', declineCost: 4 },
-  { artifact: 'Session/idle-timeout policy', source: 'Active Directory', controlsUnlocked: 4, effort: '2 min', method: 'automated', owner: 'Server team', formatHint: 'Included in the GPO baseline export', command: 'Collected by the configuration module of the signed collector', declineCost: 2 },
-  { artifact: 'Removable-media control policy', source: 'Windows endpoints', controlsUnlocked: 3, effort: '3 min', method: 'automated', owner: 'Endpoint team', formatHint: 'CSV/JSON — device control policy and assignment', command: 'Collected by the endpoint module of the signed collector', declineCost: 3 },
-  { artifact: 'Media sanitisation records', source: 'HR & LMS', controlsUnlocked: 2, effort: '10 min', method: 'manual', owner: 'Facilities', formatHint: 'PDF — certificates of destruction for the period', command: 'Provide destruction certificates from the asset disposal vendor', declineCost: 2 },
-];
-
-// What the plan can and cannot establish. The plan asks for evidence for controls that have an authored
-// evidence requirement; the rest cannot be asked about, so they bound what providing everything achieves.
-export const REQUEST_PLAN_SUMMARY = lazyByProfile(() => {
-  const planAfter = CURRENT.after;
-  return {
-    artifactCount: requestPlan.length, // 22
-    systemCount: new Set(requestPlan.map((r) => r.source)).size, // 8
-    automatedCount: requestPlan.filter((r) => r.method === 'automated').length, // 14
-    manualCount: requestPlan.filter((r) => r.method === 'manual').length, // 8
-    applicable: planAfter.views.unweighted.applicable,
-    /** applicable controls with at least one authored evidence path: what the plan can ask about */
-    authoredScope: planAfter.views.authored_scope.applicable,
-    /** Unknown because no evidence requirement is authored: stay Unknown unless an artifact collected for another control shows one unmet */
-    unauthored: planAfter.unknownUnauthored,
-    /** coverage if every artifact were provided: every control except the unauthored Unknowns */
-    projectedCoveragePct: +(((planAfter.views.unweighted.applicable - planAfter.unknownUnauthored) * 100) / planAfter.views.unweighted.applicable).toFixed(1),
-  };
-});
-
-// ─── Module execution ledger (brief §7.3) ─────────────────────────────────────
-
-export type ModuleStatus = 'success' | 'partial' | 'failed' | 'declined';
-
-export interface ModuleResult {
-  module: string;
-  status: ModuleStatus;
-  detail: string;
-  records?: number;
-  /** may this module produce a negative (Red) finding? only when status === 'success' */
-  negativeCapable: boolean;
-}
-
-export const moduleLedger: ModuleResult[] = [
-  { module: 'identity', status: 'success', detail: 'identity.json parsed — 1,842 records', records: 1842, negativeCapable: true },
-  { module: 'endpoint', status: 'partial', detail: 'insufficient permission — 12 of 400 hosts readable', records: 12, negativeCapable: false },
-  { module: 'logging', status: 'failed', detail: 'wineventlog_access_denied', negativeCapable: false },
-  { module: 'cloud', status: 'declined', detail: 'declined by client at collection time', negativeCapable: false },
-  { module: 'configuration', status: 'success', detail: 'GPO + registry baseline parsed — 214 objects', records: 214, negativeCapable: true },
-  { module: 'vulnerability', status: 'success', detail: 'scanner export parsed — 3,908 findings', records: 3908, negativeCapable: true },
-  { module: 'backup', status: 'success', detail: 'job history parsed — 30 days', records: 30, negativeCapable: true },
-];
-
-export const bundleStages = [
-  { label: 'Verifying signature', result: 'ok' as const, detail: 'Ed25519 · collector build 2026.08.2' },
-  { label: 'Reading module execution ledger', result: 'ok' as const, detail: '7 modules recorded' },
-  { label: 'Parsing identity.json (1,842 records)', result: 'ok' as const, detail: 'accounts, groups, MFA state' },
-  { label: 'Parsing endpoint.json', result: 'warn' as const, detail: 'partial — insufficient permission (12 of 400 hosts)' },
-  { label: 'Parsing logging.json', result: 'error' as const, detail: 'failed — wineventlog_access_denied' },
-  { label: "Module 'cloud'", result: 'error' as const, detail: 'declined by client' },
-  // The 90 is a claim count for this simulated run, unrelated to the dashboard's resolved-controls figures; do not derive it from them.
-  { label: 'Corroborating 90 claims', result: 'ok' as const, detail: 'testimony cross-checked against artifacts' },
-];
-
-export const BUNDLE_MANIFEST = {
-  collector: 'jccp-collector 2026.08.2',
-  signatureAlg: 'Ed25519',
-  signatureHash: 'a3f1c92e7b40d5188cc21e0f6b9a4d7e2f8c1b06',
-  generatedAt: '2026-09-05T09:14:22+03:00',
-  identityRecords: 1842,
-  claimsCorroborated: 90,
 };

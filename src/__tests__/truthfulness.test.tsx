@@ -13,6 +13,7 @@ import { CURRENT } from '../data/current';
 import { PROFILES, PROFILE_ORDER } from '../data/profiles';
 import { dashboardView } from '../lib/derive';
 import { evidenceArtifacts } from '../lib/ranking';
+import { realGaps } from '../lib/narrative';
 import { bandFloorPts, boundedScore, projectFromNumerator, yellowWeightForShare } from '../lib/scoring';
 
 // Source text of every non-test file, to assert strings that must not come back.
@@ -231,10 +232,16 @@ describe('3.5 the chat quotes the live interval', () => {
     expect(c.container.textContent).not.toContain(quoted(false));
   });
 
-  it('answers quoting fixture-only figures are marked illustrative', () => {
+  it('the Gap answers exist only after the upload, and name only the Gaps the engine established', () => {
+    const before = renderAt('/chat', <Chat />);
+    expect(Array.from(before.container.querySelectorAll('button')).some((b) => /a Gap\?$/.test(b.textContent ?? ''))).toBe(false);
+    before.unmount();
+    useAssessment.setState({ evidenceUploaded: true });
     const c = renderAt('/chat', <Chat />);
-    fireEvent.click(c.getByText('Why is JNCSF-102 a gap for us?', { selector: 'button' }));
-    const p = Array.from(c.container.querySelectorAll('p')).find((e) => e.textContent?.includes('43 of 512'));
-    expect(p?.closest('[data-tier]')?.getAttribute('data-tier')).toBe('illustrative');
+    fireEvent.click(c.getByText('Which controls are Gaps?', { selector: 'button' }));
+    const text = c.container.textContent ?? '';
+    for (const g of realGaps()) expect(text).toContain(g.id);
+    expect(text).not.toContain('43 of 512');
+    expect(text).toContain(`${realGaps().length} controls are Gaps`);
   });
 });

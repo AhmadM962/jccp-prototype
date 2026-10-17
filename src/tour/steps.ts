@@ -9,6 +9,8 @@ import { toPct } from '../lib/frac';
 import { assuranceMeasurement, assuranceReason } from '../lib/assurance';
 import { unknownResolvedByUpload } from '../lib/coverage';
 import { lazyByProfile } from '../lib/lazyByProfile';
+import { exampleGap, gapsByBasis, roleSlug, testimonyWeighed, topTie } from '../lib/narrative';
+import { planSummary, collectionLedger, REASON_WORDS } from '../lib/plan';
 
 // Figures quoted in the narration come from the same numbers the screens use.
 const fmt1 = (n: number) => n.toFixed(1);
@@ -48,6 +50,20 @@ export const TOUR_STEPS: TourStep[] = lazyByProfile(() => {
   const WIDTH_BEFORE = toPct([BEFORE.unknown, BEFORE.applicable]);
   const WIDTH_AFTER = toPct([AFTER.unknown, AFTER.applicable]);
   const UNAUTHORED_PTS = toPct(AFTER.width.unauthored);
+  // The stories are told about the Gaps the engine established, one of each basis; no control is named that is not one.
+  const absence = exampleGap('absence');
+  const observed = exampleGap('observed');
+  const admission = exampleGap('testimonial_admission');
+  const nGaps = gapsByBasis('absence').length + gapsByBasis('observed').length + gapsByBasis('testimonial_admission').length;
+  const tie = topTie();
+  const sum = planSummary();
+  // The tour reaches testimony before the upload, when only the verdicts that rest on testimony or documents exist.
+  const weighed = testimonyWeighed(false).find((t) => t.basis === 'admission');
+  const notProvided = collectionLedger().flatMap((r) => Object.entries(r.byReason));
+  const reasons = new Map<string, number>();
+  for (const [k, n] of notProvided) reasons.set(k, (reasons.get(k) ?? 0) + (n ?? 0));
+  const reasonSummary = [...reasons.entries()].map(([k, n]) => `${n} ${REASON_WORDS[k as keyof typeof REASON_WORDS] ?? k}`).join(', ');
+  const exposure = absence?.fix?.attack;
   return [
   // ─── Act 1 — Scoping ──────────────────────────────────────────────────────
   {
@@ -118,7 +134,7 @@ export const TOUR_STEPS: TourStep[] = lazyByProfile(() => {
     target: 'plan-firstrow',
     fallbackTarget: 'plan-automated',
     title: 'Reading a row',
-    body: 'Each row is one artefact the organisation must produce. “Controls” is how many controls this single file would establish. “Effort” is roughly how long it takes. “How to produce it” is the exact command to run. Rows are ordered by value, so the most useful evidence comes first.',
+    body: 'Each row is one signal the evidence requirements name: a document the organisation supplies, or a state read from one of its systems. “Controls” is how many controls name it, and “Needed by” lists them. Rows are ordered by that count, so the evidence that serves the most controls comes first.',
   },
   {
     id: 'auto-manual',
@@ -126,8 +142,8 @@ export const TOUR_STEPS: TourStep[] = lazyByProfile(() => {
     route: '/request-plan',
     target: 'plan-collectors',
     fallbackTarget: 'plan-automated',
-    title: 'Automated vs manual',
-    body: 'Most evidence is collected automatically. The organisation downloads a read-only script, runs it on its own systems, reviews the output, and uploads the result. The platform never connects to their network — which keeps this outside the licensing rules that govern cybersecurity services.',
+    title: 'Documents and systems',
+    body: `${sum.documentary} of the ${sum.signals} signals are documents the organisation supplies; ${sum.fromSystems} are states read from its systems. For the system states, the organisation downloads a read-only script, runs it on its own systems, reviews the output, and uploads the result. The platform never connects to their network — which keeps this outside the licensing rules that govern cybersecurity services.`,
   },
   {
     id: 'move-on-2',
@@ -154,17 +170,19 @@ export const TOUR_STEPS: TourStep[] = lazyByProfile(() => {
     act: 'Gathering evidence',
     route: '/intake',
     target: 'intake-roles',
-    title: 'Why three separate interviews',
-    body: 'Different people know different truths. Executives know what matters to the business. Operators know how systems are actually configured. Security staff know what is actually monitored. Asking one person all three questions produces a confident, wrong answer.',
+    title: 'Who answered',
+    body: 'The engine records who answered, by role, and what it did with each answer. A person’s account of how a system is configured is a claim, not a fact, so the engine keeps every answer, says what it did with it, and weighs it against the evidence.',
   },
   {
-    id: 'one-becomes-three',
+    id: 'testimony-weighed',
     act: 'Gathering evidence',
     route: '/intake',
     target: 'intake-transcript',
-    preAction: { type: 'clickSeq', targets: ['intake-role-operator', 'intake-play'] },
-    title: 'One sentence becomes three findings',
-    body: 'Watch what happens to a simple claim. “We run endpoint detection across the estate” sounds like one compliant control. After follow-up questions it becomes three separate findings: enforcing on servers, detect-only on workstations, and contractor machines with no agent at all.',
+    preAction: weighed ? { type: 'click', target: `intake-role-${roleSlug(weighed.respondentRole)}`, wait: 500 } : undefined,
+    title: 'Testimony is weighed, not counted',
+    body: admission && weighed
+      ? `${admission.id} is a Gap on the organisation’s own statement. A ${weighed.respondentRole}’s answer supported the control, and the engine records: ${weighed.contradictedBy}. The answer that supported it is kept on the record, not deleted; it just does not decide the outcome.`
+      : 'Each answer the engine weighed is kept on the record with what it did with it. An answer that supports a control does not decide the outcome when the evidence goes the other way.',
   },
   {
     id: 'testimony-ceiling',
@@ -172,7 +190,6 @@ export const TOUR_STEPS: TourStep[] = lazyByProfile(() => {
     route: '/intake',
     target: 'intake-testimony',
     fallbackTarget: 'intake-claims',
-    preAction: { type: 'click', target: 'intake-skip', wait: 500 },
     title: 'Testimony has a ceiling',
     body: 'Nothing here can be marked compliant yet. A claim supported only by someone’s word is capped at “Partial”, however confidently it was said. Reaching “Compliant” requires machine-collected proof. This single rule is what separates this from a questionnaire.',
   },
@@ -194,7 +211,7 @@ export const TOUR_STEPS: TourStep[] = lazyByProfile(() => {
     target: 'module-ledger',
     waitMs: 14000,
     title: 'Read the module ledger',
-    body: 'Notice that not everything worked. One module ran, one only reached 12 of 400 machines, one failed on permissions, one was declined. This is deliberate, and it is the most important idea in the system: a module that failed proves nothing. Its controls stay “Unknown” — they are never recorded as failures. A permissions error must never manufacture a confident bad result.',
+    body: `Notice that not everything was collected: ${sum.notProvided} of the ${sum.signals} signals were not provided (${reasonSummary || 'none'}). The ledger says so for each family of signals. This is deliberate, and it is the most important idea in the system: a module that failed proves nothing. Its controls stay “Unknown” — they are never recorded as failures. A permissions error must never manufacture a confident bad result.`,
   },
   {
     id: 'see-the-effect',
@@ -263,41 +280,55 @@ export const TOUR_STEPS: TourStep[] = lazyByProfile(() => {
   {
     id: 'every-control',
     act: 'Proof and action',
-    route: '/gap-matrix?cap=del',
+    route: `/gap-matrix?cap=${absence?.claim.capability ?? 'del'}`,
     target: 'gm-filters',
     title: 'Every control, one state',
     body: 'Each control is Compliant, Partial, a Gap, Not Applicable, or Unknown. “Unknown” is a first-class result, not a blank. It means the assessment did not establish this — and it says why.',
   },
   {
+    id: 'three-grounds',
+    act: 'Proof and action',
+    route: `/gap-matrix?cap=${absence?.claim.capability ?? 'del'}`,
+    target: 'gm-filters',
+    title: 'Three grounds for a Gap',
+    body: `A Gap always says what it rests on, and the engine can record three grounds. Absence: a module that ran successfully could have shown the control met and did not${absence ? ` (${absence.id}, run “${absence.runId}”)` : ''}. Observation: an artifact shows it unmet${observed ? ` (${observed.id})` : ''}. An admission: the organisation’s own statement of non-enforcement${admission ? ` (${admission.id})` : ''}. In this assessment there are ${nGaps} Gaps: ${gapsByBasis('absence').length} on absence, ${gapsByBasis('observed').length} on observation, ${gapsByBasis('testimonial_admission').length} on an admission. The “Any gap basis” filter lists each kind. A Gap is never inferred from anything else.`,
+  },
+  {
     id: 'open-control',
     act: 'Proof and action',
-    route: '/gap-matrix?cap=del',
-    target: 'gm-row-102',
+    route: `/gap-matrix?cap=${absence?.claim.capability ?? 'del'}`,
+    target: 'gm-row-tour',
+    fallbackTarget: 'gm-filters',
     title: 'Open a control',
     body: 'Let’s see what a finding is actually built on.',
     advanceOn: 'click',
-    clickInstruction: 'Click the highlighted control (JNCSF-102)',
+    clickInstruction: absence ? `Click the highlighted control (${absence.id})` : 'Open a control',
   },
   {
     id: 'evidence-trail',
     act: 'Proof and action',
-    route: '/control/JNCSF-102',
-    target: 'cd-evidence',
-    title: 'The evidence trail',
-    body: 'This is what makes a finding defensible. Every claim links to the exact quote or the exact row of the exact file, with a cryptographic fingerprint. An auditor can re-check the original rather than trusting the tool.',
+    route: absence ? `/control/${absence.id}` : '/gap-matrix',
+    target: 'cd-measured',
+    title: 'What the finding is built on',
+    body: absence
+      ? `${absence.id} is a Gap on absence. The engine never infers a Gap from absence unless a module that ran successfully could have shown the opposite: here the run “${absence.runId}” succeeded and found nothing showing the control is met. Every value in this panel is read from the assessment file named at the top of the page, whose SHA-256 an auditor can check, so the original can be re-checked rather than the tool trusted.`
+      : 'Every value in this panel is read from the assessment file named at the top of the page, whose SHA-256 an auditor can check.',
   },
   {
     id: 'attack',
     act: 'Proof and action',
-    route: '/control/JNCSF-102',
+    route: absence ? `/control/${absence.id}` : '/gap-matrix',
     target: 'cd-attack',
+    fallbackTarget: 'cd-measured',
     title: 'What an attacker gains',
-    body: 'A compliance gap is translated into real-world risk. Because privileged accounts lack multi-factor authentication, this organisation is exposed to specific, named attack techniques. The badge says whether that mapping is official — straight from the NCSC’s own published Threat Annex — or derived and reviewed; only 35% of controls carry any mapping at all, and this is one of them.',
+    body: exposure
+      ? `A compliance gap can be translated into attack techniques, but only where the mapping is strong enough to show. For ${absence?.id} the engine recorded exposure “${exposure.exposure}”: ${exposure.techniqueIds.length} technique${exposure.techniqueIds.length === 1 ? '' : 's'} shown, ${exposure.suppressedCount} withheld by the engine, not counted as exposure. Only 35% of controls carry any mapping at all. Exposure is an annotation you read; it never ranks anything.`
+      : 'A compliance gap can be translated into attack techniques, but only where the mapping is strong enough to show. Only 35% of controls carry any mapping at all. Exposure is an annotation you read; it never ranks anything.',
   },
   {
     id: 'go-remediation',
     act: 'Proof and action',
-    route: '/control/JNCSF-102',
+    route: absence ? `/control/${absence.id}` : '/gap-matrix',
     target: 'nav-/remediation',
     title: 'What to do about it',
     body: 'Finally: the plan of action.',
@@ -309,14 +340,16 @@ export const TOUR_STEPS: TourStep[] = lazyByProfile(() => {
     act: 'Proof and action',
     route: '/remediation',
     target: 'rem-first',
-    title: 'Ranked by value',
-    body: 'Actions ordered by how many controls each one closes. Fixing multi-factor authentication for 43 privileged accounts resolves 11 controls at once — and removes exposure to three named attack techniques.',
+    title: 'Ranked, and honest about ties',
+    body: tie
+      ? `${tie.size} actions share the highest rank, all of equal magnitude: ${tie.fixes.length} fixes for Gaps and ${tie.requests.length} requests for evidence. The engine’s own note: “${tie.note}”. It does not break a tie it cannot justify.`
+      : 'The engine ranked no action for this assessment.',
   },
   {
     id: 'closing',
     act: 'Done',
     title: 'That’s the full journey',
-    body: 'What you have just seen: scoping that is visible and challenged · evidence that must be proven, not claimed · a result that states its own uncertainty · findings traceable to source · and a prioritised plan of action. Everything ran in your browser. Nothing is transmitted, and your progress is kept in this browser only.',
+    body: 'What you have just seen: scoping that is visible and challenged · evidence that must be proven, not claimed · a result that states its own uncertainty · findings traceable to source · and a ranking that admits its ties. Everything ran in your browser. Nothing is transmitted, and your progress is kept in this browser only.',
     final: true,
   },
 ];

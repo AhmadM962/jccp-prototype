@@ -66,8 +66,8 @@ export default function WelcomeGate() {
           Cybersecurity Framework — using collected evidence rather than self-declaration.
         </p>
         <p className="mt-2 text-sm leading-relaxed text-slate-700">
-          Everything you see is demonstration data for a fictional organisation, the Ministry of Digital
-          Services. Nothing you do here is transmitted. Your progress is saved in this browser so you can pick up where you left off.
+          Everything you see is demonstration data for fictional organisations: a ministry, a bank and a utility, each the
+          assessment engine&rsquo;s own test case, which you can switch between on the first screen. Nothing you do here is transmitted. Your progress is saved in this browser so you can pick up where you left off.
         </p>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">

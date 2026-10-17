@@ -1,6 +1,6 @@
 # Round 3 report — grounding the prototype in the engine's output
 
-Branch `round-3/measured`, from `round-2/unauthored`. One commit per task, plus the carry-over commit the Round 2 close asked for. Not merged.
+Branch `round-3/measured`, from `round-2/unauthored`. One commit per task, the carry-over commit the Round 2 close asked for, and one finishing commit (the one that contains this report) that carries the rulings made when Round 3 was accepted. Not merged.
 
 ```
 3213edd  Round 3 carry-over: the before-state says it sits on the threshold
@@ -9,40 +9,107 @@ Branch `round-3/measured`, from `round-2/unauthored`. One commit per task, plus 
 fe9d3f7  Round 3 Task 3: `measured` enters the vocabulary
 44b5b02  Round 3 Task 4: remediation from the engine's ranking
 b5b5748  Round 3 Task 5: the profile switcher chooses among the three real assessments
+(finishing) the narrative from the data, the Request Plan derived, two corrections
 ```
 
 (`git log --oneline round-2/unauthored..HEAD`)
 
 ---
 
-## 0. What is now `measured`, and what is not — by screen
+## 0. The finishing commit: what the rulings asked for, and what was done
 
-**How to read the tiers.** `measured` means: the figure on the screen is read from one of the three golden files, and the element names the path it is read from (`data-source`; a test resolves every one of them against all three profiles). `illustrative` means: invented or carried by the prototype for the demonstration, marked on the element. `planned` means: something the system will do that the prototype does not. Before the evidence upload, the screens show **rule R's projection** of the engine's data (the verdicts that rest on testimony or documents): that is arithmetic on the golden, not an engine run, so it is marked `illustrative` with the reason on screen. After the upload, the same elements are `measured`. An analyst override moves a region back to `illustrative` (the golden does not contain the override).
+### 0.1 The stale narrative: rewritten from the data, not labelled
 
-Marks as the source has them (`grep -n 'tier="' src/screens/*.tsx`, `grep -c StateProvenance`):
+The tour, the executive summary, the Chat, the interviews and the evidence quotes told a story about JNCSF-102, -307 and -435 failing. The engine says 102 is Compliant and the other two are Unknown. All of it is rewritten from the six Gaps the engine established, which are the same six in all three assessments, one of every basis it can record:
 
-| Screen | `measured` (after the upload) | Not measured |
+| Gap | Basis | Run / ground |
 |---|---|---|
-| **Organisation Profile** | The assessment selector (the three assessments, their applicable/excluded counts and source files; path `totals`). The CICSC line: derived from the golden's `cicsc_boundary`, with its basis. | Every input on the form (size, hosting, counts, cloud, PDPL holdings) and the "Live scoping" panel: `illustrative`. The live count agrees with the golden's applicable count for each assessment (tested) but is computed from the toggles. Sector N/A baseline: invented (`SECTOR_BASELINE`). |
-| **Evidence Request Plan** | Nothing carries a `measured` mark. The summary sentence's figures (applicable, authored scope, unauthored) are read from the active assessment. | The 22 artifacts, their systems, owners, commands, effort and `controlsUnlocked`: `illustrative`; the collector buttons: `planned`. These counts were not touched (see §3, item 4). |
-| **Intake** | Nothing carries a `measured` mark. | Slots, bundle, module ledger, ingestion, interviews, review queue, extracted claims: `illustrative` / `planned`. Contradicted-testimony entries elsewhere (Control Detail) are the golden's. |
-| **Compliance Dashboard** | Interval, coverage, assurance level and its boundary line, width by cause, the four views, per-capability figures, partial credit by basis, the Unknowns by reason, the scope-exclusions card, the demotion checks (the engine's own `detail` strings). | Before the upload: the same elements, `illustrative` (rule R). Always: the Trend card (quarter labels), Top-3 risks, the worked-example evidence dates, and the framework-wide authoring figures (from the engine's `reports/`, not from a golden). |
-| **Gap Matrix** | All applicable controls (557 / 576 / 544) with the golden's state, reason, gap basis, partial basis, path label and run id; filters over them. | Before the upload: `illustrative` (rule R). Control text for the controls the prototype does not hold: not shown (§4). |
-| **Control Detail** | The verdict and everything that explains it: evidence class and kind, gap reason and basis, run id (absence Gaps), partial basis and share, enforcement and population statements, the engine's reasoning string, contradicted testimony, overruled documents, credit, weight basis; the control's ranked action and ATT&CK exposure (`ranking.items`). | Catalogue text for the seed controls, worked-example evidence and interview quotes, the worked-example ATT&CK chain and population figures, the worked-example signals: `illustrative`, with a note saying so on the element. |
-| **Remediation & Requests** | The whole ranked list (`ranking.items`): rank, control, action type, description, magnitude (exact fraction and points), effort, tie-group size, ATT&CK exposure including `suppressed_count`; the exclusion lists with their reasons; the artifacts (signals the engine's evidence requests name), what each unlocks (computed), and the projection. | Before the upload the screen shows nothing of the engine's and says why (§3, item 5). The interval projection's *position* is arithmetic on the golden, not an engine run. |
-| **OSCAL Export** | The preview documents are built from the active assessment (interval, counts, scope boundary, per-control findings). | Signing, validation and the export action: `planned`; the model cards carry `illustrative` / `planned` marks as the source has them; nothing is signed. |
-| **Compliance Chat** | Nothing carries a `measured` mark. | `planned` (no LLM) and `illustrative` (canned answers). Some answers quote live figures (tested: the score answer matches the dashboard). |
-| **Scope Exclusions** | The whole register (19 / 0 / 32 rows): control, capability, triggering flag and value, reason, the engine's justification; the not-applicable rate; the engine's N/A-baseline check. | Nothing. |
-| **Roles & Access, Tasks, National Rollup, Authoring Coverage** | Nothing. | `illustrative`. The Authoring figures are the engine's report figures, pinned by tests, but they are not read from a golden. |
+| JNCSF-99 | absence | run `network-flow-rules` (successful) |
+| JNCSF-100 | absence | run `directory-enumeration` (successful) |
+| JNCSF-101 | absence | run `directory-enumeration` (successful) |
+| JNCSF-109 | testimonial_admission | a respondent's statement of non-enforcement |
+| JNCSF-124 | observed | an artifact; enforcement mode `disabled` (established) |
+| JNCSF-139 | observed | an artifact; no authored evidence path |
 
-Nothing is marked `measured` unless it traces to a golden file: `provenance.test.tsx` resolves every `data-source` path against all three profiles, and fails an unresolved one.
+(`realGaps()` in `src/lib/narrative.ts`; `narrative.test.tsx` asserts the six ids and the 3 / 2 / 1 split in each assessment.)
+
+Nothing in the narrative is typed. `src/lib/narrative.ts` and `src/lib/plan.ts` derive every fact from the assessment (the Gaps, the tie group, the testimony, the plan), and a test refuses a literal `JNCSF-` id in any narrative source file (the tour script, the Chat, the Dashboard, Intake, the Request Plan, Tasks, and the two libraries; the refusal about `JNCSF-9999` and the catalogue range excepted). A second test refuses the old story's fingerprints anywhere in the source (`CrowdStrike`, `EDR`, `43 privileged`, `22 servers`, `12 of 400`, `1,842`, `Top 3 risks`, and others).
+
+What was rewritten:
+
+- **The tour.** The scripted interview ("one sentence becomes three findings") is now **Testimony is weighed, not counted**: JNCSF-109, a compliance officer's answer that supported the control, and the engine's own string recording that testimony admitting non-enforcement prevails over it. A new step, **Three grounds for a Gap**, names one Gap of each basis (JNCSF-100, -139, -109) and the real counts. "The evidence trail" is now **What the finding is built on** (the successful run behind JNCSF-100 and the file hash). "What an attacker gains" quotes the engine's recorded exposure for that control, `lower_confidence_only`, how many techniques were shown and how many withheld, and that exposure never ranks. "Ranked by value" is **Ranked, and honest about ties**: the real tie group (15 / 12 / 13 actions at rank 1 in the ministry / bank / utility), how many are fixes and how many are evidence requests, and the engine's own tie-order note. The collection-ledger step reads its numbers from the ledger. Every `target` exists: I drove the whole tour in Chromium for each assessment, all 31 steps, and the tour logs a `[tour]` warning when a target is missing; there were none.
+- **Top-3 risks → the tie.** The card is replaced by **Prioritisation**: "15 actions share the highest rank, all of equal magnitude. The engine does not break a tie it cannot justify." (your wording; the count is the data's: 15 / 12 / 13), with the three fixes by id, the number of evidence requests, and the engine's note. Before the upload: "A ranking is derived from an assessment, so before one exists there is nothing to rank."
+- **Chat.** Re-pointed. What a control requires (from the catalogue text the prototype holds, with the ISO/NIST references it holds), which controls are Gaps and on what basis, why one Gap of each basis is a Gap (from the claim's own fields), which Gap rests on an admission, "which Gaps would an attacker exploit first?" (answered as the engine does: it does not say; exposure is an annotation, never a rank, and the answer lists what it recorded for each Gap), which action comes first (the tie), the L3 question, the score, and the two refusals. The Gap answers appear only after the upload. The 48-hour/PDPL question is gone: it quoted a passage from "PDPL Art. 2023", a source the prototype does not hold.
+- **Interviews → testimony.** The scripted interviews (CrowdStrike, MFA, a SIEM) are deleted. The Interviews tab lists the respondent roles the engine recorded, each with the answers it weighed: control, the control's measured state, the stance (`supports`, `admits_non_enforcement`), the signal, the engine's outcome string and the locator. The assessment file holds no transcript, and the screen says so. A table shows what the engine did with the answers by ground; the "Two answers disagree" banner is the engine's admission string for JNCSF-109 (it replaces an invented "operator wins on MFA" conflict). Before the upload only the testimony behind a verdict that exists then (rule R) has been weighed: one answer, one respondent; after it, four.
+- **Evidence quotes and worked examples.** `evidence.ts` (invented quotes, AD exports, a 100%-reconciled CMDB), `attack.ts` (worked ATT&CK chains), `interviews.ts`, the worked-example population notes, the worked signals, and the "no conclusive path" box are deleted, together with the components that showed them. The 48 catalogue entries keep only the NCSC's published text and mappings. Control Detail now shows the measured panel, the catalogue mapping, the sufficiency ladder, the engine's ATT&CK exposure and the engine's actions, and nothing invented beside them.
+- **Also removed, because they were invented and contradicted the engine on the same data:** the Dashboard's "Oldest evidence: 84 days (JNCSF-459)" line (the engine says JNCSF-459's document was not provided; the line is now the engine's own unusable-evidence count) and the invented four-cycle Trend card (replaced by the parameters the engine disclosed on this result).
+
+### 0.2 Control text: left out, said once
+
+The catalogue is not loaded. The Gap Matrix now says, once, at the top: "The control catalogue lives in the assessment engine, and this prototype does not need it to show you a verdict or the reasoning behind one. Each row carries the id, the capability, the state, the basis and the reason, all of them the engine's; text is shown only where the prototype already held it (48 of 557)." The per-row apology is gone. A row now carries a capability pill as well (it previously relied on the group heading).
+
+### 0.3 The Request Plan: derived
+
+The 22 invented artifacts are deleted. The plan is the engine's `coverage.required` (113 signals for the ministry, 115 for the bank, 113 for the utility), and each signal's controls are those whose requirement names it; `required` is exactly `provided` ∪ `gaps` with nothing in both, in all three assessments (tested). **A departure from "the same evidence requests Remediation uses":** Remediation's ten signals are the ones the ranking still asks for *after* assessment, so they are a subset of the plan, not the plan; a pre-collection plan needs the full required set. The two agree by computation: every signal Remediation asks for is in the plan, with the asking control among the plan's controls for it, and with a status other than `provided` (tested for all three). The controls the plan names are exactly the authored scope (65 / 66 / 65, tested as an equality).
+
+Rows carry the signal, how many controls name it, which ones, and after the upload the engine's status: provided, or its reason (not provided, declined, insufficient permission, module failed, stale, future-dated). There is no effort, owner, command or "declining leaves N controls Unknown": the assessment has none of them. The Intake bundle tab uses the same derivation: its slots are the signals; simulating the bundle provides exactly those the engine records as provided; the module ledger is now a **collection ledger by signal family**, from the data (the three assessments differ: the ministry's `endpoint` family was declined, the utility's failed, the bank's was stale; the bank's `monitoring` was future-dated). The Tasks screen lists the signals Remediation asks for, with the controls that ask, and no due dates or notes. Intake's collector "ingestion" card is `planned` and its first stage says plainly that the signature check is simulated.
+
+### 0.4 The two small corrections
+
+1. **Applicability variables.** A variable no exclusion names is now `unrecorded`: "in scope — not recorded as declined". It is not shown as a declared Yes; none of the three buttons is active until the user chooses one, and choosing Yes records a declaration and removes the note. (The saved-state key is now `jccp-assessment-v4`, because the shape of the profile changed; a browser's earlier saved progress is not carried over.)
+2. **The regeneration test does not run in CI.** It needs the engine checkout, and `.github/workflows/deploy.yml` runs `npm test` only. It was verified locally against the engine clone at the end of this round and is **not** checked by CI: a green build is not evidence that the generated profile modules still match the goldens. The result of running it:
+
+```
+ENGINE_ROOT=/home/user/jccp npx vitest run src/__tests__/regenerate.test.ts    → 1 passed
+```
 
 ---
 
-## 1. The tasks
+## 1. Every control id the narrative names, with its measured state
+
+Extracted by rendering each surface, for each of the three assessments, and matching `JNCSF-\d+` in the text (the Chat after clicking every question; the tour script's titles, bodies, instructions and routes). The states are from the golden, via `CURRENT.claims`; they are identical in all three assessments.
+
+| Surface | Control ids named | Measured state |
+|---|---|---|
+| Tour, "Testimony is weighed, not counted" | JNCSF-109 | **Gap** (`testimonial_admission`) |
+| Tour, "Three grounds for a Gap" | JNCSF-100, JNCSF-139, JNCSF-109 | **Gap** (`absence`), **Gap** (`observed`), **Gap** (`testimonial_admission`) |
+| Tour, "Open a control", "What the finding is built on", "What an attacker gains", route of "What to do about it" | JNCSF-100 | **Gap** (`absence`, run `directory-enumeration`) |
+| Chat (every question, after the upload) | JNCSF-99, -100, -101, -109, -124, -139 | **Gap** (3 `absence`, 2 `observed`: -124 and -139, 1 `testimonial_admission`: -109) |
+| Dashboard, Prioritisation | JNCSF-109, JNCSF-124, JNCSF-139 | **Gap** (`testimonial_admission`, `observed`, `observed`) |
+
+Every id the narrative names is a Gap the engine established. `narrative.test.tsx` holds this for all three assessments (the tour text; every Chat question and answer, before and after the upload; the executive summary).
+
+Two other kinds of surface also name control ids. Neither is narrative; I list them so that nothing is hidden:
+
+- **Data displays generated from the assessment (measured, with the state beside the id).** Intake's testimony view lists the answers the engine weighed. Four are recorded: JNCSF-99, -109 and -124 (Gaps) and **JNCSF-95, which is Compliant** (`green`): a service desk lead's answer admitted non-enforcement, and the engine kept the artifact-backed path and recorded the testimony as retained, not outvoted. It is shown with its measured state and the engine's string, because it is the case where over-reporting is made visible, and it contradicts nothing. If you want only Gaps in that view, it is a one-line filter; I left it in because hiding the one case where testimony loses would misstate what the engine does. The Request Plan and the Tasks list name the controls whose evidence requirement names a signal (any state).
+- **Not narrative, left as they were, both `illustrative`.** *Roles & Access* names JNCSF-102 (Compliant), -440, -30, -146 and -435 (Unknown), -100 (Gap) and -107 (Compliant) as the controls the prototype's own access model implements; it is a design statement about the product, not a finding about the assessed organisation. *National Rollup* names JNCSF-435, -307, -141, -30 and -407 (all Unknown here) as the most-failed controls across 47 other, invented entities; the assessment has no multi-entity data to derive that from. If you consider either to contradict the measured state, say so; neither was in the list you gave.
+
+---
+
+## 2. What is now `measured`, and what is not — by screen
+
+**How to read the tiers.** `measured` means: the figure on the screen is read from one of the three golden files, and the element names the path it is read from (`data-source`; a test resolves every one of them against all three profiles). `illustrative` means: invented or carried by the prototype for the demonstration, marked on the element. `planned` means: something the system will do that the prototype does not. Before the evidence upload the screens show **rule R's projection** of the engine's data: arithmetic on the golden, not an engine run, so it is marked `illustrative` with the reason on screen. After the upload the same elements are `measured`. An analyst override moves a region back to `illustrative`.
+
+| Screen | `measured` (after the upload) | Not measured |
+|---|---|---|
+| **Organisation Profile** | The assessment selector (path `totals`). The CICSC line, derived from the golden's boundary with its basis. | The form's inputs and the "Live scoping" panel: `illustrative`. The live count agrees with the golden's applicable count for each assessment (tested). Sector N/A baseline: invented (`SECTOR_BASELINE`). |
+| **Evidence Request Plan** | The whole plan (113 / 115 / 113 signals, their controls, and after the upload each signal's status). | Before the upload `illustrative` (rule R). The collector buttons: `planned`. |
+| **Intake** | The respondent roles and the answers weighed, with outcomes; what the engine did, by ground; the signal slots; the collection ledger. | Before the upload `illustrative` (rule R). Scoped links and the ingestion card: `planned`. |
+| **Compliance Dashboard** | Interval, coverage, assurance and its boundary line, width by cause, the four views, per-capability figures, partial credit, the Unknowns by reason, the scope-exclusions card, the demotion checks, the disclosed parameters, the Prioritisation card, the engine's unusable-evidence count. | Before the upload `illustrative`. Framework-wide authoring figures: from the engine's reports, not from a golden. |
+| **Gap Matrix** | All applicable controls (557 / 576 / 544) with state, reason, gap and partial basis, path label, run id, and capability. | Before the upload `illustrative`. Control text for 509 / 528 / 496 controls is not shown (§0.2). |
+| **Control Detail** | The verdict and everything that explains it; contradicted testimony; overruled documents; the ranked action and its ATT&CK exposure. | The catalogue mapping for the 48 controls the prototype holds: `illustrative`. Nothing invented sits beside the measured panel any more. |
+| **Remediation & Requests** | The ranked list, the tie groups, the exclusion lists, the artifacts and the projection. | Before the upload the screen shows nothing of the engine's and says why. |
+| **OSCAL Export** | The preview documents are built from the active assessment. | Signing, validation, the export action: `planned`. |
+| **Compliance Chat** | Nothing carries a `measured` mark (the answers are canned wording over live data). | `planned` (no LLM). |
+| **Scope Exclusions** | The whole register (19 / 0 / 32). | Nothing. |
+| **Roles & Access, Tasks, National Rollup, Authoring Coverage** | Nothing. | `illustrative`. Tasks' contents are derived from the engine's evidence requests; who is asked, and when, is a demonstration. |
+
+---
+
+## 3. The five tasks (unchanged from the first report)
 
 ### Task 1 — the generator (`655aa05`)
-`docs/evidence/derive_profiles.py` (renamed from `derive_ministry_figures.py`) reads `government_ministry.json`, `bank.json` and `utility_with_ot.json` and writes `src/data/profiles/{ministry,bank,utility}.ts`: every figure, every claim, each file's SHA-256. The stamp is on screen (source file, full hash, and how to check it). Asserts in the generator: rule R, the assurance premises, the outside-scope controls, the demotion premises.
+`docs/evidence/derive_profiles.py` reads `government_ministry.json`, `bank.json` and `utility_with_ot.json` and writes `src/data/profiles/{ministry,bank,utility}.ts`: every figure, every claim, each file's SHA-256. The stamp is on screen. Generator asserts: rule R, the assurance premises, the outside-scope controls, the demotion premises.
 
 ```
 sha256sum /home/user/jccp/backend/tests/golden/*.json
@@ -50,115 +117,66 @@ sha256sum /home/user/jccp/backend/tests/golden/*.json
 b4d05dfd…a6625  government_ministry.json
 ce2299be…6d611  utility_with_ot.json
 ```
-These equal the `sha256` in each generated module (`grep -o '"sha256": *"[0-9a-f]*"' src/data/profiles/*.ts`).
-
-Tests (`profiles.test.tsx`, `regenerate.test.ts`): each module carries its hash; the three differ; byte-identical regeneration. The regeneration test needs the engine checkout, so it is opt-in:
-```
-ENGINE_ROOT=/home/user/jccp npx vitest run src/__tests__/regenerate.test.ts    → 1 passed
-```
-It is skipped in a plain `npm test` (1 skipped in the totals).
+These equal the `sha256` in each generated module. See §0.4 for the regeneration test, which is not run in CI.
 
 ### Task 2 — every control (`3f1d6b7`)
-The 48 seeds are gone. The Gap Matrix lists every applicable control (557 for the ministry); Control Detail reads the same record. Absence Gaps show their run id. Invented material stays `illustrative`, marked on the element.
+The 48 seeds are gone. The Gap Matrix lists every applicable control; Control Detail reads the same record. Absence Gaps show their run id.
 
 ### Task 3 — `measured` (`fe9d3f7`)
-`measured` is in the vocabulary and in the legend. The Round 1 "nothing is measured" test now asserts the opposite where it is true, and a test that nothing carries `measured` without tracing to a golden.
+`measured` is in the vocabulary and the legend; a test that nothing carries it without tracing to a golden.
 
 ### Task 4 — Remediation (`44b5b02`)
-Replaced the hand-entered plan with `ranking.items`. Items sharing a magnitude share a rank, and the screen shows them as a group: **15 items share rank 1** (ministry), under the engine's own tie-order note. Each card: action type, description, effort, magnitude (`125/623` and its points), unweighted magnitude, the signal it asks for, and the ATT&CK exposure with `N suppressed`. A "Not ranked" card shows `unauthored_excluded` (491 controls, with the reason), `uncollectable_excluded` and `conflicting_evidence_excluded`, and says "none" when a list is empty.
-
-The "What you didn't provide" tab: an artifact is a signal the engine's evidence requests name (10 for the ministry); what it unlocks is **computed** as an intersection (`resolvedBy`: a control is resolved when every signal it requests is provided), never typed. `providedRequests` now holds signal keys. The hand-entered lists are deleted (`remediation.ts` keeps only the national rollup).
+`ranking.items`, grouped by rank (15 items share rank 1 in the ministry), the exclusion lists with their reasons, and artifacts computed as an intersection.
 
 ### Task 5 — the switcher (`b5b5748`)
-The Organisation Profile screen opens with the three assessments; choosing one makes it the active assessment (`selectProfile`), saves the choice, and re-renders the whole app from it. See §2 for how, and §3 for what the brief got wrong.
+The Organisation Profile screen opens with the three assessments; choosing one re-renders the whole app. Values fixed at import are `lazyByProfile(...)`; `App` re-keys its tree on the assessment; a test refuses a top-level constant that reads the assessment. `selectProfile` drops what was held against the previous assessment and sets the organisation profile from the assessment's output.
 
 ---
 
-## 2. How the switch works, and the guard that keeps it working
+## 4. Where the brief was wrong (resolved or accepted)
 
-The data layer holds the active assessment outside React (`activeProfile()`), and `CURRENT` is a handle on it. Anything fixed at import would stay the ministry's after a switch, so each such value was converted to `lazyByProfile(...)` (built the first time each assessment asks, then kept): the capability table, the portfolio `TOTALS`, the risk-weight tables, the request-plan summary and the tour text. `APPLICABLE_CONTROLS` and `EXCLUDED_COUNT` no longer exist as constants (557 and 19 were the ministry's; the counts are 557/576/544 and 19/0/32). `App` re-keys its tree on the assessment, so every screen, the sidebar and the top bar start fresh and drop local state about the old one.
-
-`selectProfile` also drops what was held against the previous assessment: provided artifacts, analyst overrides, the scoping decision, reviewed exclusions. It sets the organisation profile from the assessment's output (`src/data/orgProfiles.ts`): the sector (matched by its Arabic name against the designation list), the applicability variables the exclusions name as declared "no", and CICSC.
-
-**A guard, because this is the kind of defect that comes back.** `switch.test.tsx` parses every non-test source file and fails on any top-level `const X = …` whose initializer reads `CURRENT`, `activeProfile` or `PROFILES`, unless it is a function or a `lazyByProfile(...)`. Positive control: appending `export const STALE = CURRENT.totals.applicable;` to a library file fails it.
-
----
-
-## 3. Where the brief was wrong, or where I could not do what it says
-
-1. **Task 5: "the CICSC notice appears for the profile whose golden declares it, not otherwise."** All three goldens declare it: `cicsc_boundary.applies` is true in each, basis `sector_designation` (government services, financial and banking, energy). With the real data the notice therefore appears in all three, and the "not otherwise" case cannot be shown from them. I tested it on a copy of the bank assessment with `applies` set to false (no notice on either dashboard view or on the Profile screen) and with the real data (notice, in the owner and executive views, before and after the upload). Separately: the notice used to depend on a toggle the user flipped, which contradicts the engine's rule that the boundary is *derived* from the sector and never declared (CLAUDE.md, *CICSC boundary*). I replaced the toggle with the derived value, read-only. Say if you wanted the toggle kept.
-2. **Task 4: "the five hand-entered artifacts".** The engine's evidence requests name ten signals for the ministry (nine for the bank, ten for the utility). And the 49-vs-14 overlap cannot arise from the derived data: in all three assessments every evidence request names exactly one signal (`[1,1,…]` over 14 / 11 / 12 requests), so the per-artifact counts partition the pool and sum to it. I kept the regression test but made it say what is true: it asserts the sum equals the pool in each assessment, and tests `resolvedBy` as an intersection on a synthetic two-signal case, so the trap stays covered if a framework ever asks for two signals.
-3. **Task 5: "keep two-stage scoping challenge and contradiction detection."** Kept and tested on all three assessments. The *contradiction* itself (declaring no cloud against evidence of cloud) is illustrative; the goldens carry no cloud declaration.
-4. **Task 4: "no hand-entered artifact counts."** True of Remediation. The Request Plan screen (22 artifacts, each with a `controlsUnlocked`) and the Tasks screen still carry hand-entered counts; they were outside the brief and are `illustrative`. They now disagree with Remediation, which counts what the engine actually asks for. Proposal: derive the Request Plan from the same `ranking.items`, or mark it as a worked example.
-5. **Remediation now shows nothing before the upload.** The ranking is computed on the assessed state; before the upload there is nothing of the engine's to show, and rule R has no ranking. The screen says so and links to Intake. This is a behaviour change (the old screen showed a plan before the upload). Say if you want a pre-upload view.
-6. **The goldens carry no declared applicability variables, only exclusions.** A variable no exclusion names is shown as "Yes" on the Profile screen, which is all the output says about it (its controls are in scope); it could have been "Don't know". Stated in `orgProfiles.ts`.
-7. **Task 2: vocabulary with no component.** As expected, 557 real rows surfaced states the old components could not show: the three gap bases, the partial basis and share, enforcement and population statements, contradicted testimony, overruled documents, evidence kind, weight basis. Each now has an element on Control Detail (or the row); `ControlRow` carries them as `data-` attributes so tests hold the screen to the data.
+1. **CICSC "for the profile whose golden declares it, not otherwise".** All three goldens declare it (`sector_designation`). Tested on a modified copy of the bank assessment for the false case; the toggle is replaced by the derived value and is not to be restored (accepted).
+2. **"Five hand-entered artifacts".** The engine names ten signals (nine for the bank, ten for the utility); every evidence request names exactly one, so the 49-vs-14 overlap cannot arise from derived data. The regression test asserts what is true and keeps the two-signal case synthetic (accepted).
+3. **Remediation is empty before the upload** (accepted).
+4. **The Request Plan counts** (was open): derived (§0.3).
+5. **Applicability variables shown as "Yes"** (was open): now `unrecorded` (§0.4).
 
 ---
 
-## 4. Decisions that are yours
-
-- **Control text.** The golden carries no control text, and text may not cross from the engine repository. The prototype holds text for 48 controls, in each of the three assessments; for the other 509 of the ministry's 557 (528 of the bank's 576, 496 of the utility's 544) a row says "Control text is not held in this prototype". Options: leave it; load the catalogue under a brief that says it may cross; or show the id alone.
-- **Names.** The ministry keeps the Round 1 name "Ministry of Digital Services". The bank and the utility are named by their labels ("Bank", "Utility with operational technology"); the goldens do not name an organisation.
-- **The Chat/tour/Top-3 contradictions (§5).** Proposals only.
-
----
-
-## 5. What still contradicts the measured state
-
-The prototype's narrative was written around invented numbers. These screens show text that disagrees with what is now measured. I did not rewrite them: replacement text is content, and yours.
-
-| Where | What it says | What is measured |
-|---|---|---|
-| Guided tour, "Ranked by value" | "Fixing multi-factor authentication for 43 privileged accounts resolves 11 controls at once — and removes exposure to three named attack techniques." | No ranked item's description mentions multi-factor authentication in any of the three assessments (0 of 47 / 44 / 45). Rank 1 holds 15 items (ministry), 12 (bank), 13 (utility), all of equal magnitude. |
-| Tour, Top-3 risks, Chat, interviews, evidence quotes | A story about JNCSF-102, -307 and -435 failing. | In all three assessments JNCSF-102 is Compliant (`green`), and JNCSF-307 and JNCSF-435 are Unknown (`unknown`): the engine has no verdict that they fail. |
-| Request Plan / Tasks | 22 artifacts with per-artifact unlock counts. | The engine asks for 10 signals (ministry), and each request unlocks one control. |
-| Dashboard Trend | Four collection cycles. | One assessment. |
-
-Proposal for each: either mark as a worked example with the control ids it concerns (the Control Detail pages already carry such notes), or rewrite from the golden (the tour could quote the tie group and the first ranked items). Neither is done.
-
----
-
-## 6. Verification
+## 5. Verification
 
 ```
 npm run build                      exit 0 (tsc --noEmit && vite build)
-npx vitest run                     19 files passed, 1 skipped · 329 tests passed, 1 skipped
-ENGINE_ROOT=/home/user/jccp npx vitest run src/__tests__/regenerate.test.ts   1 passed
+npx vitest run                     20 files passed, 1 skipped · 385 tests: 384 passed, 1 skipped
+ENGINE_ROOT=/home/user/jccp npx vitest run src/__tests__/regenerate.test.ts   1 passed   (local only; not in CI)
 git -C /home/user/jccp status --porcelain | wc -l     0   (the engine clone is untouched)
-git status --short | wc -l                            0   (committed)
 ```
 
-**Headless render** (Chromium, `vite preview`, 14 routes × 3 assessments × before/after the upload = 84 pages, with the assessment set through the saved state so rehydration is exercised): no page error, no console error other than the favicon request, no withheld-figure or withheld-screen guard, every page shows its own assessment's source file, none blank. Result line: `routes x profiles x states: 84 problems: []`. (The 14th route is `/control/JNCSF-139`.)
+**Headless render** (Chromium, `vite preview`, 14 routes × 3 assessments × before/after the upload = 84 pages, with the assessment set through the saved state): no page error, no console error other than the favicon request, no withheld-figure or withheld-screen guard, every page shows its own assessment's source file, none blank. Result line: `routes x profiles x states: 84 problems: []`.
 
-**New or rewritten tests this round that concern Tasks 4 and 5:** `ranking.test.tsx` (12), `switch.test.tsx` (23), and edits to `projection`, `consistency`, `truthfulness`, `assurance`, `display_guard`, `no_duplicate_figures`.
+**The guided tour, driven end to end** in Chromium for each assessment (all 31 steps, clicking the highlighted element on the steps that ask for it): 31 steps seen, last step "That’s the full journey", no `[tour]` missing-target warning, no console error, for ministry, bank and utility.
 
-### Mutation checks
+**Tests added this commit:** `narrative.test.tsx` (55): the six Gaps, no typed id in narrative source, every id the tour / Chat / summary names is a Gap (three assessments), the tie card and the tour's tie step, the tour's targets, testimony (before and after the upload), the plan (partition, order, relation to Remediation, summary, ledger, Request Plan screen, Tasks, bundle), the Gap Matrix note, the unrecorded variables. Rewritten: the Task 2 matrix test and the Task 3 provenance test that asserted the worked examples, and the truthfulness test that asserted an invented Chat figure was marked illustrative.
 
-Each mutant was applied to the source, the covering tests were run, and the file was restored (`cmp` against a copy).
+### Mutation checks (this commit)
 
-Task 4 (`ranking.ts`, `07_Remediation.tsx`) — **8 mutants, 8 killed**, after two survivors were killed with unit tests:
-- `every` → `some` in `resolvedBy`; rank order reversed; the tie-group heading's count; `suppressedCount` replaced by another field; the "none —" marker for an empty list; the artifact's unlock count taken from what is provided rather than from the artifact; **(survived, now killed)** removing the "names no signal" guard; **(survived, now killed)** counting every non-fix item as an artifact.
+21 mutants were applied to the source, the whole suite was run, and the file was restored (`cmp`): the example Gap's preference for held text; the before-upload testimony filter; the top rank taken as the lowest; the Gap filter; the documentary test; the plan's controls union; the maximum-coverage formula; the plan's sort order; the ledger's reason count; the Intake's testimony state; the ledger's `complete`; the capability pill; the tour row's id; the Prioritisation request count; the Chat's upload gating; the Chat's catalogue question; the tour's testimony pre-action; the tour's capability route; the Tasks filter; the plan's status column gating; the unrecorded state.
 
-Task 5 (`useAssessment.ts`, `lazyByProfile.ts`, `orgProfiles.ts`, `App.tsx`, `04_Dashboard.tsx`, `01_Profile.tsx`, `capabilities.ts`) — **13 mutants, 13 killed**, after three survivors were killed (the first run had 11 mutants and a guard check; the second added the strengthened tests and two more mutants):
-- not calling `setActiveProfile` on select; not clearing each of the three held items (provided artifacts, overrides, the scoping decision); rehydration ignoring the saved choice; inverting the declared-"no" test; CICSC taken from a constant; the Profile CICSC note always on; the profile-note guard.
-- **(survived, now killed)** removing the `key` on `App`: killed by a test that the "Fixes" tab resets after a switch.
-- **(survived, now killed)** the lazy cache ignoring the active assessment: killed by a test over `TOTALS`, the capability table, the weights, the request-plan summary and the tour text, in both directions.
-- **(survived, now killed)** the Executive dashboard's CICSC notice always on: only the analyst view had been rendered in the false case (the test now renders both roles). The analyst view's own notice, and `notApplicable` fixed at 19, were added in the second run and killed on first try.
-
-**No undocumented unkillable mutant.** One mutant I wrote referred to a name that does not exist (a compile failure, not a mutant); I counted it as nothing.
+- **20 killed.** Five survived the first run and were killed by tests added for them: the plan's sort order, the ledger's reason count (a family with two not-provided signals collapsed to one), the Intake showing all four respondents' outcomes before the upload, the Prioritisation card's request count, and the Chat's "what does it require" answer.
+- **1 unkillable, documented:** in the tour step for the Gap Matrix, replacing the route's capability (`absence.claim.capability`) by a literal `del`. JNCSF-100's capability is Delivery in every assessment, so the mutant is behaviourally identical on this data. The code is right for a Gap in another capability; no data here distinguishes them.
+- `tieGroupSize` against `items.length` in `topTie()` is equivalent by an invariant the Round 3 ranking test already asserts (every rank's tie-group size equals the number of items given that rank).
 
 ---
 
-## 7. Size
+## 6. Size
 
 ```
-dist/assets/index-43JpF7Ul.js   742.14 kB │ gzip: 119.57 kB
+dist/assets/index-Oe7CEOu7.js   710.69 kB │ gzip: 110.42 kB
 ```
-The Round 2 report records `index-*.js` at 294.39 kB (gzip 80.60 kB) for the main chunk. The increase is the three generated profile modules (about 182 kB each: `wc -c src/data/profiles/*.ts`: 183185, 181820, 181733 bytes) and the tour/catalogue data. Vite warns the chunk exceeds 500 kB. Options if it matters: load the two inactive profiles on demand (dynamic import, which needs the data layer to be asynchronous), or drop per-claim reasoning strings from the bundle. Not done; the prototype is served from static files and the first load is the only cost.
+Down from 742.14 kB / 119.57 kB at the first report, because the invented evidence, interview, ATT&CK and plan content is gone. The note stands: loading the two inactive profiles on demand (dynamic import, which makes the data layer asynchronous) would take two of the three profile modules (about 182 kB each as source: `wc -c src/data/profiles/*.ts`) out of the first load; not done, the prototype is static and the first load is the only cost.
 
 ---
 
-## 8. The engine repository
+## 7. The engine repository
 
 Read only. `git -C /home/user/jccp status --porcelain` printed nothing at the end of the round; nothing was committed, staged, branched or modified there. Only the goldens and the engine's own generated strings crossed (the Round 3 exception); no documentation, comment or design paper did. `JCCP_NCSC_Engagement_INTERNAL.md` was not read.

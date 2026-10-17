@@ -9,9 +9,8 @@
 //   - `catalogue`: control text and ISO/NIST mappings the prototype already carried for some controls (the NCSC's own
 //     published content). The golden files carry none, and the rule is that engine text and files do not cross, so a
 //     control outside that set has an id and a capability but no title.
-//   - `example`: worked-example material invented for the demonstration (required signals, population notes, the
-//     ATT&CK chain, evidence quotes). ILLUSTRATIVE. It is attached only to the controls that had it, and the screen
-//     marks it on the element.
+//   Round 4 removed the worked-example material that used to sit beside the catalogue text (required signals, population
+//   notes, an ATT&CK chain, evidence quotes): it described controls the engine measured differently.
 
 import { isoNamesFor, nistNamesFor } from './standards';
 import { CURRENT, type Claim, type EvidenceKind, type Frac, type GapBasis, type PartialBasis, type StateFigures } from './current';
@@ -45,7 +44,6 @@ export interface ControlSnapshot {
 }
 
 // Why a signal is (or isn't) negative-capable — the reason a control can be a Gap rather than Unknown.
-// ILLUSTRATIVE: assigned to the worked-example controls only.
 export type EvidenceBasis = 'negative_capable' | 'by_rule' | 'judgement' | 'uncertainty';
 
 export const EVIDENCE_BASIS_LABEL: Record<EvidenceBasis, string> = {
@@ -61,20 +59,6 @@ export const EVIDENCE_BASIS_MEANING: Record<EvidenceBasis, string> = {
   judgement: 'A named mechanism makes absence uninformative.',
   uncertainty: 'We could not establish completeness — the recoverable case.',
 };
-
-/** Worked-example material for a control: invented for the demonstration, never read from an assessment. */
-export interface WorkedExample {
-  requiredSignals: string[];
-  attackKey?: string;
-  populationNote?: string;
-  exceptionPopulation?: string;
-  /** how old the example evidence may be before it goes stale (days) */
-  maxAgeDays: number;
-  evidenceBasis: EvidenceBasis;
-  /** requires an organisational arrangement no module can observe */
-  noConclusivePath: boolean;
-  showcase: boolean;
-}
 
 export interface Control {
   id: string; // "JNCSF-102"
@@ -98,7 +82,6 @@ export interface Control {
   isoNames: string[];
   nist: string[];
   nistNames: string[];
-  example?: WorkedExample;
 }
 
 interface CatalogueEntry {
@@ -106,84 +89,60 @@ interface CatalogueEntry {
   d: string;
   iso: string[];
   nist: string[];
-  req: string[];
-  attackKey?: string;
-  exception?: string;
-  population?: string;
-  showcase?: boolean;
-  maxAge?: number;
 }
 
-// The 48 controls the prototype carried text for. `d`, `iso` and `nist` are the NCSC's own published content;
-// `req`, `attackKey`, `exception`, `population` are worked-example material (illustrative). Their invented
-// before/after states, shares and "changed" flags are gone: a state now comes from the engine's claim.
+// The 48 controls the prototype carried text for. `d`, `iso` and `nist` are the NCSC's own published content. A state
+// comes from the engine's claim, never from here.
 const CATALOGUE: CatalogueEntry[] = [
-  { n: 1, d: 'Develop and document control policies', iso: ['5.1.1', '9.1.1'], nist: ['AC-1', 'AT-1', 'AU-1', 'CA-1', 'CM-1'], req: [] },
-  { n: 3, d: 'Address information security requirements and risks in all project management', iso: ['6.1.5', '14.1.1'], nist: [], req: [] },
-  { n: 6, d: 'Assign a senior-level executive as the authorizing official for information systems', iso: [], nist: ['CA-6'], req: ['authorization_letter', 'org_chart'] },
-  { n: 7, d: 'Develop and document a granular inventory of current, authorized information system components on all information systems', iso: ['8.1.1', '18.1.2'], nist: ['CM-8'], req: ['asset_inventory_export', 'authorization_flag', 'last_sync_timestamp'], attackKey: 'JNCSF-7', population: '512 of 512 AD computer objects reconciled against the CMDB.' },
-  { n: 8, d: 'Review and update the inventory of system components on all information systems', iso: ['8.1.1'], nist: ['CM-8'], req: ['inventory_diff_log', 'review_cadence'] },
-  { n: 14, d: 'Develop an information security architecture that describes the philosophy, requirements, and approach to managing and protecting information', iso: [], nist: ['PL-8'], req: ['architecture_document', 'approval_record'] },
-  { n: 20, d: 'Establish a line item for information security in budgeting documentation', iso: [], nist: ['SA-2'], req: [] },
-  { n: 25, d: 'Develop and implement procedures for maintaining privacy and protection of personally identifiable information', iso: ['18.1.4'], nist: [], req: ['pii_handling_procedure', 'dpo_signoff'] },
-  { n: 27, d: 'Configure information systems to terminate user sessions after defined conditions or trigger events are met', iso: [], nist: ['AC-12'], req: [] },
-  { n: 30, d: 'Configure information systems to generate audit records of all relevant information about every auditable event', iso: ['12.4.1', '12.5.1', '14.2.2', '12.7.1', '12.6.1'], nist: ['AU-3', 'AU-12', 'CM-3'], req: ['auditpol_output', 'event_field_coverage', 'timestamp_source'], attackKey: 'JNCSF-30' },
-  { n: 32, d: 'Develop, document, and maintain a baseline configuration of all information systems', iso: ['12.5.1', '12.1.1'], nist: ['CM-2'], req: ['baseline_document', 'drift_report'] },
-  { n: 39, d: 'Establish and enforce policies governing the installation of software by users', iso: ['12.5.1', '12.6.2', '18.1.2'], nist: ['CM-11'], req: [] },
-  { n: 45, d: 'Ensure authenticators are high-quality and sufficiently secure', iso: ['9.4.3'], nist: ['IA-5'], req: [] },
-  { n: 46, d: 'Change default authenticators prior to information system installation', iso: ['9.2.4'], nist: ['IA-5'], req: [] },
-  { n: 87, d: 'Employ malicious code protection mechanisms at information system entry and exit points', iso: [], nist: ['SI-3'], req: ['mail_gateway_config', 'proxy_av_config'] },
-  { n: 96, d: 'Assign access rights to all user accounts, consistent with control policies', iso: ['9.1.2', '9.2.2', '9.2.3'], nist: ['AC-2'], req: ['joiners_process', 'rbac_matrix'] },
-  { n: 100, d: 'Formally separate sensitive duties among multiple individuals to prevent access rights abuses or conflicts of interest', iso: ['6.1.2'], nist: ['AC-5'], req: ['sod_matrix', 'conflict_review'] },
-  { n: 102, d: 'Manage access rights to be consistent with the principle of least privilege', iso: ['9.4.4', '9.2.3'], nist: ['AC-6'], req: ['privileged_group_membership', 'mfa_enrolment_state', 'last_recertification'], attackKey: 'JNCSF-102', exception: '43 of 512 privileged accounts have no MFA enforcement', population: '410 of 512 endpoints (denominator: AD computer objects). Sample ratio sufficient for estate-level claim.', showcase: true },
-  { n: 105, d: 'Prevent unauthorized access to mobile devices by using physical protection against theft, cryptographic techniques, and secret authentication information', iso: ['6.2.1'], nist: ['AC-19'], req: ['mdm_policy_export', 'encryption_state'] },
-  { n: 107, d: 'Assign different user IDs to be used only for privileged access rights, separate from regular business activities', iso: ['9.2.3'], nist: [], req: ['admin_account_naming', 'separation_report'] },
-  { n: 116, d: 'Configure information systems to identify and authenticate organizational users', iso: ['9.4.1'], nist: ['IA-2'], req: ['auth_provider_config', 'directory_binding'] },
-  { n: 139, d: 'Establish a process to routinely review that user access rights align with control policies', iso: ['9.2.5', '9.2.2', '9.2.3'], nist: ['AC-2'], req: ['recertification_campaign', 'attestation_records'] },
-  { n: 141, d: 'Establish a process to appropriately remove or adjust access rights from users as specified in control policies', iso: ['9.2.6', '9.2.2', '9.2.5'], nist: ['AC-2', 'PS-4', 'PS-5'], req: ['leavers_feed', 'disable_latency', 'orphan_account_scan'], attackKey: 'JNCSF-141' },
-  { n: 142, d: 'Configure information systems to limit the number of unsuccessful logon attempts within a defined time period', iso: [], nist: ['AC-7'], req: [] },
-  { n: 146, d: 'Configure information systems to prevent further user access after a defined period of user inactivity', iso: [], nist: ['AC-11'], req: [] },
-  { n: 163, d: 'Configure information systems to require authorization procedures before connecting mobile devices', iso: ['6.2.1'], nist: ['AC-19'], req: ['device_control_policy', 'usb_enforcement_state'], attackKey: 'JNCSF-163' },
-  { n: 167, d: 'Ensure information systems are capable of logging events deemed auditable', iso: [], nist: ['AU-2'], req: ['log_source_inventory', 'auditable_event_list'] },
-  { n: 173, d: 'Establish cadence to review information system audit records and report any unusual activity to appropriate personnel', iso: ['12.4.1', '12.4.3'], nist: ['AU-6', 'CM-3'], req: ['siem_use_cases', 'review_schedule', 'escalation_records'] },
-  { n: 179, d: "Retain audit records for a defined time period consistent with the organization's records retention policy", iso: ['18.1.3'], nist: ['AU-11'], req: ['retention_config', 'storage_capacity', 'oldest_record_date'] },
-  { n: 190, d: 'Implement a continuous monitoring program with security control assessments and status monitoring', iso: [], nist: ['CA-7'], req: [] },
-  { n: 225, d: 'Conduct frequent backups of user- and system-level information in all information systems', iso: ['12.3.1'], nist: ['CP-9'], req: [] },
-  { n: 252, d: 'Implement an incident handling capability including preparation, detection and analysis, containment, eradication, and recovery', iso: ['16.1.1'], nist: ['IR-4'], req: [] },
-  { n: 257, d: 'Require users to report suspected security incidents to the incident response capability within a specified time period', iso: ['16.1.2', '16.1.1'], nist: ['IR-6'], req: [] },
-  { n: 307, d: 'Scan for vulnerabilities in information systems and hosted applications', iso: ['12.6.1'], nist: ['RA-5'], req: ['scanner_config', 'scan_coverage', 'remediation_sla'], attackKey: 'JNCSF-307' },
-  { n: 382, d: 'Configure information systems to protect the confidentiality and integrity of information at rest', iso: [], nist: ['SC-28'], req: [] },
-  { n: 394, d: 'Install and regularly update malware detection and repair software to scan computers and media', iso: ['12.2.1'], nist: [], req: ['defender_status', 'signature_age', 'coverage_by_host'], attackKey: 'JNCSF-394', exception: 'Contractor-managed workstations excluded from managed AV' },
-  { n: 407, d: 'Identify, report, and correct information system flaws', iso: [], nist: ['SI-2'], req: [] },
-  { n: 435, d: 'Establish multifactor authentication for local and network access to privileged accounts and for network access to non-privileged accounts', iso: [], nist: [], req: ['mfa_policy', 'privileged_enrolment', 'nonprivileged_enrolment'], attackKey: 'JNCSF-435', exception: '43 of 512 privileged accounts without MFA' },
-  { n: 437, d: 'Establish minimum password complexity, password change, and reuse restriction protocols', iso: [], nist: [], req: [] },
-  { n: 438, d: 'Establish cadence to review and update control policies', iso: ['5.1.2'], nist: ['AC-1', 'AT-1', 'AU-1'], req: [] },
-  { n: 440, d: 'Ensure all information systems enforce access rights restrictions consistent with control policies', iso: ['9.4.1'], nist: ['AC-3'], req: ['acl_export', 'enforcement_test', 'deny_by_default_flag'], attackKey: 'JNCSF-440' },
-  { n: 459, d: 'Provide ongoing security awareness training to employees and contractors upon hiring with continued training at regularly defined intervals', iso: ['7.2.2'], nist: ['AT-2'], req: ['lms_completion_export', 'curriculum', 'cadence'], maxAge: 365 },
-  { n: 465, d: 'Document, monitor, and retain individual information system security training activities and records', iso: [], nist: ['AT-4'], req: ['training_records_export', 'retention_period'] },
-  { n: 479, d: 'Sanitize media prior to disposal in accordance with organizational policies', iso: ['8.3.2', '11.2.7'], nist: ['MP-6'], req: [] },
-  { n: 512, d: 'Establish a process to screen all individuals filling organizational positions', iso: ['7.1.1'], nist: ['PS-2'], req: [] },
-  { n: 515, d: 'Revoke all authenticators and security-related property upon termination of employment', iso: ['8.1.4', '13.2.4'], nist: ['PS-4'], req: ['leavers_feed', 'revocation_latency', 'asset_return_log'] },
-  { n: 538, d: 'Conduct assessments of risk on all projects, including likelihood or harm from unauthorized access, use, modification or destruction', iso: ['6.1.5'], nist: ['RA-3'], req: [] },
-  { n: 573, d: 'Design and apply physical protection against natural disasters, malicious attacks, and accidents', iso: ['11.1.4'], nist: [], req: [] },
+  { n: 1, d: 'Develop and document control policies', iso: ['5.1.1', '9.1.1'], nist: ['AC-1', 'AT-1', 'AU-1', 'CA-1', 'CM-1'] },
+  { n: 3, d: 'Address information security requirements and risks in all project management', iso: ['6.1.5', '14.1.1'], nist: [] },
+  { n: 6, d: 'Assign a senior-level executive as the authorizing official for information systems', iso: [], nist: ['CA-6'] },
+  { n: 7, d: 'Develop and document a granular inventory of current, authorized information system components on all information systems', iso: ['8.1.1', '18.1.2'], nist: ['CM-8'] },
+  { n: 8, d: 'Review and update the inventory of system components on all information systems', iso: ['8.1.1'], nist: ['CM-8'] },
+  { n: 14, d: 'Develop an information security architecture that describes the philosophy, requirements, and approach to managing and protecting information', iso: [], nist: ['PL-8'] },
+  { n: 20, d: 'Establish a line item for information security in budgeting documentation', iso: [], nist: ['SA-2'] },
+  { n: 25, d: 'Develop and implement procedures for maintaining privacy and protection of personally identifiable information', iso: ['18.1.4'], nist: [] },
+  { n: 27, d: 'Configure information systems to terminate user sessions after defined conditions or trigger events are met', iso: [], nist: ['AC-12'] },
+  { n: 30, d: 'Configure information systems to generate audit records of all relevant information about every auditable event', iso: ['12.4.1', '12.5.1', '14.2.2', '12.7.1', '12.6.1'], nist: ['AU-3', 'AU-12', 'CM-3'] },
+  { n: 32, d: 'Develop, document, and maintain a baseline configuration of all information systems', iso: ['12.5.1', '12.1.1'], nist: ['CM-2'] },
+  { n: 39, d: 'Establish and enforce policies governing the installation of software by users', iso: ['12.5.1', '12.6.2', '18.1.2'], nist: ['CM-11'] },
+  { n: 45, d: 'Ensure authenticators are high-quality and sufficiently secure', iso: ['9.4.3'], nist: ['IA-5'] },
+  { n: 46, d: 'Change default authenticators prior to information system installation', iso: ['9.2.4'], nist: ['IA-5'] },
+  { n: 87, d: 'Employ malicious code protection mechanisms at information system entry and exit points', iso: [], nist: ['SI-3'] },
+  { n: 96, d: 'Assign access rights to all user accounts, consistent with control policies', iso: ['9.1.2', '9.2.2', '9.2.3'], nist: ['AC-2'] },
+  { n: 100, d: 'Formally separate sensitive duties among multiple individuals to prevent access rights abuses or conflicts of interest', iso: ['6.1.2'], nist: ['AC-5'] },
+  { n: 102, d: 'Manage access rights to be consistent with the principle of least privilege', iso: ['9.4.4', '9.2.3'], nist: ['AC-6'] },
+  { n: 105, d: 'Prevent unauthorized access to mobile devices by using physical protection against theft, cryptographic techniques, and secret authentication information', iso: ['6.2.1'], nist: ['AC-19'] },
+  { n: 107, d: 'Assign different user IDs to be used only for privileged access rights, separate from regular business activities', iso: ['9.2.3'], nist: [] },
+  { n: 116, d: 'Configure information systems to identify and authenticate organizational users', iso: ['9.4.1'], nist: ['IA-2'] },
+  { n: 139, d: 'Establish a process to routinely review that user access rights align with control policies', iso: ['9.2.5', '9.2.2', '9.2.3'], nist: ['AC-2'] },
+  { n: 141, d: 'Establish a process to appropriately remove or adjust access rights from users as specified in control policies', iso: ['9.2.6', '9.2.2', '9.2.5'], nist: ['AC-2', 'PS-4', 'PS-5'] },
+  { n: 142, d: 'Configure information systems to limit the number of unsuccessful logon attempts within a defined time period', iso: [], nist: ['AC-7'] },
+  { n: 146, d: 'Configure information systems to prevent further user access after a defined period of user inactivity', iso: [], nist: ['AC-11'] },
+  { n: 163, d: 'Configure information systems to require authorization procedures before connecting mobile devices', iso: ['6.2.1'], nist: ['AC-19'] },
+  { n: 167, d: 'Ensure information systems are capable of logging events deemed auditable', iso: [], nist: ['AU-2'] },
+  { n: 173, d: 'Establish cadence to review information system audit records and report any unusual activity to appropriate personnel', iso: ['12.4.1', '12.4.3'], nist: ['AU-6', 'CM-3'] },
+  { n: 179, d: "Retain audit records for a defined time period consistent with the organization's records retention policy", iso: ['18.1.3'], nist: ['AU-11'] },
+  { n: 190, d: 'Implement a continuous monitoring program with security control assessments and status monitoring', iso: [], nist: ['CA-7'] },
+  { n: 225, d: 'Conduct frequent backups of user- and system-level information in all information systems', iso: ['12.3.1'], nist: ['CP-9'] },
+  { n: 252, d: 'Implement an incident handling capability including preparation, detection and analysis, containment, eradication, and recovery', iso: ['16.1.1'], nist: ['IR-4'] },
+  { n: 257, d: 'Require users to report suspected security incidents to the incident response capability within a specified time period', iso: ['16.1.2', '16.1.1'], nist: ['IR-6'] },
+  { n: 307, d: 'Scan for vulnerabilities in information systems and hosted applications', iso: ['12.6.1'], nist: ['RA-5'] },
+  { n: 382, d: 'Configure information systems to protect the confidentiality and integrity of information at rest', iso: [], nist: ['SC-28'] },
+  { n: 394, d: 'Install and regularly update malware detection and repair software to scan computers and media', iso: ['12.2.1'], nist: [] },
+  { n: 407, d: 'Identify, report, and correct information system flaws', iso: [], nist: ['SI-2'] },
+  { n: 435, d: 'Establish multifactor authentication for local and network access to privileged accounts and for network access to non-privileged accounts', iso: [], nist: [] },
+  { n: 437, d: 'Establish minimum password complexity, password change, and reuse restriction protocols', iso: [], nist: [] },
+  { n: 438, d: 'Establish cadence to review and update control policies', iso: ['5.1.2'], nist: ['AC-1', 'AT-1', 'AU-1'] },
+  { n: 440, d: 'Ensure all information systems enforce access rights restrictions consistent with control policies', iso: ['9.4.1'], nist: ['AC-3'] },
+  { n: 459, d: 'Provide ongoing security awareness training to employees and contractors upon hiring with continued training at regularly defined intervals', iso: ['7.2.2'], nist: ['AT-2'] },
+  { n: 465, d: 'Document, monitor, and retain individual information system security training activities and records', iso: [], nist: ['AT-4'] },
+  { n: 479, d: 'Sanitize media prior to disposal in accordance with organizational policies', iso: ['8.3.2', '11.2.7'], nist: ['MP-6'] },
+  { n: 512, d: 'Establish a process to screen all individuals filling organizational positions', iso: ['7.1.1'], nist: ['PS-2'] },
+  { n: 515, d: 'Revoke all authenticators and security-related property upon termination of employment', iso: ['8.1.4', '13.2.4'], nist: ['PS-4'] },
+  { n: 538, d: 'Conduct assessments of risk on all projects, including likelihood or harm from unauthorized access, use, modification or destruction', iso: ['6.1.5'], nist: ['RA-3'] },
+  { n: 573, d: 'Design and apply physical protection against natural disasters, malicious attacks, and accidents', iso: ['11.1.4'], nist: [] },
 ];
-
-// Controls requiring an organisational arrangement that no module can observe. ILLUSTRATIVE (worked examples only).
-const NO_CONCLUSIVE_PATH_NUMS = new Set([6, 20, 100]);
-// Exactly one signal is false through uncertainty rather than rule or judgement — the recoverable case.
-const UNCERTAINTY_NUMS = new Set([32]);
-// Documentary/policy controls — a document existing doesn't prove the practice is followed.
-const BY_RULE_NUMS = new Set([1, 3, 6, 14, 20, 25]);
-// Controls where a named mechanism makes an absent finding uninformative rather than proof of a gap.
-const JUDGEMENT_NUMS = new Set([100, 190, 252, 479, 512, 538, 573]);
-
-function evidenceBasisFor(n: number, evidenceClass: EvidenceClass): EvidenceBasis {
-  if (UNCERTAINTY_NUMS.has(n)) return 'uncertainty';
-  if (BY_RULE_NUMS.has(n)) return 'by_rule';
-  if (JUDGEMENT_NUMS.has(n)) return 'judgement';
-  if (evidenceClass === 'artifact') return 'negative_capable';
-  return 'judgement';
-}
 
 const afterOf = (c: Claim): ControlSnapshot => ({
   state: c.state,
@@ -226,16 +185,6 @@ function build(c: Claim): Control {
     isoNames: cat ? isoNamesFor(cat.iso) : [],
     nist: cat?.nist ?? [],
     nistNames: cat ? nistNamesFor(cat.nist) : [],
-    example: cat && {
-      requiredSignals: cat.req,
-      attackKey: cat.attackKey,
-      populationNote: cat.population,
-      exceptionPopulation: cat.exception,
-      maxAgeDays: cat.maxAge ?? 90,
-      evidenceBasis: evidenceBasisFor(num, after.evidenceClass),
-      noConclusivePath: NO_CONCLUSIVE_PATH_NUMS.has(num),
-      showcase: cat.showcase ?? false,
-    },
   };
 }
 

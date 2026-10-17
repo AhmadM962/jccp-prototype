@@ -1,11 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Users, Clock, X, ShieldCheck, ShieldQuestion, FileQuestion, Crosshair } from 'lucide-react';
+import { ArrowLeft, Check, X, ShieldCheck, FileQuestion, Crosshair } from 'lucide-react';
 import { Card, Pill, Button, SectionLabel } from '../components/ui';
 import { Provenance, StateProvenance } from '../components/Provenance';
 import StateBadge, { STATE_META } from '../components/StateBadge';
-import EvidenceTrail from '../components/EvidenceTrail';
-import AttackExposure from '../components/AttackExposure';
 import { useAssessment, ROLE_LABEL, type OverrideRecord } from '../store/useAssessment';
 import {
   controlById,
@@ -17,8 +15,6 @@ import {
   GAP_REASON_LABEL,
   PARTIAL_BASIS_LABEL,
   EVIDENCE_CEILING,
-  EVIDENCE_BASIS_LABEL,
-  EVIDENCE_BASIS_MEANING,
   type EvidenceClass,
   type ControlState,
 } from '../data/controls';
@@ -26,9 +22,6 @@ import { CURRENT } from '../data/current';
 import { capabilityById } from '../data/capabilities';
 import { IntervalConsistencyError, YELLOW_QUARTILE_NAME, yellowQuartileForShare, yellowWeightForShare } from '../lib/scoring';
 import { toNumber } from '../lib/frac';
-import { attackBridge } from '../data/attack';
-import { evidenceFor, ageDays } from '../data/evidence';
-import { requestPlan } from '../data/scenario';
 
 const LADDER: EvidenceClass[] = ['none', 'testimonial', 'artifact', 'analyst_signed'];
 
@@ -116,17 +109,11 @@ export default function ControlDetail() {
   const effectiveState: ControlState = ov?.state ?? base.state;
   const effectiveClass: EvidenceClass = ov ? 'analyst_signed' : base.evidenceClass;
   const cap = capabilityById(control.capability);
-  const ex = control.example;
-  const attack = ex?.attackKey ? attackBridge[ex.attackKey] : undefined;
   // the ranking is the engine's output for the assessed state: it is not shown for the before-upload projection
   const ranked = uploaded ? CURRENT.ranking.items.filter((it) => it.controlId === control.id) : [];
-  const evItems = ex ? evidenceFor(control.id).filter((it) => uploaded || it.type === 'testimonial') : [];
   const ceiling = EVIDENCE_CEILING[effectiveClass];
   const canOverride = role === 'analyst' || role === 'owner';
-  const canSeeEvidence = role !== 'executive' && role !== 'contributor';
 
-  const oldest = evItems.reduce((m, it) => Math.max(m, ageDays(it.timestamp)), 0);
-  const stale = ex ? oldest > ex.maxAgeDays : false;
 
   // The partial credit this control earns is the engine's (`claim.credit`); the quartile it falls in is shown from the
   // share's lower bound. A `claimed` share is capped at the second quartile, so the credit can be lower than the quartile's.
@@ -332,51 +319,6 @@ export default function ControlDetail() {
         </div>
       )}
 
-      {ex && control.authored && evItems.length > 0 && canSeeEvidence && (
-        <Provenance tier="illustrative" note={`Worked-example evidence, invented for the demonstration. It is not the evidence behind the measured verdict above (${STATE_META[base.state].label}${base.pathLabel ? `; ${base.pathLabel}` : ''}) and may contradict it.`}>
-          <Card dataTour="cd-evidence" title="Evidence trail (worked example)" subtitle="Every finding traces to a quote or an artifact locator with a hash">
-            <div className="mb-3 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[12px]">
-              <ShieldQuestion size={14} className="mt-0.5 shrink-0 text-slate-400" />
-              <span>
-                <span className="font-semibold text-slate-700">Evidence basis: {EVIDENCE_BASIS_LABEL[ex.evidenceBasis]}.</span>{' '}
-                <span className="text-slate-600">{EVIDENCE_BASIS_MEANING[ex.evidenceBasis]}</span>
-              </span>
-            </div>
-            <EvidenceTrail items={evItems} />
-            {oldest > 0 && (
-              <span className={`mt-2 inline-flex items-center gap-1 text-[11px] ${stale ? 'font-semibold text-amber-700' : 'text-slate-400'}`}>
-                <Clock size={11} /> evidence {oldest}d old{stale ? ` · past ${ex.maxAgeDays}d window` : ''}
-              </span>
-            )}
-          </Card>
-        </Provenance>
-      )}
-      {ex && control.authored && evItems.length > 0 && !canSeeEvidence && (
-        <Provenance tier="illustrative">
-          <Card dataTour="cd-evidence" title="Evidence trail">
-            <p className="text-sm text-slate-500">
-              Evidence excerpts are hidden in the {ROLE_LABEL[role]} view — they may contain account names and
-              other personal data.
-            </p>
-          </Card>
-        </Provenance>
-      )}
-
-      {ex?.noConclusivePath && (
-        <Provenance tier="illustrative">
-          <div className="flex items-start gap-2 rounded-lg border-2 border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
-            <ShieldQuestion size={16} className="mt-0.5 shrink-0 text-violet-500" />
-            <div>
-              <p className="font-semibold">No conclusive evidence path.</p>
-              <p className="mt-1 leading-relaxed text-violet-800">
-                This control requires an organisational arrangement rather than a system state. It can reach
-                Partial on documentary evidence, but never Compliant without analyst attestation.
-              </p>
-            </div>
-          </div>
-        </Provenance>
-      )}
-
       {/* 5. Evidence sufficiency ladder: the engine's rule applied to this control's measured evidence class */}
       {control.authored && (
         <StateProvenance uploaded={uploaded} overridesActive={ov ? 1 : 0} from="claims">
@@ -405,7 +347,7 @@ export default function ControlDetail() {
         </StateProvenance>
       )}
 
-      {/* 6. ATT&CK exposure: the engine's, where the control is ranked; the worked-example chain, where it has one */}
+      {/* 6. ATT&CK exposure: the engine's, where the control is ranked */}
       {ranked.length > 0 && (
         <Provenance tier="measured" from="ranking.items" note="The engine's exposure for this control's ranked action.">
           <Card dataTour="cd-attack" title="ATT&CK exposure (engine)" subtitle="From the ranking in the assessment file">
@@ -425,37 +367,8 @@ export default function ControlDetail() {
           </Card>
         </Provenance>
       )}
-      {attack && (
-        <Provenance tier="illustrative" note="Worked-example ATT&CK chain for this control; not part of the assessment.">
-          <Card dataTour={ranked.length > 0 ? undefined : 'cd-attack'} title="ATT&CK exposure (worked example)" subtitle="Control → Mitigation → Techniques">
-            <AttackExposure controlId={control.id} entry={attack} enforced={effectiveState === 'green'} />
-          </Card>
-        </Provenance>
-      )}
-
-      {/* 7. Population data */}
-      {ex && (ex.populationNote || ex.exceptionPopulation) && (
-        <Provenance tier="illustrative" note="Worked-example population figures; not part of the assessment.">
-          <Card title="Population data" subtitle="Numerator / denominator with provenance">
-            <div className="space-y-2 text-sm text-slate-700">
-              {ex.populationNote && (
-                <div className="flex items-start gap-2">
-                  <Users size={15} className="mt-0.5 shrink-0 text-slate-400" />
-                  <span>{ex.populationNote}</span>
-                </div>
-              )}
-              {ex.exceptionPopulation && (
-                <div className="rounded-md bg-red-50 px-3 py-2 text-[13px] text-red-700">
-                  Named exception retained: {ex.exceptionPopulation}
-                </div>
-              )}
-            </div>
-          </Card>
-        </Provenance>
-      )}
-
       {/* How to evidence this */}
-      {control.authored && (base.state === 'unknown' || base.evidenceClass === 'testimonial') && (ranked.length > 0 || (ex && ex.requiredSignals.length > 0)) && (
+      {control.authored && (base.state === 'unknown' || base.evidenceClass === 'testimonial') && ranked.length > 0 && (
         <Card title="How to evidence this" subtitle="Move this control out of Unknown / off the Yellow ceiling">
           {ranked.length > 0 && (
             <Provenance tier="measured" from="ranking.items" note="The engine's ranked action for this control.">
@@ -468,24 +381,6 @@ export default function ControlDetail() {
                     </span>
                   </li>
                 ))}
-              </ul>
-            </Provenance>
-          )}
-          {ex && ex.requiredSignals.length > 0 && (
-            <Provenance tier="illustrative" note="Worked-example signals, not the engine's." className="mt-3">
-              <ul className="space-y-1.5 text-sm text-slate-700">
-                {ex.requiredSignals.map((sig) => {
-                  const req = requestPlan.find((r) => r.command.toLowerCase().includes(sig.split('_')[0]) || r.formatHint.toLowerCase().includes(sig.split('_')[0]));
-                  return (
-                    <li key={sig} className="flex items-start gap-2">
-                      <Check size={14} className="mt-0.5 shrink-0 text-slate-300" />
-                      <span>
-                        <span className="font-medium">{sig.replace(/_/g, ' ')}</span>
-                        {req && <span className="text-slate-500"> — via “{req.artifact}” ({req.effort})</span>}
-                      </span>
-                    </li>
-                  );
-                })}
               </ul>
             </Provenance>
           )}
