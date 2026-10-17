@@ -19,6 +19,7 @@ export interface ReportMeta {
   organisation: string;
   /** the named entity, when one has been chosen on the Profile screen */
   entity?: string;
+  sector?: string;
 }
 
 const f1 = (n: number) => n.toFixed(1);
@@ -35,7 +36,7 @@ export function reportModel(meta: ReportMeta): Block[] {
   // cover
   b.push({ kind: 'title', text: 'JNCSF compliance assessment' });
   b.push({ kind: 'p', text: `Organisation: ${meta.organisation}.`, bold: true });
-  if (meta.entity) b.push({ kind: 'p', text: `Entity: ${meta.entity}.` });
+  if (meta.entity) b.push({ kind: 'p', text: `Entity: ${meta.entity}${meta.sector ? ` (sector: ${meta.sector})` : ''}.` });
   b.push({ kind: 'p', text: `Assessment date: ${CURRENT.asOf.slice(0, 10)}. Framework: ${CURRENT.framework.name} ${CURRENT.framework.version}.` });
   b.push({ kind: 'p', text: `Source file: ${CURRENT.source.file}.` });
   b.push({ kind: 'p', text: `SHA-256 of the source file: ${CURRENT.source.sha256}.` });

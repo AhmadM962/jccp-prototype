@@ -2,6 +2,7 @@ import { Lock, ShieldCheck, ArrowRight, Server, Globe2 } from 'lucide-react';
 import { Card, Pill } from '../components/ui';
 import { Provenance } from '../components/Provenance';
 import { CURRENT } from '../data/current';
+import { useAssessment } from '../store/useAssessment';
 import { RAW_KEYS, bytesOf, crossingPayload, localAssessmentBytes, localControlResponse } from '../lib/submission';
 
 const LOCAL_ENDPOINTS: { method: string; path: string; what: string; scopes: string }[] = [
@@ -31,8 +32,9 @@ function Json({ value, markRaw, testid }: { value: unknown; markRaw: boolean; te
 }
 
 export default function Integrations() {
+  const orgName = useAssessment((s) => s.profile.orgName);
   const local = localControlResponse();
-  const crossing = crossingPayload();
+  const crossing = crossingPayload(orgName);
   const crossingBytes = bytesOf(crossing);
   const localBytes = localAssessmentBytes();
   const rawCount = JSON.stringify(local.body).match(new RegExp(`"(${RAW_KEYS.join('|')})":`, 'g'))?.length ?? 0;

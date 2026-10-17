@@ -6,6 +6,8 @@ import { navForRole } from './components/layout/nav';
 import { useAssessment } from './store/useAssessment';
 import FigureBoundary from './components/FigureBoundary';
 import SourceStamp from './components/SourceStamp';
+import NoAssessment from './components/NoAssessment';
+import { isRealEntity } from './data/entities';
 import Profile from './screens/01_Profile';
 import RequestPlan from './screens/02_RequestPlan';
 import Intake from './screens/03_Intake';
@@ -39,6 +41,15 @@ function RoleGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** The screens that show an assessment. When the entity is a real organisation there is none to show. */
+const ASSESSMENT_PATHS = ['/request-plan', '/intake', '/dashboard', '/gap-matrix', '/control', '/remediation', '/export', '/chat', '/exclusions', '/tasks', '/integrations'];
+function AssessmentGate({ children }: { children: ReactNode }) {
+  const real = useAssessment((s) => isRealEntity(s.profile.entity));
+  const { pathname } = useLocation();
+  if (real && ASSESSMENT_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) return <NoAssessment />;
+  return <>{children}</>;
+}
+
 /** Last line of defence for a guard that throws above any single figure (e.g. while a screen's
  *  numbers are being derived). The sidebar and top bar stay; the screen shows its own message
  *  (not the figure wording) and the same guard is logged. Retries when the route or the data
@@ -59,6 +70,7 @@ export default function App() {
   // The data layer holds the active assessment outside React; keying the tree on it re-renders every screen, the
   // sidebar and the top bar from the newly chosen assessment (and drops any state a screen held about the old one).
   const profileId = useAssessment((s) => s.profileId);
+  const realEntity = useAssessment((s) => isRealEntity(s.profile.entity));
   return (
     <div key={profileId} className="flex h-screen overflow-hidden">
       <Sidebar />
@@ -67,11 +79,12 @@ export default function App() {
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-1 text-center text-[10px] leading-tight text-amber-800 sm:text-[11px]">
           Demonstration prototype · fictional organisation · nothing leaves this machine — your progress is kept in this browser only.
         </div>
-        <SourceStamp />
+        {realEntity ? null : <SourceStamp />}
         <main className="scroll-slim flex-1 overflow-y-auto bg-slate-50">
           <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-6">
             <RoleGate>
               <ScreenBoundary>
+              <AssessmentGate>
               <Routes>
                 <Route path="/" element={<Navigate to="/profile" replace />} />
                 <Route path="/profile" element={<Profile />} />
@@ -91,6 +104,7 @@ export default function App() {
                 <Route path="/integrations" element={<Integrations />} />
                 <Route path="*" element={<Navigate to="/profile" replace />} />
               </Routes>
+              </AssessmentGate>
               </ScreenBoundary>
             </RoleGate>
           </div>

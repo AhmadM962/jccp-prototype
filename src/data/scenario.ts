@@ -17,6 +17,10 @@ export interface OrgProfile {
   orgName: string;
   /** sector id — see data/sectors.ts. Drives the regulator label. */
   sector: string;
+  /** `demo` (the fictional demonstration organisation, the only assessable entity), a curated entity's id, or `other`. */
+  entity: string;
+  /** the name of a real entity chosen or typed on the Profile screen; empty for the demo organisation */
+  entityName: string;
   sizeBand: string;
   endpoints: number;
   servers: number;
@@ -46,6 +50,8 @@ export interface OrgProfile {
 
 export const defaultProfile: OrgProfile = {
   orgName: 'Ministry of Digital Services',
+  entity: 'demo',
+  entityName: '',
   sector: DEFAULT_SECTOR_ID, // Government Services → no regulator designated
   sizeBand: '250–1000 staff',
   endpoints: 400,

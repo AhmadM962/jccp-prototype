@@ -9,6 +9,7 @@ import { CURRENT } from '../data/current';
 import { CICSC_CONTROLS } from '../data/figures';
 import { controls, snapshotFor } from '../data/controls';
 import { assuranceLabel } from '../lib/assurance';
+import { sectorById } from '../data/sectors';
 
 const HASH = 'e7c1 9a02 44bd 8f10 55ce 7731 a9b0 2d4f 88e0 1c6a 90ff 43d2';
 const SIGNING = { alg: 'Ed25519', identity: 'JCCP Appliance — MoDS-JCCP-01', at: '2026-09-08T10:04:00+03:00' };
@@ -43,6 +44,8 @@ function oscalDoc(model: string, uploaded: boolean, overrideCount: number) {
     uuid: '0b9d5f2c-8a41-4e77-9c1e-6f2b3a5d7e10',
     metadata: {
       title: `JNCSF Assessment — ${useAssessment.getState().profile.orgName} — ${model}`,
+      'entity-name': useAssessment.getState().profile.orgName,
+      sector: sectorById(useAssessment.getState().profile.sector).label,
       'last-modified': SIGNING.at,
       version: '1.0.0',
       'oscal-version': '1.1.2',
@@ -168,13 +171,14 @@ function ReviewModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (re
 function WordReport() {
   const uploaded = useAssessment((s) => s.evidenceUploaded);
   const orgName = useAssessment((s) => s.profile.orgName);
+  const sector = useAssessment((s) => s.profile.sector);
   const [state, setState] = useState<'idle' | 'working' | 'done' | 'error'>('idle');
 
   const generate = async () => {
     setState('working');
     try {
       const { generateReportBlob, reportFileName } = await import('../lib/report');
-      const blob = await generateReportBlob({ organisation: orgName });
+      const blob = await generateReportBlob({ organisation: orgName, entity: orgName, sector: sectorById(sector).label });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
