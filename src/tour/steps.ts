@@ -3,17 +3,15 @@
 // explaining what it does. Aim: a first-time policy/legal/executive reader understands the
 // whole assessment journey in ~3 minutes.
 
-import { MINISTRY } from '../data/ministry';
+import { CURRENT } from '../data/current';
+import { TOTAL_CONTROLS } from '../data/figures';
 import { toPct } from '../lib/frac';
+import { assuranceMeasurement, assuranceReason } from '../lib/assurance';
+import { unknownResolvedByUpload } from '../lib/coverage';
+import { lazyByProfile } from '../lib/lazyByProfile';
 
 // Figures quoted in the narration come from the same numbers the screens use.
 const fmt1 = (n: number) => n.toFixed(1);
-const BEFORE = MINISTRY.before.views.unweighted;
-const AFTER = MINISTRY.after.views.unweighted;
-const WIDTH_BEFORE = toPct([BEFORE.unknown, BEFORE.applicable]);
-const WIDTH_AFTER = toPct([AFTER.unknown, AFTER.applicable]);
-const UNAUTHORED_PTS = toPct(AFTER.width.unauthored);
-
 export type TourAction =
   | { type: 'click'; target: string; wait?: number }
   | { type: 'clickSeq'; targets: string[]; wait?: number }
@@ -44,7 +42,13 @@ export interface TourStep {
   final?: boolean;
 }
 
-export const TOUR_STEPS: TourStep[] = [
+export const TOUR_STEPS: TourStep[] = lazyByProfile(() => {
+  const BEFORE = CURRENT.before.views.unweighted;
+  const AFTER = CURRENT.after.views.unweighted;
+  const WIDTH_BEFORE = toPct([BEFORE.unknown, BEFORE.applicable]);
+  const WIDTH_AFTER = toPct([AFTER.unknown, AFTER.applicable]);
+  const UNAUTHORED_PTS = toPct(AFTER.width.unauthored);
+  return [
   // ─── Act 1 — Scoping ──────────────────────────────────────────────────────
   {
     id: 'where-we-are',
@@ -53,7 +57,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: 'page-title',
     fallbackTarget: 'profile-header',
     title: 'Where we are',
-    body: 'This is the starting point of an assessment. Before we can measure compliance, we have to work out which of the framework’s 576 controls actually apply to this organisation. Not all of them apply to everyone.',
+    body: `This is the starting point of an assessment. Before we can measure compliance, we have to work out which of the framework’s ${TOTAL_CONTROLS} controls actually apply to this organisation. Not all of them apply to everyone.`,
   },
   {
     id: 'who-we-assess',
@@ -77,7 +81,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/profile',
     target: 'profile-applicable',
     title: 'The number that matters',
-    body: 'This is the denominator for everything that follows. 557 of 576 controls apply here — the framework is 93% universal, so only the five variables below can move this number. Watch it change as switches are flipped — scoping is visible, not hidden. Under-scoping is the easiest way to inflate a compliance score, which is why the system records and publishes every exclusion.',
+    body: `This is the denominator for everything that follows. ${CURRENT.totals.applicable} of ${CURRENT.totals.framework} controls apply here — the framework is 93% universal, so only the five variables below can move this number. Watch it change as switches are flipped — scoping is visible, not hidden. Under-scoping is the easiest way to inflate a compliance score, which is why the system records and publishes every exclusion.`,
   },
   {
     id: 'challenge',
@@ -105,7 +109,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/request-plan',
     target: 'plan-header',
     title: 'The plan comes first',
-    body: 'The system says what it needs before collection starts. This answers the question every organisation asks: “how would I know what I’m missing?” The list is calculated from the 557 applicable controls — not written by hand.',
+    body: `The system says what it needs before collection starts. This answers the question every organisation asks: “how would I know what I’m missing?” The list is calculated from the ${CURRENT.totals.applicable} applicable controls — not written by hand.`,
   },
   {
     id: 'reading-a-row',
@@ -226,7 +230,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: '/dashboard',
     target: 'dash-assurance',
     title: 'How the evidence was obtained',
-    body: 'Not all assessments are equally trustworthy. “L1” means documents and interviews. “L2” means machine-collected evidence. This is what allows a regulator to compare two organisations’ submissions meaningfully — an 85% at L1 is a weaker statement than a 72% at L2.',
+    body: `Not all assessments are equally trustworthy, and the level is not raised by collecting evidence alone. It is the highest level at which a disclosed share of the verdicts rest on evidence of at least that strength. The collection succeeded and ${unknownResolvedByUpload().resolved} controls moved out of Unknown, yet the level stays at ${assuranceMeasurement().level}: ${assuranceReason()} This is what allows a regulator to compare two organisations’ submissions meaningfully.`,
   },
   {
     id: 'disclosure',
@@ -316,5 +320,6 @@ export const TOUR_STEPS: TourStep[] = [
     final: true,
   },
 ];
+}, 'array');
 
 export const TOUR_TOTAL = TOUR_STEPS.length;

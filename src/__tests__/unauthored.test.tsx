@@ -7,10 +7,11 @@ import GapMatrix from '../screens/05_GapMatrix';
 import ControlRow from '../components/ControlRow';
 import { useAssessment } from '../store/useAssessment';
 import { GAP_REASON_LABEL, controlById, controls, snapshotFor } from '../data/controls';
-import { capabilities } from '../data/capabilities';
+import { CURRENT } from '../data/current';
 
-const UNAUTH = controls.filter((c) => !c.authored);
+const UNAUTH = controls().filter((c) => !c.authored);
 const LABEL = 'Not yet authored — no evidence requirement defined';
+const observed = new Set(CURRENT.ruleR.verdictsOutsideAuthoredScope.map((v) => v.id));
 
 function renderAt(path: string, el: ReactElement, pattern: string) {
   return render(
@@ -35,7 +36,7 @@ describe('unauthored is in the vocabulary', () => {
   });
   it('has a tone distinct from the collection failures (ours, not the organisation\'s)', () => {
     const un = UNAUTH[0];
-    const failed = controls.find((c) => c.after.gapReason === 'module_failed')!;
+    const failed = controls().find((c) => c.after.gapReason === 'module_failed')!;
     const row = (c: typeof un, snap = c.after) =>
       render(
         <MemoryRouter>
@@ -50,30 +51,34 @@ describe('unauthored is in the vocabulary', () => {
   });
 });
 
-describe('the sample contains unauthored controls', () => {
-  it('at least three, in at least three different capabilities', () => {
-    expect(UNAUTH.length).toBeGreaterThanOrEqual(3);
+describe('the assessment contains unauthored controls (all of them, not a sample)', () => {
+  it('492 applicable controls have no authored requirement, in every capability that has any', () => {
+    expect(UNAUTH.length).toBe(492);
     expect(new Set(UNAUTH.map((c) => c.capability)).size).toBeGreaterThanOrEqual(3);
   });
-  it('they are Unknown for the same reason before and after the upload, and the upload never changes them', () => {
+  it('before the upload every one is Unknown, unauthored; after it all but the observed ones still are, and the upload never changes those', () => {
     for (const c of UNAUTH) {
-      for (const uploaded of [false, true]) {
-        const s = snapshotFor(c, uploaded);
-        expect(s.state, c.id).toBe('unknown');
-        expect(s.gapReason, c.id).toBe('unauthored');
-        expect(s.evidenceClass, c.id).toBe('none');
-        expect(s.providedSignals, c.id).toEqual([]);
+      const before = snapshotFor(c, false);
+      expect([before.state, before.gapReason, before.evidenceClass], c.id).toEqual(['unknown', 'unauthored', 'none']);
+      const after = snapshotFor(c, true);
+      if (observed.has(c.id)) {
+        expect(after.state, c.id).toBe('red');
+        expect(after.gapBasis, c.id).toBe('observed');
+        expect(c.changed, c.id).toBe(true);
+      } else {
+        expect([after.state, after.gapReason, after.evidenceClass], c.id).toEqual(['unknown', 'unauthored', 'none']);
+        expect(c.changed, c.id).toBe(false);
       }
-      expect(c.changed, c.id).toBe(false);
-      expect(c.requiredSignals, c.id).toEqual([]);
     }
   });
-  it('and the reason shows on Control Detail before and after the upload', () => {
+  it('and the reason shows on Control Detail before and after the upload (one control in every 40, and the observed one)', () => {
+    const pick = [...UNAUTH.filter((_, i) => i % 40 === 0), ...UNAUTH.filter((c) => observed.has(c.id))];
     for (const uploaded of [false, true]) {
       useAssessment.setState({ evidenceUploaded: uploaded });
-      for (const c of UNAUTH) {
+      for (const c of pick) {
         const r = detail(c.id);
-        expect(r.container.textContent, `${c.id} uploaded=${uploaded}`).toContain(LABEL);
+        if (uploaded && observed.has(c.id)) expect(r.container.textContent, c.id).toContain('observed');
+        else expect(r.container.textContent, `${c.id} uploaded=${uploaded}`).toContain(LABEL);
         r.unmount();
       }
     }
@@ -82,12 +87,12 @@ describe('the sample contains unauthored controls', () => {
 
 describe('Control Detail for an unauthored control', () => {
   const un = UNAUTH.find((c) => c.capability === 'ops')!;
-  it('shows neither the evidence ladder nor an evidence trail, before or after the upload', () => {
+  it('shows no evidence ladder, no worked-example trail and no "How to evidence this", before or after the upload', () => {
     for (const uploaded of [false, true]) {
       useAssessment.setState({ evidenceUploaded: uploaded });
       const { queryByText, queryByTestId, unmount } = detail(un.id);
       expect(queryByText('Evidence sufficiency')).toBeNull();
-      expect(queryByText('Evidence trail')).toBeNull();
+      expect(queryByText('Evidence trail (worked example)')).toBeNull();
       expect(queryByText('How to evidence this')).toBeNull();
       expect(queryByTestId('unauthored-statement')).not.toBeNull();
       unmount();
@@ -99,27 +104,31 @@ describe('Control Detail for an unauthored control', () => {
     expect(t).toContain('No evidence requirement has been authored for this control.');
     expect(t).toContain('a limitation of the tool, not a finding about the organisation');
   });
-  it('whereas an authored control that is also Unknown does show both (so the absence above means something)', () => {
-    const authoredUnknown = controls.find((c) => c.authored && c.before.state === 'unknown')!;
+  it('whereas an authored control that is also Unknown does show the ladder (so the absence above means something)', () => {
+    const authoredUnknown = controls().find((c) => c.authored && c.before.state === 'unknown')!;
     const { queryByText, queryByTestId } = detail(authoredUnknown.id);
     expect(queryByText('Evidence sufficiency')).not.toBeNull();
-    expect(queryByText('Evidence trail')).not.toBeNull();
     expect(queryByTestId('unauthored-statement')).toBeNull();
+  });
+  it('the observed control keeps the statement, but no longer says nothing says it is unmet', () => {
+    useAssessment.setState({ evidenceUploaded: true });
+    const id = [...observed][0];
+    const { getByTestId } = detail(id);
+    const t = getByTestId('unauthored-statement').textContent ?? '';
+    expect(t).toContain('Uploading evidence cannot establish that this control is met.');
+    expect(t).not.toContain('nothing says it is not');
+    expect(getByTestId('measured-gap-basis').textContent).toContain('observed');
   });
 });
 
 describe('the Gap Matrix filter', () => {
-  it('selects exactly the unauthored controls', () => {
-    const { container, getAllByRole } = renderAt('/gap-matrix?gap=unauthored', <GapMatrix />, '/gap-matrix');
-    // open every capability section (only one is open by default)
-    for (const cap of capabilities.filter((c) => c.organisationallyAssessable)) {
-      const header = Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.includes(cap.name));
-      const alreadyOpen = container.querySelector(`a[href^="/control/"]`) && header?.querySelector('svg.-rotate-90') == null;
-      if (header && !alreadyOpen) fireEvent.click(header);
-    }
-    const shown = Array.from(container.querySelectorAll('a[href^="/control/"]')).map((a) => a.getAttribute('href')!.replace('/control/', ''));
-    expect(shown.sort()).toEqual(UNAUTH.map((c) => c.id).sort());
-    expect(getAllByRole('combobox').length).toBeGreaterThan(0);
+  it('selects exactly the unauthored controls, and every row it shows carries that reason', () => {
+    const { container, getByTestId } = renderAt('/gap-matrix?gap=unauthored&cap=found', <GapMatrix />, '/gap-matrix');
+    const inFound = UNAUTH.filter((c) => c.capability === 'found').length;
+    const rows = Array.from(container.querySelectorAll('[data-testid^="control-row-"]'));
+    expect(rows.length).toBe(inFound);
+    for (const r of rows) expect(r.getAttribute('data-gap-reason')).toBe('unauthored');
+    expect(getByTestId('matrix-count').textContent).toBe(`${UNAUTH.length} of ${controls().length}`);
   });
   it('offers it as an option, listed first', () => {
     const { container } = renderAt('/gap-matrix', <GapMatrix />, '/gap-matrix');
@@ -127,7 +136,7 @@ describe('the Gap Matrix filter', () => {
     const options = Array.from(gap.querySelectorAll('option')).map((o) => o.textContent);
     expect(options[1]).toBe(LABEL); // [0] is "Any gap reason"
   });
-  it('an unauthored seed is a real control that exists', () => {
+  it('an unauthored control is a real control that exists', () => {
     expect(controlById(UNAUTH[0].id)).toBeDefined();
   });
 });

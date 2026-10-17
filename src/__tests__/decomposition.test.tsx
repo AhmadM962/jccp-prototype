@@ -5,7 +5,7 @@ import Dashboard from '../screens/04_Dashboard';
 import WidthDecomposition, { CAUSE_COLOUR } from '../components/WidthDecomposition';
 import { WITHHELD_MESSAGE } from '../components/FigureBoundary';
 import { useAssessment } from '../store/useAssessment';
-import { MINISTRY } from '../data/ministry';
+import { CURRENT } from '../data/current';
 import { controls } from '../data/controls';
 import { div, fmtPct, toPct } from '../lib/frac';
 import { widthOf } from '../lib/views';
@@ -32,7 +32,7 @@ describe('Task 3: the width decomposition under the interval', () => {
     ['before', false],
   ] as const)('%s the upload: the three segments are rendered in proportion to the parts', (when, uploaded) => {
     const { container } = dashboard(uploaded);
-    const s = MINISTRY[when].views.unweighted;
+    const s = CURRENT[when].views.unweighted;
     const total = widthOf(s);
     for (const cause of ['unauthored', 'unevidenced', 'uncollectable'] as const) {
       const el = seg(container, cause);
@@ -57,7 +57,7 @@ describe('Task 3: the width decomposition under the interval', () => {
     expect(after.getByTestId('width-sum-note').textContent).toContain('88.15 + 2.51 + 0.00 = 90.66 points');
     after.unmount();
     const before = dashboard(false);
-    expect(before.getByTestId('width-sum-note').textContent).toContain('88.15 + 8.98 + 0.00 = 97.13 points');
+    expect(before.getByTestId('width-sum-note').textContent).toContain('88.33 + 8.98 + 0.00 = 97.31 points');
   });
 
   it('labels whose limitation each cause is, attached to the right one', () => {
@@ -127,7 +127,7 @@ describe('Task 3: the width decomposition under the interval', () => {
   });
 
   it('follows the headline under an analyst override: the tool\'s share narrows and the parts still sum', () => {
-    const unauth = controls.find((c) => !c.authored)!;
+    const unauth = controls().find((c) => !c.authored && c.after.state === 'unknown')!;
     useAssessment.getState().overrideControl(unauth.id, {
       state: 'green',
       previousState: 'unknown',
@@ -143,7 +143,7 @@ describe('Task 3: the width decomposition under the interval', () => {
 });
 
 describe('Task 3: a graphic whose parts do not sum to its width is withheld, not drawn', () => {
-  const U = MINISTRY.after.views.unweighted;
+  const U = CURRENT.after.views.unweighted;
   it('draws when they sum', () => {
     const { queryByTestId, getByTestId } = render(
       <WidthDecomposition parts={U.width} width={widthOf(U)} controls={{ unauthored: 491, unevidenced: 14, uncollectable: 0 }} />,
@@ -172,7 +172,7 @@ describe('Task 3: a graphic whose parts do not sum to its width is withheld, not
 
 describe('Task 3: the numbers it shows are the published ones', () => {
   it('88.15 / 2.51 / 0.00 / 90.66', () => {
-    const U = MINISTRY.after.views.unweighted;
+    const U = CURRENT.after.views.unweighted;
     expect([fmtPct(U.width.unauthored), fmtPct(U.width.unevidenced), fmtPct(U.width.uncollectable), fmtPct(widthOf(U))]).toEqual(['88.15', '2.51', '0.00', '90.66']);
   });
 });

@@ -1,37 +1,30 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft } from 'lucide-react';
-import { Card, Pill } from '../components/ui';
+import { ArrowLeft } from 'lucide-react';
+import { Card } from '../components/ui';
 import { Provenance } from '../components/Provenance';
-import { useAssessment } from '../store/useAssessment';
-import { capabilities, TOTALS } from '../data/capabilities';
-import { EXCLUSIONS, EXCLUSION_COUNTS, EXCLUSION_TRIGGERS, SECTOR_BASELINE } from '../data/exclusions';
-import { sectorById } from '../data/sectors';
+import { capabilities } from '../data/capabilities';
+import { CURRENT } from '../data/current';
+import { controlText } from '../data/controls';
 
-const fmt1 = (n: number) => n.toFixed(1);
+const pct1 = (n: number, d: number) => ((n * 100) / d).toFixed(1);
 
+/** The scope-exclusion register: every row is the engine's (the control, the flag that excluded it, the value declared and
+ *  the engine's own justification), read from the assessment file. Control text is shown only where the prototype holds it. */
 export default function Exclusions() {
   const [params] = useSearchParams();
-  const sectorLabel = useAssessment((s) => sectorById(s.profile.sector).label);
   const [capF, setCapF] = useState<string>(params.get('cap') ?? 'all');
-  const [factF, setFactF] = useState<string>('all');
-  const [onlyUnjustified, setOnlyUnjustified] = useState(false);
+  const [flagF, setFlagF] = useState<string>('all');
 
+  const all = CURRENT.exclusions;
   const rows = useMemo(
-    () =>
-      EXCLUSIONS.filter((e) => {
-        if (capF !== 'all' && e.capability !== capF) return false;
-        if (factF !== 'all' && e.triggerFact !== factF) return false;
-        if (onlyUnjustified && e.justification) return false;
-        return true;
-      }),
-    [capF, factF, onlyUnjustified],
+    () => all.filter((e) => (capF === 'all' || e.capability === capF) && (flagF === 'all' || e.triggeringFlag === flagF)),
+    [all, capF, flagF],
   );
-
-  const naRate = (TOTALS.notApplicable / TOTALS.totalControls) * 100;
-  const unjustified = EXCLUSIONS.filter((e) => !e.justification).length;
   const capName = (id: string) => capabilities.find((c) => c.id === id)?.shortName ?? id;
-  const facts = Array.from(new Set(EXCLUSIONS.map((e) => e.triggerFact)));
+  const flags = Array.from(new Set(all.map((e) => e.triggeringFlag)));
+  const byCap = (Object.keys(CURRENT.after.capabilities) as (keyof typeof CURRENT.after.capabilities)[]).map((id) => ({ id, n: all.filter((e) => e.capability === id).length }));
+  const naCheck = CURRENT.assurance.checks.find((c) => c.cause === 'na_rate_above_baseline');
 
   return (
     <div className="space-y-5">
@@ -39,118 +32,120 @@ export default function Exclusions() {
         <ArrowLeft size={15} /> Dashboard
       </Link>
 
-      <Provenance tier="illustrative"><Card title="Scope exclusion register" subtitle={`${TOTALS.notApplicable} of ${TOTALS.totalControls} JNCSF controls excluded from this assessment`}>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <div className="tnum text-2xl font-bold text-slate-900">{fmt1(naRate)}%</div>
-            <div className="text-[11px] text-slate-500">Not-Applicable rate</div>
-          </div>
-          <div>
-            <div className="tnum text-2xl font-bold text-slate-900">{fmt1(SECTOR_BASELINE.naRatePct)}%</div>
-            <div className="text-[11px] text-slate-500">
-              {sectorLabel} sector baseline{' '}
-              {naRate > SECTOR_BASELINE.naRatePct && <span className="font-semibold text-amber-700">· above</span>}
+      <Provenance tier="measured" from="exclusions">
+        <Card title="Scope exclusion register" subtitle={`${CURRENT.totals.excluded} of ${CURRENT.totals.framework} JNCSF controls excluded from this assessment`}>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <div data-testid="na-rate" className="tnum text-2xl font-bold text-slate-900">{pct1(CURRENT.totals.excluded, CURRENT.totals.framework)}%</div>
+              <div className="text-[11px] text-slate-500">Not-Applicable rate ({CURRENT.totals.excluded} of {CURRENT.totals.framework})</div>
+            </div>
+            <div>
+              <div data-testid="na-baseline" className="text-sm font-semibold text-slate-800">Not compared with a baseline</div>
+              <div className="text-[11px] text-slate-500">
+                {naCheck ? `The engine's check: ${naCheck.status.replace('_', ' ')} — ${naCheck.detail}` : 'No sector baseline was supplied.'}
+              </div>
+            </div>
+            <div>
+              <div data-testid="unjustified" className="tnum text-2xl font-bold text-slate-900">{all.filter((e) => !e.justification).length}</div>
+              <div className="text-[11px] text-slate-500">without a recorded justification</div>
             </div>
           </div>
-          <div>
-            <div className="tnum text-2xl font-bold text-amber-700">{unjustified}</div>
-            <div className="text-[11px] text-slate-500">without recorded justification</div>
-          </div>
-        </div>
-      </Card></Provenance>
+        </Card>
+      </Provenance>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Provenance tier="illustrative"><Card title="Excluded by capability">
-          <ul className="space-y-1.5 text-sm">
-            {(Object.keys(EXCLUSION_COUNTS) as (keyof typeof EXCLUSION_COUNTS)[]).map((k) => (
-              <li key={k} className="flex items-center justify-between">
-                <button
-                  onClick={() => setCapF(k)}
-                  className={`hover:underline ${capF === k ? 'font-semibold text-accent' : 'text-slate-700'}`}
-                >
-                  {capName(k)}
-                </button>
-                <span className="tnum font-semibold text-slate-800">{EXCLUSION_COUNTS[k]}</span>
+        <Provenance tier="measured" from="exclusions">
+          <Card title="Excluded by capability">
+            <ul className="space-y-1.5 text-sm">
+              {byCap.map((k) => (
+                <li key={k.id} className="flex items-center justify-between">
+                  <button onClick={() => setCapF(k.id)} className={`hover:underline ${capF === k.id ? 'font-semibold text-accent' : 'text-slate-700'}`}>
+                    {capName(k.id)}
+                  </button>
+                  <span className="tnum font-semibold text-slate-800">{k.n}</span>
+                </li>
+              ))}
+              <li className="flex items-center justify-between border-t border-slate-100 pt-1.5 text-slate-500">
+                <span>National obligation (Capability 6)</span>
+                <span className="tnum">—</span>
               </li>
-            ))}
-            <li className="flex items-center justify-between border-t border-slate-100 pt-1.5 text-slate-500">
-              <span>National obligation (Capability 6)</span>
-              <span className="tnum">—</span>
-            </li>
-          </ul>
-        </Card></Provenance>
-        <Provenance tier="illustrative"><Card title="Excluded by triggering fact">
-          <ul className="space-y-1.5 text-sm">
-            {EXCLUSION_TRIGGERS.map((t) => (
-              <li key={t.fact} className="flex items-center justify-between">
-                <span className="text-slate-700">{t.label}</span>
-                <span className="tnum font-semibold text-slate-800">{t.count}</span>
-              </li>
-            ))}
-          </ul>
-        </Card></Provenance>
+            </ul>
+          </Card>
+        </Provenance>
+        <Provenance tier="measured" from="exclusions">
+          <Card title="Excluded by triggering flag">
+            <ul className="space-y-1.5 text-sm">
+              {flags.map((f) => (
+                <li key={f} className="flex items-center justify-between">
+                  <button onClick={() => setFlagF(f)} className={`hover:underline ${flagF === f ? 'font-semibold text-accent' : 'text-slate-700'}`}>
+                    <code className="font-mono text-[12px]">{f}</code>
+                    <span className="text-slate-400"> = {all.find((e) => e.triggeringFlag === f)!.triggeringValue}</span>
+                  </button>
+                  <span className="tnum font-semibold text-slate-800">{all.filter((e) => e.triggeringFlag === f).length}</span>
+                </li>
+              ))}
+              {flags.length === 0 && <li className="text-slate-400">No control is excluded: every flag that could remove a control was declared yes.</li>}
+            </ul>
+          </Card>
+        </Provenance>
       </div>
 
-      <Provenance tier="illustrative"><Card
-        title={`Exclusions — ${rows.length} shown of ${EXCLUSIONS.length}`}
-        right={
-          <div className="flex flex-wrap items-center gap-2">
-            <select value={capF} onChange={(e) => setCapF(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
-              <option value="all">Any capability</option>
-              {capabilities.filter((c) => c.organisationallyAssessable).map((c) => (
-                <option key={c.id} value={c.id}>{c.shortName}</option>
-              ))}
-            </select>
-            <select value={factF} onChange={(e) => setFactF(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
-              <option value="all">Any triggering fact</option>
-              {facts.map((f) => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
-            <label className="inline-flex items-center gap-1.5 text-xs text-slate-600">
-              <input type="checkbox" checked={onlyUnjustified} onChange={(e) => setOnlyUnjustified(e.target.checked)} className="h-3.5 w-3.5" />
-              Unjustified only
-            </label>
-          </div>
-        }
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400">
-                <th className="py-2 pr-4">Control</th>
-                <th className="py-2 pr-4">Description</th>
-                <th className="py-2 pr-4">Excluded because</th>
-                <th className="py-2 pr-4">Triggered by</th>
-                <th className="py-2">Justification</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((e) => (
-                <tr key={e.id} className={`border-b border-slate-100 align-top ${!e.justification ? 'bg-amber-50/50' : ''}`}>
-                  <td className="py-2.5 pr-4 font-mono text-xs font-semibold text-slate-600">{e.id}</td>
-                  <td className="py-2.5 pr-4 text-slate-700">{e.description}</td>
-                  <td className="py-2.5 pr-4"><code className="font-mono text-[11px] text-slate-600">{e.triggerFact}</code></td>
-                  <td className="py-2.5 pr-4 text-slate-600">{e.triggeredBy}</td>
-                  <td className="py-2.5">
-                    {e.justification ? (
-                      <span className="text-slate-600">{e.justification}</span>
-                    ) : (
-                      <Pill tone="amber">
-                        <AlertTriangle size={11} /> none recorded
-                      </Pill>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-3 text-[11px] text-slate-400">
-          Showing all {EXCLUSIONS.length} of {TOTALS.notApplicable} exclusions — the full register for this
-          organisation, not a sample.
-        </p>
-      </Card></Provenance>
+      <Provenance tier="measured" from="exclusions">
+        <Card
+          title={`Exclusions — ${rows.length} shown of ${all.length}`}
+          right={
+            <div className="flex flex-wrap items-center gap-2">
+              <select value={capF} onChange={(e) => setCapF(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" aria-label="Capability">
+                <option value="all">Any capability</option>
+                {capabilities.filter((c) => c.organisationallyAssessable).map((c) => (
+                  <option key={c.id} value={c.id}>{c.shortName}</option>
+                ))}
+              </select>
+              <select value={flagF} onChange={(e) => setFlagF(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" aria-label="Triggering flag">
+                <option value="all">Any triggering flag</option>
+                {flags.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
+            </div>
+          }
+        >
+          {all.length === 0 ? (
+            <p data-testid="no-exclusions" className="text-sm text-slate-500">This assessment excludes no control: all {CURRENT.totals.framework} are applicable.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400">
+                    <th className="py-2 pr-4">Control</th>
+                    <th className="py-2 pr-4">Capability</th>
+                    <th className="py-2 pr-4">Excluded because</th>
+                    <th className="py-2 pr-4">Reason</th>
+                    <th className="py-2">Justification (the engine&rsquo;s)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((e) => (
+                    <tr key={e.controlId} data-testid={`exclusion-${e.controlId}`} className="border-b border-slate-100 align-top">
+                      <td className="py-2.5 pr-4 font-mono text-xs font-semibold text-slate-600">
+                        {e.controlId}
+                        {controlText(e.controlId) && <span className="mt-0.5 block font-sans text-[11px] font-normal text-slate-500">{controlText(e.controlId)}</span>}
+                      </td>
+                      <td className="py-2.5 pr-4 text-slate-700">{capName(e.capability)}</td>
+                      <td className="py-2.5 pr-4"><code className="font-mono text-[11px] text-slate-600">{e.triggeringFlag} = {e.triggeringValue}</code></td>
+                      <td className="py-2.5 pr-4"><code className="font-mono text-[11px] text-slate-600">{e.reason}</code></td>
+                      <td className="py-2.5 text-slate-600">{e.justification}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-3 text-[11px] text-slate-400">
+            Showing all {all.length} of {CURRENT.totals.excluded} exclusions in the assessment file: the full register for this assessment.
+          </p>
+        </Card>
+      </Provenance>
     </div>
   );
 }

@@ -1,8 +1,10 @@
-// Coverage + gap-taxonomy helpers, from the exact figures in src/data/ministry.ts.
+// Coverage + gap-taxonomy helpers, from the exact figures in src/data/profiles (read through src/data/current.ts).
 
 import { controls } from '../data/controls';
-import { MINISTRY } from '../data/ministry';
+import { CURRENT, type StateFigures } from '../data/current';
 import { stateFor } from './views';
+import { TOTALS } from '../data/capabilities';
+import { assuranceLabel } from './assurance';
 
 export interface CoverageBreakdown {
   /** artifact-backed verdicts: Compliant + Gap */
@@ -32,17 +34,39 @@ export const coverageBreakdown = (uploaded: boolean): CoverageBreakdown => {
 };
 
 /** Unknown controls the evidence bundle resolves. An upload can only move controls that have an
- *  authored evidence requirement, so the story is told inside the authored scope: the rest cannot move. */
+ *  authored evidence requirement, so the story is told inside the authored scope. A control outside it can still move,
+ *  but only by observation (`movedOutOfUnknown`), never by a requirement being met. */
 export const unknownResolvedByUpload = () => {
-  const b = MINISTRY.before.views.authored_scope;
-  const a = MINISTRY.after.views.authored_scope;
+  const b = CURRENT.before.views.authored_scope;
+  const a = CURRENT.after.views.authored_scope;
   return { resolved: b.unknown - a.unknown, from: b.unknown, to: a.unknown, scope: a.applicable };
 };
 
-/** Sample controls whose snapshot the upload changes: `changed: true`. */
-export const seededChangedCount = () => ({
-  changed: controls.filter((c) => c.changed).length,
-  seeded: controls.length,
+/** Controls that move out of Unknown with the bundle: those inside the authored scope (the requirement exists and
+ *  the evidence arrived) and those outside it (no requirement exists, but an artifact in the bundle shows the control
+ *  unmet: observation, not a path). */
+export const movedOutOfUnknown = () => {
+  const known = (s: StateFigures) => s.views.unweighted.known;
+  const inside = unknownResolvedByUpload().resolved;
+  const total = known(CURRENT.after) - known(CURRENT.before);
+  return { total, inside, outside: total - inside, outsideControls: CURRENT.ruleR.verdictsOutsideAuthoredScope };
+};
+
+const STATE_WORD = { green: 'Compliant', yellow: 'Partial', red: 'Gap' } as const;
+
+/** What happened to each control outside the authored scope that moved, from the generated figures. */
+export const outsideScopeSentence = (): string =>
+  CURRENT.ruleR.verdictsOutsideAuthoredScope.map(
+    (c) =>
+      `${c.id} has no authored evidence requirement, but an artifact in the bundle ${
+        c.state === 'red' ? 'shows it unmet' : 'gives it a verdict'
+      }, so it moved from Unknown to ${c.state === 'red' ? 'a ' : ''}${STATE_WORD[c.state]}${c.gapBasis ? ` (${c.gapBasis})` : ''}.`,
+  ).join(' ');
+
+/** Controls whose state the upload changes (they get a verdict that they did not have), out of all applicable controls. */
+export const changedControlCount = () => ({
+  changed: controls().filter((c) => c.changed).length,
+  applicable: controls().length,
 });
 
 export const completenessStatement = (uploaded: boolean) => {
@@ -56,6 +80,6 @@ export const completenessStatement = (uploaded: boolean) => {
     unauthored: s.unknownUnauthored,
     unevidenced: s.unknown - s.unknownUnauthored - uncollectable,
     uncollectable,
-    assurance: uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented',
+    assurance: assuranceLabel((uploaded ? TOTALS.after : TOTALS.before).assurance),
   };
 };

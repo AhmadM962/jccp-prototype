@@ -6,7 +6,8 @@ import ControlDetail from '../screens/06_ControlDetail';
 import Dashboard from '../screens/04_Dashboard';
 import ScoreInterval from '../components/ScoreInterval';
 import { useAssessment } from '../store/useAssessment';
-import { controlById, controls, type ShareBasis } from '../data/controls';
+import { type ShareBasis } from '../data/controls';
+import { PROFILES, PROFILE_ORDER, type ProfileId } from '../data/profiles';
 import FigureBoundary, { WITHHELD_MESSAGE } from '../components/FigureBoundary';
 import { IntervalConsistencyError, assertDisplayedInterval, yellowWeightForShare } from '../lib/scoring';
 
@@ -25,94 +26,56 @@ beforeEach(() => {
   useAssessment.getState().resetDemo();
 });
 
-describe('share basis is a fact in the data', () => {
-  const withShare = controls.filter((c) => c.deploymentSharePct !== undefined);
+describe('share basis is a fact in the data (the engine\u2019s, for every profile)', () => {
+  const withShare = (p: (typeof PROFILES)[ProfileId]) => p.claims.filter((c) => c.share && c.share.interval);
 
-  it('exactly the controls that carry a share carry a basis, in both snapshots', () => {
-    expect(withShare.map((c) => c.id)).toEqual(['JNCSF-102', 'JNCSF-394', 'JNCSF-459']);
-    for (const c of controls) {
-      const has = c.deploymentSharePct !== undefined;
-      for (const when of ['before', 'after'] as const) {
-        expect(c[when].deploymentShareBasis !== undefined, `${c.id} ${when}`).toBe(has);
+  it('every share carries its basis, and a share-based Partial always has a share', () => {
+    for (const id of PROFILE_ORDER) {
+      for (const c of withShare(PROFILES[id])) expect(['claimed', 'established'], `${id} ${c.id}`).toContain(c.share!.interval!.basis);
+      for (const c of PROFILES[id].claims.filter((x) => x.partialBasis === 'share')) expect(c.share?.interval, `${id} ${c.id}`).toBeTruthy();
+    }
+  });
+  it('a share beside testimony is claimed, never established', () => {
+    for (const id of PROFILE_ORDER) {
+      for (const c of PROFILES[id].claims.filter((x) => x.evidenceKind === 'testimony' && x.share?.interval)) {
+        expect(c.share!.interval!.basis, `${id} ${c.id}`).toBe('claimed');
       }
     }
   });
-  it('a share beside testimony or no evidence is never recorded as measured', () => {
-    for (const c of withShare) {
-      for (const when of ['before', 'after'] as const) {
-        const snap = c[when];
-        if (snap.evidenceClass === 'none' || snap.evidenceClass === 'testimonial') {
-          expect(snap.deploymentShareBasis, `${c.id} ${when}`).toBe('claimed');
-        }
+  it('a claimed share earns at most the second quartile, however high the claim (the cap)', () => {
+    for (const id of PROFILE_ORDER) {
+      for (const c of PROFILES[id].claims.filter((x) => x.state === 'yellow' && x.share?.interval?.basis === 'claimed')) {
+        expect(c.credit![0] / c.credit![1], `${id} ${c.id}`).toBeLessThanOrEqual(0.5);
       }
     }
   });
-  // These seeds no longer reproduce the old evidence-class proxy, and should not: the proxy called
-  // every artifact-backed share measured. JNCSF-394's record says only "Coverage ~80%" — a tilde and
-  // no denominator, the shape of a claim — whereas 102 (410/512) and 459 (484/620) are counts.
-  it('before the upload every share is claimed (testimony)', () => {
-    for (const c of withShare) expect(c.before.deploymentShareBasis, c.id).toBe('claimed');
-  });
-  it('after the upload 102 and 459 are measured counts; 394 stays claimed', () => {
-    const after = Object.fromEntries(withShare.map((c) => [c.id, c.after.deploymentShareBasis]));
-    expect(after).toEqual({ 'JNCSF-102': 'measured', 'JNCSF-394': 'claimed', 'JNCSF-459': 'measured' });
-  });
-  it('so one control still shows a capped share after the upload (394, which has artifact evidence)', () => {
+  it('the basis is shown beside the share on the control\u2019s page', () => {
     useAssessment.setState({ evidenceUploaded: true });
-    expect(controlById('JNCSF-394')!.after.evidenceClass).toBe('artifact');
-    const { container } = renderAt('/control/JNCSF-394', <ControlDetail />, '/control/:id');
-    expect(container.textContent).toContain(
-      'Deployment share 80% (claimed) — would earn partial credit 0.5 (second quartile; capped because the share is claimed, not measured) if Partial; this control is currently Compliant, so none applies.',
-    );
-  });
-});
-
-describe('the cap reads the basis, not the evidence class', () => {
-  const ctl = controlById('JNCSF-459')!;
-  const saved = { before: ctl.before.deploymentShareBasis, after: ctl.after.deploymentShareBasis };
-  afterEach(() => {
-    ctl.before.deploymentShareBasis = saved.before;
-    ctl.after.deploymentShareBasis = saved.after;
-  });
-
-  const credit = (basis: ShareBasis) => yellowWeightForShare(0.78, basis);
-  it('the function applies the rule to the basis it is given', () => {
-    expect(credit('claimed')).toBe(0.5);
-    expect(credit('measured')).toBe(0.85);
-  });
-  it('artifact evidence with a claimed share is capped (the hole in the old proxy)', () => {
-    ctl.after.deploymentShareBasis = 'claimed';
-    useAssessment.setState({ evidenceUploaded: true });
-    expect(ctl.after.evidenceClass).toBe('artifact');
-    const { container } = renderAt('/control/JNCSF-459', <ControlDetail />, '/control/:id');
-    expect(container.textContent).toContain(
-      'Deployment share 78% (claimed) — partial credit 0.5 (second quartile; capped because the share is claimed, not measured) for this control.',
-    );
-  });
-  it('testimonial evidence with a measured share is not capped', () => {
-    ctl.before.deploymentShareBasis = 'measured';
-    expect(ctl.before.evidenceClass).toBe('testimonial');
-    const { container } = renderAt('/control/JNCSF-459', <ControlDetail />, '/control/:id');
-    expect(container.textContent).toContain('Deployment share 78% (measured) — partial credit 0.85 (top quartile)');
-  });
-  it('the basis is shown beside the share, before and after the upload', () => {
-    let r = renderAt('/control/JNCSF-102', <ControlDetail />, '/control/:id');
-    expect(r.container.textContent).toContain('Deployment share 80% (claimed)');
+    let r = renderAt('/control/JNCSF-117', <ControlDetail />, '/control/:id');
+    expect(r.getByTestId('measured-share').textContent).toContain('(established)');
     r.unmount();
-    useAssessment.setState({ evidenceUploaded: true });
-    r = renderAt('/control/JNCSF-102', <ControlDetail />, '/control/:id');
-    expect(r.container.textContent).toContain('Deployment share 80% (measured)');
+    r = renderAt('/control/JNCSF-24', <ControlDetail />, '/control/:id');
+    expect(r.getByTestId('measured-share').textContent).toContain('(claimed)');
   });
-  it('an analyst override does not turn a claimed share into a measured one', () => {
-    useAssessment.getState().overrideControl('JNCSF-102', {
+  it('an analyst override does not turn a claimed share into an established one', () => {
+    useAssessment.setState({ evidenceUploaded: true });
+    useAssessment.getState().overrideControl('JNCSF-24', {
       state: 'green',
       previousState: 'yellow',
       justification: 'test',
       analystId: 'a',
       timestamp: '2026-09-08T10:00:00+03:00',
     });
-    const { container } = renderAt('/control/JNCSF-102', <ControlDetail />, '/control/:id');
-    expect(container.textContent).toContain('Deployment share 80% (claimed) — would earn partial credit 0.5 (second quartile; capped');
+    const { getByTestId } = renderAt('/control/JNCSF-24', <ControlDetail />, '/control/:id');
+    expect(getByTestId('measured-share').textContent).toContain('(claimed)');
+  });
+});
+
+describe('the cap applies the rule to the basis it is given', () => {
+  const credit = (basis: ShareBasis) => yellowWeightForShare(0.78, basis);
+  it('the function applies the rule to the basis it is given', () => {
+    expect(credit('claimed')).toBe(0.5);
+    expect(credit('measured')).toBe(0.85);
   });
 });
 

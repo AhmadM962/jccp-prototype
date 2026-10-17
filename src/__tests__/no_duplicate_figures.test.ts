@@ -18,10 +18,9 @@ const ALLOW: Record<string, Partial<Record<Lit, number>>> = {
   'src/components/AttackExposure.tsx': { '576': 1 },
   // TODO round 3: use CICSC_CONTROLS / TOTAL_CONTROLS from figures.ts
   'src/data/attack.ts': { '405': 1, '576': 1 },
-  // Round 2 removed every entry for capabilities.ts: TOTALS is now built from figures.ts and ministry.ts.
-  // The generated figures module has two coincidental numbers: an exact-fraction numerator/denominator
-  // pair of 135 (twice) and a denominator of 39 (a coverage of 4/39). They are not the framework figures.
-  'src/data/ministry.ts': { '39': 1, '135': 2 },
+  // Round 3: the per-profile figures live in src/data/profiles/*.ts, GENERATED from the engine's golden outputs.
+  // They are the single source of those numbers (the applicable count differs by profile), so they are exempt
+  // from this scan (see SCANNED below); everything else is still scanned.
   // The one '39' left is control number 39 in the seed list (the uncollectable 39 is gone with the old fixture).
   'src/data/controls.ts': { '39': 1 },
   // TODO round 3: use TOTAL_CONTROLS
@@ -30,15 +29,12 @@ const ALLOW: Record<string, Partial<Record<Lit, number>>> = {
   'src/screens/01_Profile.tsx': { '135': 1, '405': 2, '576': 1 },
   // TODO round 3: use CICSC_CONTROLS
   'src/screens/04_Dashboard.tsx': { '405': 2 },
-  // TODO round 3: use APPLICABLE_CONTROLS, TOTAL_CONTROLS, CICSC_CONTROLS
-  'src/screens/08_Export.tsx': { '405': 1, '557': 3, '576': 2 },
+  // Round 3 removed every entry for 08_Export.tsx: its figures come from the assessment and figures.ts.
   // TODO round 3: use TOTAL_CONTROLS
   'src/screens/09_Chat.tsx': { '576': 2 },
   // TODO round 3: use TOTAL_CONTROLS
   'src/tour/glossary.ts': { '576': 2 },
   'src/tour/helpContent.ts': { '576': 1 },
-  // TODO round 3: use APPLICABLE_CONTROLS, TOTAL_CONTROLS
-  'src/tour/steps.ts': { '557': 2, '576': 2 },
 };
 
 const sources = import.meta.glob('/src/**/*.{ts,tsx}', {
@@ -49,7 +45,7 @@ const sources = import.meta.glob('/src/**/*.{ts,tsx}', {
 
 const SCANNED = Object.entries(sources)
   .map(([p, text]) => [p.replace(/^\//, ''), text] as const)
-  .filter(([p]) => !p.startsWith('src/__tests__/') && !p.startsWith('src/test/') && p !== 'src/data/figures.ts');
+  .filter(([p]) => !p.startsWith('src/__tests__/') && !p.startsWith('src/test/') && !p.startsWith('src/data/profiles/') && p !== 'src/data/figures.ts');
 
 export function countLiterals(file: string, text: string): Partial<Record<Lit, number>> {
   const sf = ts.createSourceFile(

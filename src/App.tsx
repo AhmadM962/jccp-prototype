@@ -5,6 +5,7 @@ import TopBar from './components/layout/TopBar';
 import { navForRole } from './components/layout/nav';
 import { useAssessment } from './store/useAssessment';
 import FigureBoundary from './components/FigureBoundary';
+import SourceStamp from './components/SourceStamp';
 import Profile from './screens/01_Profile';
 import RequestPlan from './screens/02_RequestPlan';
 import Intake from './screens/03_Intake';
@@ -54,14 +55,18 @@ function ScreenBoundary({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
+  // The data layer holds the active assessment outside React; keying the tree on it re-renders every screen, the
+  // sidebar and the top bar from the newly chosen assessment (and drops any state a screen held about the old one).
+  const profileId = useAssessment((s) => s.profileId);
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div key={profileId} className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-1 text-center text-[10px] leading-tight text-amber-800 sm:text-[11px]">
           Demonstration prototype · fictional organisation · nothing leaves this machine — your progress is kept in this browser only.
         </div>
+        <SourceStamp />
         <main className="scroll-slim flex-1 overflow-y-auto bg-slate-50">
           <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-6">
             <RoleGate>

@@ -29,6 +29,7 @@ describe('Remediation reaches the screen only through the guard', () => {
   // The hero lives on the "What you didn't provide" tab, so open it — drawing the default tab would
   // pass whatever the numbers were.
   const draw = () => {
+    useAssessment.setState({ evidenceUploaded: true }); // the ranking is the assessed state's, shown after the upload
     const r = render(
       <MemoryRouter>
         <Remediation />
@@ -54,7 +55,7 @@ describe('Remediation reaches the screen only through the guard', () => {
       expect(container.querySelector('span.text-3xl')).toBeNull(); // no headline number
       expect(container.textContent).not.toMatch(/Band width falls to/); // and no subline built on it
       expect(getByText('Projected interval')).toBeTruthy(); // the card around it is still there
-      expect(container.textContent).toContain('The band cannot fall below'); // as are its neighbours
+      expect(container.textContent).toContain('the band cannot fall below'); // as are its neighbours
       expect(logged.some((l) => l.includes('figure withheld by guard "ScoreInterval"'))).toBe(true);
     } finally {
       console.error = quiet;

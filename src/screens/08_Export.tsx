@@ -5,12 +5,40 @@ import { Card, Pill, Button } from '../components/ui';
 import { Provenance } from '../components/Provenance';
 import { useAssessment } from '../store/useAssessment';
 import { TOTALS } from '../data/capabilities';
+import { CURRENT } from '../data/current';
+import { CICSC_CONTROLS } from '../data/figures';
+import { controls, snapshotFor } from '../data/controls';
+import { assuranceLabel } from '../lib/assurance';
 
 const HASH = 'e7c1 9a02 44bd 8f10 55ce 7731 a9b0 2d4f 88e0 1c6a 90ff 43d2';
 const SIGNING = { alg: 'Ed25519', identity: 'JCCP Appliance — MoDS-JCCP-01', at: '2026-09-08T10:04:00+03:00' };
 
-function oscalDoc(model: string, uploaded: boolean, overrideCount: number, operatesCI: boolean) {
+const FINDING_STATE = { green: 'satisfied', yellow: 'partially-satisfied', red: 'not-satisfied', unknown: 'not-evaluated', grey: 'not-applicable' } as const;
+
+/** A few findings for the preview, taken from the real claims (one of each state that exists, and one Unknown for a collection
+ *  reason): what the engine concluded, not an invented story. */
+function exampleFindings(uploaded: boolean) {
+  const all = controls().map((c) => ({ c, s: snapshotFor(c, uploaded) }));
+  const pick = [
+    all.find((x) => x.s.state === 'red'),
+    all.find((x) => x.s.state === 'yellow'),
+    all.find((x) => x.s.state === 'green'),
+    all.find((x) => x.s.state === 'unknown' && x.s.gapReason && x.s.gapReason !== 'unauthored' && x.s.gapReason !== 'not_provided'),
+  ].filter((x): x is NonNullable<typeof x> => Boolean(x));
+  return pick.map(({ c, s }) => ({
+    'target-id': c.id,
+    state: FINDING_STATE[s.state],
+    'evidence-class': s.evidenceClass,
+    ...(s.gapReason ? { 'gap-reason': s.gapReason } : {}),
+    ...(s.gapBasis ? { 'gap-basis': s.gapBasis } : {}),
+    ...(s.runId ? { 'module-run': s.runId } : {}),
+    ...(s.partialBasis ? { 'partial-basis': s.partialBasis } : {}),
+  }));
+}
+
+function oscalDoc(model: string, uploaded: boolean, overrideCount: number) {
   const t = uploaded ? TOTALS.after : TOTALS.before;
+  const cicsc = CURRENT.cicsc;
   const common = {
     uuid: '0b9d5f2c-8a41-4e77-9c1e-6f2b3a5d7e10',
     metadata: {
@@ -21,8 +49,8 @@ function oscalDoc(model: string, uploaded: boolean, overrideCount: number, opera
       roles: [{ id: 'assessor', title: 'JCCP Automated Assessor' }],
     },
     'jccp:coverage-metadata': {
-      'assurance-level': uploaded ? 'L2 — Tool-evidenced' : 'L1 — Documented',
-      'controls-applicable': TOTALS.applicable,
+      'assurance-level': assuranceLabel(t.assurance),
+      'controls-applicable': CURRENT.totals.applicable,
       'controls-evidenced': t.evidenced,
       'controls-unevidenced': t.unknown - t.unknownUnauthored,
       'controls-unauthored': t.unknownUnauthored,
@@ -33,11 +61,13 @@ function oscalDoc(model: string, uploaded: boolean, overrideCount: number, opera
     },
     'jccp:scope-boundary': {
       framework: 'JNCSF',
-      'operates-critical-infrastructure': operatesCI,
+      'operates-critical-infrastructure': cicsc.criticalInfrastructure === 'yes',
+      'sector': cicsc.sectorName,
+      'cicsc-applies': cicsc.applies,
       'cicsc-assessed': false,
-      note: operatesCI
-        ? 'CICSC (405 controls) not assessed. JNCSF result alone does not represent complete assurance for this organisation.'
-        : 'Organisation does not operate critical infrastructure; CICSC does not apply.',
+      note: cicsc.applies
+        ? `CICSC (${CICSC_CONTROLS} controls) not assessed. JNCSF result alone does not represent complete assurance for this organisation.`
+        : 'CICSC does not apply to this organisation.',
     },
   };
   if (model === 'Assessment Results') {
@@ -49,11 +79,7 @@ function oscalDoc(model: string, uploaded: boolean, overrideCount: number, opera
             uuid: 'a1c2e3f4-0000-4444-8888-abcabcabcabc',
             title: 'Automated collection run 2026-09-05',
             start: '2026-09-05T09:00:00+03:00',
-            findings: [
-              { 'target-id': 'JNCSF-102', state: uploaded ? 'not-satisfied' : 'not-evaluated', 'evidence-class': uploaded ? 'artifact' : 'testimonial', attestation: overrideCount > 0 ? 'analyst-attested' : 'engine' },
-              { 'target-id': 'JNCSF-435', state: uploaded ? 'not-satisfied' : 'not-evaluated' },
-              { 'target-id': 'JNCSF-173', state: 'not-evaluated', 'gap-reason': uploaded ? 'module_failed' : 'not_provided' },
-            ],
+            findings: exampleFindings(uploaded),
           },
         ],
       },
@@ -63,10 +89,13 @@ function oscalDoc(model: string, uploaded: boolean, overrideCount: number, opera
     return {
       'plan-of-action-and-milestones': {
         ...common,
-        'poam-items': [
-          { uuid: 'p1', title: 'Enforce MFA on all privileged accounts', 'related-findings': ['JNCSF-102', 'JNCSF-435'], 'controls-closed': 11 },
-          { uuid: 'p2', title: 'Enable missing audit subcategories', 'related-findings': ['JNCSF-30'], 'controls-closed': 9 },
-        ],
+        'poam-items': (uploaded ? CURRENT.ranking.items : []).slice(0, 2).map((it, n) => ({
+          uuid: `p${n + 1}`,
+          title: it.description,
+          'related-findings': [it.controlId],
+          rank: it.rank,
+          'magnitude-points': it.magnitudePoints,
+        })),
       },
     };
   }
@@ -74,9 +103,9 @@ function oscalDoc(model: string, uploaded: boolean, overrideCount: number, opera
   return { [key]: { ...common } };
 }
 
-const MODELS = [
-  { name: 'Catalog', desc: 'The pinned JNCSF control catalogue (576 controls).' },
-  { name: 'Profile', desc: 'The applicable-control baseline for this organisation (557).' },
+const models = () => [
+  { name: 'Catalog', desc: `The pinned JNCSF control catalogue (${CURRENT.totals.framework} controls).` },
+  { name: 'Profile', desc: `The applicable-control baseline for this organisation (${CURRENT.totals.applicable}).` },
   { name: 'System Security Plan', desc: 'Declared implementation of each applicable control.' },
   { name: 'Assessment Results', desc: 'Findings, evidence class, and gap reasons per control.' },
   { name: 'POA&M', desc: 'Plan of action & milestones — ranked remediation.' },
@@ -85,8 +114,7 @@ const MODELS = [
 function JsonModal({ model, onClose }: { model: string; onClose: () => void }) {
   const uploaded = useAssessment((s) => s.evidenceUploaded);
   const overrideCount = Object.keys(useAssessment((s) => s.overriddenControls)).length;
-  const operatesCI = useAssessment((s) => s.profile.operatesCriticalInfrastructure);
-  const json = JSON.stringify(oscalDoc(model, uploaded, overrideCount, operatesCI), null, 2);
+  const json = JSON.stringify(oscalDoc(model, uploaded, overrideCount), null, 2);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
       <div className="max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -114,7 +142,7 @@ function ReviewModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (re
         <p className="mt-2 text-sm text-slate-600">The package discloses to NCSC:</p>
         <ul className="mt-1.5 space-y-1 text-[13px] text-slate-700">
           <li>· The compliance interval, coverage and assurance level</li>
-          <li>· Per-control findings, evidence class and gap reasons (557 controls)</li>
+          <li>· Per-control findings, evidence class and gap reasons ({CURRENT.totals.applicable} controls)</li>
           <li>· The POA&amp;M and its target dates</li>
           <li>· Evidence <em>locators and hashes</em> — not the raw files</li>
           <li className="text-amber-700">· Evidence excerpts may contain account names (e.g. <code className="font-mono">svc-backup</code>, <code className="font-mono">a.haddad-adm</code>)</li>
@@ -154,7 +182,7 @@ export default function ExportScreen() {
               regulator sees the interval — not a bare number.
             </p>
             <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-slate-500">
-              <Info size={14} /> OSCAL 1.1.2 · 5 models · 557 control implementations. Validation runs in the assessment engine, not in this preview.
+              <Info size={14} /> OSCAL 1.1.2 · 5 models · {CURRENT.totals.applicable} control implementations. Validation runs in the assessment engine, not in this preview.
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
@@ -171,7 +199,7 @@ export default function ExportScreen() {
       </Card></Provenance>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {MODELS.map((m) => (
+        {models().map((m) => (
           <Provenance key={m.name} tier="illustrative"><Card>
             <h3 className="text-sm font-bold text-slate-900">{m.name}</h3>
             <p className="mt-1 text-[12px] leading-snug text-slate-500">{m.desc}</p>
@@ -205,7 +233,7 @@ export default function ExportScreen() {
 
       <Provenance tier="illustrative"><Card title="JNCSF Catalog — a national reference" subtitle="not just an export">
         <p className="text-sm text-slate-600">
-          The Catalog model is the first machine-readable representation of the JNCSF: 576 controls with their
+          The Catalog model is the first machine-readable representation of the JNCSF: {CURRENT.totals.framework} controls with their
           ISO 27002 and NIST 800-53 mappings, ATT&amp;CK bridges and evidence signal requirements. It can be
           published by NCSC as the authoritative reference every entity assesses against — so every assessment
           in the country is scored against exactly the same catalogue version.

@@ -125,9 +125,10 @@ export function projectProvision(
 
 /**
  * The same projection from a credit numerator (what the bounds are built from) instead of bucket counts
- * and a flat Partial weight. `unresolvable` is how many of the Unknowns no evidence can ever resolve: the
+ * and a flat Partial weight. `unresolvable` is how many of the Unknowns the plan's evidence cannot resolve: the
  * structurally uncollectable ones and, since Round 2, those with no authored evidence requirement. Only
- * the rest — the collectable pool — can be resolved by providing artifacts.
+ * the rest — the collectable pool — can be resolved by providing artifacts. (An unauthored control can still be
+ * observed unmet by an artifact collected for another control; the plan cannot count on that.)
  */
 export function projectFromNumerator(
   applicable: number,
@@ -157,8 +158,8 @@ export function projectFromNumerator(
   };
 }
 
-/** The narrowest the band can ever get: the controls no evidence can resolve stay Unknown, so the band
- *  keeps at least `unresolvable / applicable` of width. In percentage points. */
+/** The narrowest the band can get from the evidence the plan asks for: the controls it cannot resolve stay Unknown,
+ *  so the band keeps at least `unresolvable / applicable` of width. In percentage points. */
 export const bandFloorPts = (applicable: number, unresolvable: number) =>
   (unresolvable / applicable) * 100;
 
@@ -198,8 +199,8 @@ export function applyOverrides(
 
 // Assurance ladder (brief §7.5).
 export const ASSURANCE_LEVELS = [
-  { id: 'L0', name: 'Declared', definition: 'Profile declared; no evidence of any kind supplied.' },
-  { id: 'L1', name: 'Documented', definition: 'Policy and testimonial evidence only; no machine-collected artifacts.' },
-  { id: 'L2', name: 'Tool-evidenced', definition: 'Machine-collected artifacts corroborate a majority of controls.' },
-  { id: 'L3', name: 'Analyst-signed', definition: 'An accredited assessor has reviewed and signed the evidence set.' },
+  { id: 'L0', name: 'Declared' },
+  { id: 'L1', name: 'Documented' },
+  { id: 'L2', name: 'Tool-evidenced' },
+  { id: 'L3', name: 'Analyst-signed' },
 ] as const;

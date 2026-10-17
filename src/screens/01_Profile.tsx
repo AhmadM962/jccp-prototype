@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, ArrowRight, HelpCircle, ShieldAlert, CheckCircle2, Info } from 'lucide-react';
 import { Card, Button, SectionLabel, Pill } from '../components/ui';
 import { Provenance } from '../components/Provenance';
+import { CURRENT } from '../data/current';
+import { PROFILES, PROFILE_LABEL, PROFILE_ORDER } from '../data/profiles';
 import { useAssessment } from '../store/useAssessment';
 import { ROLE_LABEL } from '../store/useAssessment';
 import {
@@ -74,6 +76,8 @@ function TriToggle({ value, onChange, label, hint, dataTour }: { value: Ternary;
 export default function Profile() {
   const navigate = useNavigate();
   const profile = useAssessment((s) => s.profile);
+  const profileId = useAssessment((s) => s.profileId);
+  const selectProfile = useAssessment((s) => s.selectProfile);
   const role = useAssessment((s) => s.role);
   const setProfile = useAssessment((s) => s.setProfile);
   const setPdpl = useAssessment((s) => s.setPdpl);
@@ -95,6 +99,34 @@ export default function Profile() {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div className="space-y-6">
+        <Provenance tier="measured" from="totals">
+          <Card title="Assessment" subtitle="The engine's three assessments. Choosing one re-renders the whole prototype from it.">
+            <div role="radiogroup" aria-label="Assessment" className="grid gap-2 sm:grid-cols-3">
+              {PROFILE_ORDER.map((id) => {
+                const p = PROFILES[id];
+                const on = id === profileId;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    data-testid={`select-profile-${id}`}
+                    onClick={() => selectProfile(id)}
+                    className={`rounded-lg border px-3 py-2.5 text-left transition ${on ? 'border-accent bg-accent/5 ring-1 ring-accent' : 'border-slate-200 hover:bg-slate-50'}`}
+                  >
+                    <div className="text-sm font-semibold text-slate-900">{PROFILE_LABEL[id]}</div>
+                    <div className="text-[11px] text-slate-500">{p.cicsc.sectorName}</div>
+                    <div className="tnum mt-1 text-[11px] text-slate-600">
+                      {p.totals.applicable} of {p.totals.framework} applicable · {p.totals.excluded} excluded
+                    </div>
+                    <code className="mt-0.5 block font-mono text-[10px] text-slate-400">{p.source.file}</code>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        </Provenance>
         <Provenance tier="illustrative"><Card dataTour="profile-header" title="Organisation profile" subtitle="Scoping inputs — these set which of the 576 JNCSF controls apply">
           <div data-tour="profile-identity" className="grid gap-4 sm:grid-cols-2">
             <label className="block">
@@ -180,23 +212,21 @@ export default function Profile() {
             <div className="rounded-lg border border-slate-200 px-3 py-2.5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-medium text-slate-800">Operates critical infrastructure</div>
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Critical infrastructure (CICSC)</div>
+                  <div className="text-sm font-medium text-slate-800">
+                    Derived from the sector, not declared: {CURRENT.cicsc.sectorName} is {CURRENT.cicsc.applies ? 'a designated sector' : 'not a designated sector'}
+                    <span className="font-normal text-slate-500"> (basis: {CURRENT.cicsc.basis})</span>
+                  </div>
                   <div className="text-[11px] text-slate-400">
-                    Subjects this organisation to CICSC (405 controls, 3 implementation levels) in addition to
-                    JNCSF — not yet assessed by this tool
+                    CICSC (405 controls, 3 implementation levels) is a separate framework in addition to JNCSF — not yet assessed by this tool
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setProfile({ operatesCriticalInfrastructure: !profile.operatesCriticalInfrastructure })}
-                  className={`relative h-5 w-9 shrink-0 rounded-full transition ${profile.operatesCriticalInfrastructure ? 'bg-accent' : 'bg-slate-300'}`}
-                  aria-pressed={profile.operatesCriticalInfrastructure}
-                >
-                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${profile.operatesCriticalInfrastructure ? 'left-4' : 'left-0.5'}`} />
-                </button>
+                <Pill tone={CURRENT.cicsc.applies ? 'blue' : 'slate'}>
+                  <span data-testid="cicsc-derived">{CURRENT.cicsc.applies ? 'applies' : 'does not apply'}</span>
+                </Pill>
               </div>
-              {profile.operatesCriticalInfrastructure && (
-                <div className="mt-2 flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 text-[11px] leading-snug text-blue-900">
+              {CURRENT.cicsc.applies && (
+                <div data-testid="cicsc-profile-note" className="mt-2 flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 text-[11px] leading-snug text-blue-900">
                   <Info size={13} className="mt-0.5 shrink-0 text-blue-500" />
                   <span>
                     <span className="font-semibold">Critical infrastructure scope note.</span> This organisation

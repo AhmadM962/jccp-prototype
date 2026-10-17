@@ -1,10 +1,11 @@
 // The six JNCSF capabilities plus before/after per-capability and portfolio stats. Since Round 2
-// every figure here is computed from the exact fractions in ministry.ts (the engine's shape for
+// every figure here is computed from the exact fractions in the active profile (src/data/profiles) (the engine's shape for
 // this profile); none is typed in. Every per-capability row reconciles exactly to the portfolio
 // TOTALS at the bottom of this file (asserted in tests).
 
-import { APPLICABLE_CONTROLS, EXCLUDED_COUNT, TOTAL_CONTROLS } from './figures';
-import { MINISTRY, type CapabilityFigures, type StateFigures } from './ministry';
+import { TOTAL_CONTROLS } from './figures';
+import { CURRENT, type CapabilityFigures, type StateFigures } from './current';
+import { lazyByProfile } from '../lib/lazyByProfile';
 
 export interface CapabilityStat {
   applicable: number;
@@ -64,13 +65,13 @@ const NAMES: Record<Exclude<Capability['id'], 'natl'>, { name: string; shortName
   found: { name: 'Foundational Capabilities', shortName: 'Foundational', totalControls: 139 },
 };
 
-export const capabilities: Capability[] = [
+export const capabilities: Capability[] = lazyByProfile(() => [
   ...(['arch', 'dev', 'del', 'ops', 'found'] as const).map((id) => ({
     id,
     ...NAMES[id],
     organisationallyAssessable: true,
-    before: capStat(MINISTRY.before.capabilities[id]),
-    after: capStat(MINISTRY.after.capabilities[id]),
+    before: capStat(CURRENT.before.capabilities[id]),
+    after: capStat(CURRENT.after.capabilities[id]),
   })),
   {
     id: 'natl',
@@ -79,7 +80,7 @@ export const capabilities: Capability[] = [
     totalControls: 0,
     organisationallyAssessable: false,
   },
-];
+], 'array');
 
 export const capabilityById = (id: string) => capabilities.find((c) => c.id === id);
 
@@ -99,13 +100,13 @@ function stateTotals(s: StateFigures) {
   };
 }
 
-// Portfolio totals for the demonstration organisation (a government ministry): the framework is 93%
-// universal — only 38 of 576 controls are conditional on the five applicability variables — and this
-// organisation excludes exactly the 19 in_house_development controls, leaving 557 of 576 applicable.
-export const TOTALS = {
+// Portfolio totals for the ACTIVE assessment. The framework is 93% universal — only 38 of 576 controls are conditional
+// on the five applicability variables — so what each organisation excludes is a matter of what it declared: read from
+// the engine's output, not typed here.
+export const TOTALS = lazyByProfile(() => ({
   totalControls: TOTAL_CONTROLS,
-  notApplicable: EXCLUDED_COUNT,
-  applicable: APPLICABLE_CONTROLS,
-  before: { ...stateTotals(MINISTRY.before), assurance: 'L1' },
-  after: { ...stateTotals(MINISTRY.after), assurance: 'L2' },
-};
+  notApplicable: CURRENT.totals.excluded,
+  applicable: CURRENT.totals.applicable,
+  before: { ...stateTotals(CURRENT.before), assurance: CURRENT.assuranceBefore.reported },
+  after: { ...stateTotals(CURRENT.after), assurance: CURRENT.assurance.reported },
+}));

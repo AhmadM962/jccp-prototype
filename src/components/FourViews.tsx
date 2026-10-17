@@ -1,13 +1,13 @@
 import { Card, Pill } from './ui';
 import ScoreInterval from './ScoreInterval';
-import { WEIGHT_BASIS_COUNTS } from '../data/ministry';
+import { CURRENT } from '../data/current';
 import {
   FRAMEWORK_WEIGHTED_TOTALS,
   RISK_WEIGHT_TABLE,
   RISK_WEIGHT_TABLE_TOTAL,
   RISK_WEIGHTED_TOTALS,
-  RISK_WEIGHTING_EXPLAINER,
-  UNDERIVED_SHARE_PCT,
+  riskWeightingExplainer,
+  underivedSharePct,
 } from '../data/riskWeighting';
 import type { DashboardFigures } from '../lib/derive';
 import { stateFor, viewPercents, AUTHORED_SCOPE_LABEL, VIEW_LABEL, VIEW_ORDER, type ViewPercents } from '../lib/views';
@@ -60,7 +60,7 @@ export default function FourViews({
         : viewPercents(v);
     return { id, pct };
   });
-  const A = WEIGHT_BASIS_COUNTS;
+  const A = CURRENT.weightBasisCounts;
   const sumOf = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
 
   return (
@@ -131,7 +131,7 @@ export default function FourViews({
                 <tr key={r.basis} data-basis={r.basis} className={`border-b border-slate-100 ${r.underived ? 'bg-amber-50/50' : ''}`}>
                   <td className="py-2 pr-4 text-slate-700">
                     {r.basis}
-                    {r.underived && <span className="ml-1.5 text-[10px] text-amber-700">({UNDERIVED_SHARE_PCT}% of applicable controls)</span>}
+                    {r.underived && <span className="ml-1.5 text-[10px] text-amber-700">({underivedSharePct()}% of applicable controls)</span>}
                   </td>
                   <td className="tnum py-2 pr-4 text-right font-semibold text-slate-800">{r.controls}</td>
                   <td className="tnum py-2 text-right text-slate-600">{r.weight.toFixed(1)}{r.underived ? ' (conservative default)' : ''}</td>
@@ -139,7 +139,7 @@ export default function FourViews({
               ))}
               <tr className="font-semibold text-slate-900">
                 <td className="py-2 pr-4">All applicable controls</td>
-                <td className="tnum py-2 pr-4 text-right" data-testid="weights-total">{RISK_WEIGHT_TABLE_TOTAL}</td>
+                <td className="tnum py-2 pr-4 text-right" data-testid="weights-total">{RISK_WEIGHT_TABLE_TOTAL()}</td>
                 <td />
               </tr>
             </tbody>
@@ -159,7 +159,7 @@ export default function FourViews({
           Both totals are shown together, never one derived from the other. The{' '}
           <span className="tnum font-semibold text-slate-700">{RISK_WEIGHTED_TOTALS.gap}</span> between them is the
           weight of the {A.applicable.underived} underived controls, which count in full: real uncertainty about
-          weight, not noise to average away. {RISK_WEIGHTING_EXPLAINER}
+          weight, not noise to average away. {riskWeightingExplainer()}
         </p>
         <p className="mt-1 text-[11px] leading-relaxed text-slate-400" data-testid="weights-framework-note">
           Over all {FRAMEWORK_WEIGHTED_TOTALS.controls} controls in the framework, before the {FRAMEWORK_WEIGHTED_TOTALS.excluded}{' '}

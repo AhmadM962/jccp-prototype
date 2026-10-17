@@ -1,4 +1,4 @@
-import type { Frac, WidthParts } from '../data/ministry';
+import { CURRENT, type Frac, type WidthParts } from '../data/current';
 import { GAP_REASON_LABEL } from '../data/controls';
 import { div, fmtPct, toPct } from '../lib/frac';
 import { WIDTH_OWNER, assertWidthPartsSum, type ReasonRow, type WidthCause } from '../lib/views';

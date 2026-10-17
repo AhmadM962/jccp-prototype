@@ -6,9 +6,9 @@ import App from '../App';
 import Authoring from '../screens/14_Authoring';
 import { useAssessment, type Role } from '../store/useAssessment';
 import { navForRole } from '../components/layout/nav';
-import { MINISTRY } from '../data/ministry';
+import { CURRENT } from '../data/current';
 import { controls, EVIDENCE_BASIS_BREAKDOWN, EVIDENCE_SIGNAL_TOTAL, NO_CONCLUSIVE_PATH_STATS } from '../data/controls';
-import { EXCLUDED_COUNT, TOTAL_CONTROLS, APPLICABLE_CONTROLS } from '../data/figures';
+import { TOTAL_CONTROLS } from '../data/figures';
 import {
   AUTHORED_BY_CAPABILITY,
   AUTHORED_CONTROLS,
@@ -81,22 +81,22 @@ describe('Task 5: the authoring figures (taken from the engine\'s reports, then 
     for (const c of CAPABILITY_AUTHORING) expect(c.controls, c.id).toBe(capabilities.find((x) => x.id === c.id)!.totalControls);
   });
   it('ties to the assessment: 510 unauthored across the framework is 492 that apply, of which 491 are Unknown and one has a verdict', () => {
-    const scope = MINISTRY.after.views.authored_scope.applicable;
-    const unauthoredExcluded = EXCLUDED_COUNT - (AUTHORED_CONTROLS - scope); // one authored control is excluded
+    const scope = CURRENT.after.views.authored_scope.applicable;
+    const unauthoredExcluded = CURRENT.totals.excluded - (AUTHORED_CONTROLS - scope); // one authored control is excluded
     expect(unauthoredExcluded).toBe(18);
-    expect(UNAUTHORED_CONTROLS - unauthoredExcluded).toBe(APPLICABLE_CONTROLS - scope);
-    expect(APPLICABLE_CONTROLS - scope).toBe(492);
-    expect(492 - MINISTRY.after.unknownUnauthored).toBe(1);
+    expect(UNAUTHORED_CONTROLS - unauthoredExcluded).toBe(CURRENT.totals.applicable - scope);
+    expect(CURRENT.totals.applicable - scope).toBe(492);
+    expect(492 - CURRENT.after.unknownUnauthored).toBe(1);
   });
   it('the ministry\'s authored counts per capability never exceed the framework\'s', () => {
     for (const id of Object.keys(AUTHORED_BY_CAPABILITY) as (keyof typeof AUTHORED_BY_CAPABILITY)[]) {
-      expect(MINISTRY.after.capabilities[id].authored, id).toBeLessThanOrEqual(AUTHORED_BY_CAPABILITY[id]);
+      expect(CURRENT.after.capabilities[id].authored, id).toBeLessThanOrEqual(AUTHORED_BY_CAPABILITY[id]);
     }
   });
-  it('the sample never shows more authored controls in a capability than the framework has', () => {
+  it('the controls themselves carry exactly the authored count the figures state, in every capability', () => {
     for (const id of Object.keys(AUTHORED_BY_CAPABILITY) as (keyof typeof AUTHORED_BY_CAPABILITY)[]) {
-      const authored = controls.filter((c) => c.capability === id && c.authored).length;
-      expect(authored, id).toBeLessThanOrEqual(MINISTRY.after.capabilities[id].authored);
+      const authored = controls().filter((c) => c.capability === id && c.authored).length;
+      expect(authored, id).toBe(CURRENT.after.capabilities[id].authored);
     }
   });
 });
@@ -149,7 +149,7 @@ describe('Task 5: the screen', () => {
     [true, 'after'],
   ] as const)('the Delivery sentence quotes the Unknown counts of the state being viewed (%s upload)', (uploaded, when) => {
     useAssessment.setState({ evidenceUploaded: uploaded });
-    const d = MINISTRY[when].capabilities.del;
+    const d = CURRENT[when].capabilities.del;
     const { getByTestId } = screen();
     const lead = getByTestId('authoring-lead').textContent ?? '';
     expect(lead).toContain(`has ${d.unknown} Unknown controls, and ${d.unknownUnauthored} of them are Unknown for want of a requirement`);

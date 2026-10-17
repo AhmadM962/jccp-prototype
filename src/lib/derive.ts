@@ -1,4 +1,4 @@
-// Derived dashboard figures: the engine's published verdict (src/data/ministry.ts) plus the effect of
+// Derived dashboard figures: the engine's published verdict (src/data/profiles (read through src/data/current.ts)) plus the effect of
 // any active analyst overrides. An override moves one control between buckets, and the unweighted
 // interval is re-derived from the buckets — so an override the analyst makes is visible on the
 // dashboard, not just on the control page.
@@ -11,15 +11,15 @@
 // Overrides apply to the unweighted interval only. The weighted and authored-scope views need
 // per-control weights and scope that the buckets do not carry, so those show the engine verdict.
 
-import { controls, snapshotFor, type ControlState } from '../data/controls';
-import type { Frac, StateFigures, WidthParts } from '../data/ministry';
+import { controlById, snapshotFor, type ControlState } from '../data/controls';
+import { CURRENT, type Frac, type StateFigures, type WidthParts } from '../data/current';
 import type { OverrideRecord } from '../store/useAssessment';
 import { add, div, frac, toPct } from './frac';
 import { IntervalConsistencyError } from './scoring';
 import { stateFor, type WidthCause } from './views';
 
 export function engineStateOf(id: string, uploaded: boolean): ControlState | undefined {
-  const c = controls.find((x) => x.id === id);
+  const c = controlById(id);
   if (!c) return undefined;
   return snapshotFor(c, uploaded).state;
 }
@@ -101,7 +101,7 @@ export function dashboardView(uploaded: boolean, overrides: Record<string, Overr
     const from = engineStateOf(id, uploaded);
     const to = rec.state;
     if (!from || from === to || from === 'grey' || to === 'grey') continue;
-    const authored = controls.find((c) => c.id === id)?.authored ?? true;
+    const authored = controlById(id)?.authored ?? true;
     b[from] -= 1;
     b[to] += 1;
     if (from === 'unknown' && !authored) b.unknownUnauthored -= 1;
